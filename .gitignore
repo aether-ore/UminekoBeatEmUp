@@ -1,0 +1,19 @@
+# Local Codex/app workspace files
+.agents/
+.codex/
+
+# OS/browser clutter
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+~$*
+
+# Optional dependency/build folders if this grows into a toolchain-backed app
+node_modules/
+dist/
+build/
