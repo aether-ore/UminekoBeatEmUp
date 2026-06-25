@@ -256,7 +256,7 @@ const BEATRICE_TOWER_VOLLEY_TOWER_SCALE = 1.08;
 const BEATRICE_TOWER_VOLLEY_EDGE_OVERHANG = 22;
 const BEATRICE_TOWER_VOLLEY_TOWER_SEPARATION = 176;
 const BEATRICE_MECHANIC_CHOICES = ["goatTrial", "ringAttack", "teleportAttack", "goatRush", "towerVolley"];
-const DEBUG_START_BEATRICE_BOSS_WAVE = true;
+const DEBUG_START_BEATRICE_BOSS_WAVE = false;
 const DEBUG_BEATRICE_TELEPORT_PREP_TEST = false;
 const BEATRICE_TELEPORT_PREP_JUMPS = 7;
 const BEATRICE_TELEPORT_PREP_JUMP_TIME = 0.14;
@@ -293,6 +293,8 @@ const BEATRICE_ASMO_DROP_KICK_BOUNCE_DELAY = 0.16;
 const BEATRICE_ASMO_DROP_KICK_BOUNCE_LIFT = 310;
 const BEATRICE_ASMO_DROP_KICK_BOUNCE_DRIFT = 115;
 const BEATRICE_BOSS_HP_MULTIPLIER = 3;
+const BEATRICE_BARRIER_MAX = 100;
+const BEATRICE_MELEE_PARRY_BARRIER_DAMAGE = 50;
 const BEATRICE_BARRIER_BREAK_DRIFT = 260;
 const BEATRICE_BARRIER_BREAK_FADE_START = 0.18;
 const BEATRICE_BARRIER_BREAK_FADE_END = 0.82;
@@ -312,6 +314,34 @@ const BEATRICE_DEFEAT_DISSIPATE_TIME = 1.35;
 const BEATRICE_DEFEAT_MOVE_TIME = 0.82;
 const BEATRICE_DEFEAT_FINAL_SPEED = 8.2;
 const BEATRICE_DEFEAT_WISP_COUNT = 64;
+const BEATRICE_TUTORIAL_TRIGGER_RANGE = 360;
+const BEATRICE_TUTORIAL_TRIGGER_DEPTH = 128;
+const BEATRICE_TUTORIAL_SKIP_DELAY = 0.18;
+const BEATRICE_TUTORIAL_DIALOGUE = [
+  { speaker: "Battler", portrait: "BattlerPointAngry", text: "Get back here and let me hit you, Beatrice!" },
+  { speaker: "Beatrice", portrait: "BeatoPipeSmug", text: "Why would I let you do that?" },
+  { speaker: "Beatrice", portrait: "BeatoPipeMocking", text: "Don't tell me you can't even muster the strength to have a bit of back of forth with me like old times?" },
+  { speaker: "Battler", portrait: "BattlerPensive", text: "Like old times? Then...", thought: true },
+  { speaker: "Battler", portrait: "BattlerPensive", thought: true, parryHint: true },
+  { speaker: "Battler", portrait: "BattlerMuster", text: "So what you're saying..." },
+  { speaker: "Battler", portrait: "BattlerHappy", text: "Is that if I grab those busty onee-chans and stab them right back into you... you'll come crawling back to me for a beating?" },
+  { speaker: "Beatrice", portrait: "BeatriceChallenge", text: "Kuhiyahahahyiahaha! Says the troglodyte who comes rushing in at a witch with a glowing golden health bar!" },
+  { speaker: "Beatrice", portrait: "BeatriceDarkChallenge", text: "I welcome you to try, you incompetent button masher. If you do, I promise I'll welcome every inch! Kuhiayahahahaiyahaiyaihayhahaha!" }
+];
+const BEATRICE_STAKE_TUTORIAL_SKIP_DELAY = 0.18;
+const BEATRICE_STAKE_TUTORIAL_DIALOGUE = {
+  hint: {
+    speaker: "Battler",
+    portrait: "BattlerPointAngry",
+    stakeHint: true
+  },
+  parryNow: {
+    speaker: "Battler",
+    portrait: "BattlerPointAngry",
+    text: "Parry now!",
+    parryNow: true
+  }
+};
 const LAMBDA_GAME_OVER_DIALOGUE = [
   { portrait: "SurprisedLambda1", text: "What? You died even with me around?", duration: 3.2 },
   { portrait: "FrustratedLambda1", text: "You're supposed to be invincible with my help!", duration: 3.2 },
@@ -520,6 +550,7 @@ const beatriceImages = {};
 const beatriceFrameBounds = {};
 const lambdaImages = {};
 const lambdaPortraits = {};
+const dialoguePortraits = {};
 const lambdaKonpeitoAnchors = {};
 const lambdaKnockdownAnchors = {};
 const bernImages = {};
@@ -998,6 +1029,22 @@ const bossBlessingChoice = {
   pendingBoss: false,
   selected: 0
 };
+const beatriceTutorial = {
+  active: false,
+  seen: false,
+  index: 0,
+  skipCooldown: 0,
+  scroll: 0
+};
+const beatriceStakeTutorial = {
+  active: false,
+  armed: false,
+  explained: false,
+  stage: "hint",
+  stake: null,
+  skipCooldown: 0,
+  scroll: 0
+};
 const pickups = [];
 const crystalShards = [];
 const crystalTrails = [];
@@ -1134,6 +1181,8 @@ const beatriceBoss = {
   defeatTargetX: 0,
   defeatTargetY: 0,
   barrierActive: true,
+  barrierMax: BEATRICE_BARRIER_MAX,
+  barrierHp: BEATRICE_BARRIER_MAX,
   vulnerable: false,
   breakVx: 0,
   breakFade: 0,
@@ -1779,6 +1828,14 @@ function loadImages() {
     };
     img.src = `assets/lambdadelta/portraits/${portrait}.png`;
   }));
+  const tutorialPortraitLoads = [...new Set(BEATRICE_TUTORIAL_DIALOGUE.map(({ portrait }) => portrait))].map((portrait) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      dialoguePortraits[portrait] = img;
+      resolve();
+    };
+    img.src = `assets/dialogue/${portrait}.png`;
+  }));
   const effectLoads = [
     ["konpeito", "assets/effects/Konpeito.PNG"],
     ["plumTea", "assets/effects/PlumTea.png"],
@@ -1842,7 +1899,7 @@ function loadImages() {
     };
     img.src = src;
   }));
-  return Promise.all([...spriteLoads, ...lambdaLoads, ...bernLoads, ...goatLoads, ...beatriceLoads, ...portraitLoads, ...effectLoads]).then(() => {
+  return Promise.all([...spriteLoads, ...lambdaLoads, ...bernLoads, ...goatLoads, ...beatriceLoads, ...portraitLoads, ...tutorialPortraitLoads, ...effectLoads]).then(() => {
     alignGoatIdleFrames();
     prepareBernCatSheet();
   });
@@ -3103,8 +3160,12 @@ function resolveBeatriceMeleeKickParry() {
   screenShakeTimer = Math.max(screenShakeTimer, 0.18);
   enemyFreezeTimer = Math.max(enemyFreezeTimer, 0.45);
   runStats.parriesPerformed += 1;
-  message = "Parry";
-  messageTimer = 0.7;
+  const barrierDirection = Math.sign(beatriceBoss.x - player.x) || beatriceBoss.facing || 1;
+  const barrierBroken = damageBeatriceBarrier(BEATRICE_MELEE_PARRY_BARRIER_DAMAGE, barrierDirection);
+  if (!barrierBroken) {
+    message = beatriceBoss.barrierActive ? "Parry - Barrier cracked" : "Parry";
+    messageTimer = 0.85;
+  }
 }
 
 function failBeatriceMeleeKickParry() {
@@ -3939,6 +4000,7 @@ function makeEnemy(x, y, index = 0, typeOverride = "") {
     attackKind: "punch",
     attackHasHit: false,
     attackTelegraph: 0,
+    attackFacing: 0,
     goatAction: "idle",
     goatHasHit: false,
     goatHurtAnim: 0,
@@ -4187,6 +4249,8 @@ function activateBeatriceBoss() {
   beatriceBoss.hp = beatriceBoss.maxHp;
   beatriceBoss.defeatTimer = 0;
   beatriceBoss.barrierActive = true;
+  beatriceBoss.barrierMax = BEATRICE_BARRIER_MAX;
+  beatriceBoss.barrierHp = beatriceBoss.barrierMax;
   beatriceBoss.vulnerable = false;
   beatriceBoss.breakVx = 0;
   beatriceBoss.breakFade = 0;
@@ -4725,6 +4789,145 @@ function beatriceIdleHoverPoint() {
   };
 }
 
+function canStartBeatriceTutorial() {
+  if (state !== "playing" || beatriceTutorial.seen || beatriceTutorial.active) return false;
+  if (!beatriceBoss.active || !beatriceBoss.barrierActive || beatriceBoss.vulnerable) return false;
+  if (beatriceBoss.flavor !== "idle" && beatriceBoss.flavor !== "puff") return false;
+  const dx = Math.abs(player.x - beatriceBoss.x);
+  const dy = Math.abs(player.y - beatriceBoss.y);
+  return dx <= BEATRICE_TUTORIAL_TRIGGER_RANGE && dy <= BEATRICE_TUTORIAL_TRIGGER_DEPTH;
+}
+
+function startBeatriceBarrierTutorial() {
+  if (!canStartBeatriceTutorial()) return false;
+  beatriceTutorial.active = true;
+  beatriceTutorial.seen = true;
+  beatriceTutorial.index = 0;
+  beatriceTutorial.skipCooldown = BEATRICE_TUTORIAL_SKIP_DELAY;
+  beatriceTutorial.scroll = 0;
+  clearBeatriceBossMechanics();
+  beatriceBoss.mechanic = "tutorial";
+  beatriceBoss.rewardStakePending = false;
+  const target = beatriceIdleHoverPoint();
+  const frame = beatriceFrames.puff[0] || beatriceFrames.idle[0];
+  spawnBeatriceAfterimage(target.x, target.y, 0.58, frame);
+  spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 62, 34);
+  beatriceBoss.x = target.x;
+  beatriceBoss.y = target.y;
+  beatriceBoss.hoverOffset = 76;
+  beatriceBoss.z = 0;
+  beatriceBoss.facing = player.x >= beatriceBoss.x ? 1 : -1;
+  beatriceBoss.flavor = "puff";
+  beatriceBoss.anim = 0;
+  spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 62, 42);
+  resetAttackHolds();
+  keys.clear();
+  player.duoCharge = 0;
+  state = "beatriceTutorial";
+  return true;
+}
+
+function advanceBeatriceTutorialDialogue() {
+  if (!beatriceTutorial.active || beatriceTutorial.skipCooldown > 0) return;
+  if (beatriceTutorial.index < BEATRICE_TUTORIAL_DIALOGUE.length - 1) {
+    beatriceTutorial.index++;
+    beatriceTutorial.skipCooldown = BEATRICE_TUTORIAL_SKIP_DELAY;
+    beatriceTutorial.scroll = 0;
+    return;
+  }
+  beatriceTutorial.active = false;
+  beatriceTutorial.index = 0;
+  beatriceTutorial.skipCooldown = 0;
+  beatriceTutorial.scroll = 0;
+  beatriceStakeTutorial.armed = true;
+  beatriceStakeTutorial.explained = false;
+  state = "playing";
+  beatriceBoss.mechanic = "idle";
+  beatriceBoss.lastMechanic = "";
+  beatriceBoss.flavor = "idle";
+  beatriceBoss.anim = 0;
+  startRandomBeatriceMechanic();
+}
+
+function beatriceStakeTutorialLine() {
+  if (!beatriceStakeTutorial.active) return null;
+  return BEATRICE_STAKE_TUTORIAL_DIALOGUE[beatriceStakeTutorial.stage] || BEATRICE_STAKE_TUTORIAL_DIALOGUE.hint;
+}
+
+function findBeatriceStakeTutorialTarget() {
+  if (beatriceStakeTutorial.stake && beatriceStakes.includes(beatriceStakeTutorial.stake)) {
+    return beatriceStakeTutorial.stake;
+  }
+  return beatriceStakes.find((stake) => stake.mode === "launch") || null;
+}
+
+function startBeatriceStakeTutorial(stake) {
+  if (!stake || beatriceStakeTutorial.active || !beatriceStakeTutorial.armed || beatriceStakeTutorial.explained) return false;
+  beatriceStakeTutorial.active = true;
+  beatriceStakeTutorial.stage = "hint";
+  beatriceStakeTutorial.stake = stake;
+  beatriceStakeTutorial.skipCooldown = BEATRICE_STAKE_TUTORIAL_SKIP_DELAY;
+  beatriceStakeTutorial.scroll = 0;
+  resetAttackHolds();
+  keys.clear();
+  state = "beatriceStakeTutorial";
+  return true;
+}
+
+function maybeStartBeatriceStakeTutorial() {
+  if (state !== "playing" || !beatriceStakeTutorial.armed || beatriceStakeTutorial.explained || beatriceStakeTutorial.active) return false;
+  const stake = beatriceStakes.find((candidate) => candidate.mode === "launch");
+  return startBeatriceStakeTutorial(stake);
+}
+
+function advanceBeatriceStakeTutorialDialogue() {
+  if (!beatriceStakeTutorial.active || beatriceStakeTutorial.stage !== "hint" || beatriceStakeTutorial.skipCooldown > 0) return;
+  beatriceStakeTutorial.active = false;
+  beatriceStakeTutorial.explained = true;
+  beatriceStakeTutorial.skipCooldown = 0;
+  beatriceStakeTutorial.scroll = 0;
+  state = "playing";
+}
+
+function maybeStartBeatriceStakeParryPrompt() {
+  if (state !== "playing" || !beatriceStakeTutorial.armed || !beatriceStakeTutorial.explained || beatriceStakeTutorial.active) return false;
+  const stake = beatriceStakes.find((candidate) => beatriceStakeParryReady(candidate));
+  if (!stake) return false;
+  beatriceStakeTutorial.active = true;
+  beatriceStakeTutorial.stage = "parryNow";
+  beatriceStakeTutorial.stake = stake;
+  beatriceStakeTutorial.skipCooldown = 0;
+  beatriceStakeTutorial.scroll = 0;
+  resetAttackHolds();
+  keys.clear();
+  state = "beatriceStakeTutorial";
+  return true;
+}
+
+function completeBeatriceStakeTutorialParry() {
+  if (!beatriceStakeTutorial.active || beatriceStakeTutorial.stage !== "parryNow") return;
+  const stake = findBeatriceStakeTutorialTarget();
+  if (!stake || !beatriceStakeParryReady(stake)) return;
+  beatriceStakeTutorial.active = false;
+  beatriceStakeTutorial.armed = false;
+  beatriceStakeTutorial.stage = "hint";
+  beatriceStakeTutorial.stake = null;
+  beatriceStakeTutorial.skipCooldown = 0;
+  beatriceStakeTutorial.scroll = 0;
+  state = "playing";
+  tryBeatriceStakeParry();
+}
+
+function handleBeatriceStakeTutorialKey(key) {
+  if (!beatriceStakeTutorial.active) return false;
+  if (beatriceStakeTutorial.stage === "parryNow") {
+    if (key === "j" || key === "k") completeBeatriceStakeTutorialParry();
+    return true;
+  }
+  advanceBeatriceStakeTutorialDialogue();
+  return true;
+}
+
 function randomVisibleBeatricePoint() {
   const x = clamp(cameraX + 130 + Math.random() * Math.max(120, W - 260), 90, STAGE_W - 90);
   const y = clamp(FLOOR_Y - 142 + Math.random() * 102, FLOOR_Y - 154, FLOOR_Y - 20);
@@ -4913,6 +5116,18 @@ function startGame() {
   bossBlessingChoice.choices = [];
   bossBlessingChoice.pendingBoss = false;
   bossBlessingChoice.selected = 0;
+  beatriceTutorial.active = false;
+  beatriceTutorial.seen = false;
+  beatriceTutorial.index = 0;
+  beatriceTutorial.skipCooldown = 0;
+  beatriceTutorial.scroll = 0;
+  beatriceStakeTutorial.active = false;
+  beatriceStakeTutorial.armed = false;
+  beatriceStakeTutorial.explained = false;
+  beatriceStakeTutorial.stage = "hint";
+  beatriceStakeTutorial.stake = null;
+  beatriceStakeTutorial.skipCooldown = 0;
+  beatriceStakeTutorial.scroll = 0;
   beatriceBoss.active = false;
   beatriceBoss.x = 0;
   beatriceBoss.y = FLOOR_Y - 28;
@@ -4962,6 +5177,8 @@ function startGame() {
   beatriceBoss.defeatTargetX = 0;
   beatriceBoss.defeatTargetY = 0;
   beatriceBoss.barrierActive = true;
+  beatriceBoss.barrierMax = BEATRICE_BARRIER_MAX;
+  beatriceBoss.barrierHp = beatriceBoss.barrierMax;
   beatriceBoss.vulnerable = false;
   beatriceBoss.breakVx = 0;
   beatriceBoss.breakFade = 0;
@@ -6160,6 +6377,8 @@ function finishBeatriceStunRecovery() {
   beatriceBoss.y = clamp(player.y - 44, FLOOR_Y - 124, FLOOR_Y - 8);
   beatriceBoss.z = 0;
   beatriceBoss.barrierActive = true;
+  beatriceBoss.barrierMax = BEATRICE_BARRIER_MAX;
+  beatriceBoss.barrierHp = beatriceBoss.barrierMax;
   beatriceBoss.vulnerable = false;
   resetBattlerLaunchComboFlags(beatriceBoss);
   beatriceBoss.breakFade = 0;
@@ -6169,9 +6388,22 @@ function finishBeatriceStunRecovery() {
   startRandomBeatriceMechanic();
 }
 
+function damageBeatriceBarrier(amount, direction = 1) {
+  if (!beatriceBoss.active || !beatriceBoss.barrierActive) return false;
+  const maxBarrier = beatriceBoss.barrierMax || BEATRICE_BARRIER_MAX;
+  beatriceBoss.barrierMax = maxBarrier;
+  beatriceBoss.barrierHp = clamp((beatriceBoss.barrierHp ?? maxBarrier) - amount, 0, maxBarrier);
+  spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 64, 24);
+  spawnAsmodeusGoldenWisps(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 64, 8);
+  screenShakeTimer = Math.max(screenShakeTimer, 0.16);
+  if (beatriceBoss.barrierHp <= 0) return startBeatriceBarrierBreak(direction);
+  return false;
+}
+
 function startBeatriceBarrierBreak(direction = 1) {
   if (!beatriceBoss.active) return false;
   beatriceBoss.barrierActive = false;
+  beatriceBoss.barrierHp = 0;
   beatriceBoss.vulnerable = false;
   beatriceBoss.flavor = "barrierBreak";
   beatriceBoss.anim = 0;
@@ -6248,6 +6480,7 @@ function defeatBeatriceBoss() {
   clearBeatriceBossMechanics();
   beatriceBoss.hp = 0;
   beatriceBoss.barrierActive = false;
+  beatriceBoss.barrierHp = 0;
   beatriceBoss.vulnerable = false;
   beatriceBoss.flavor = "defeated";
   beatriceBoss.defeatPhase = "move";
@@ -6855,10 +7088,12 @@ function updateEnemies(dt) {
       enemy.attack = 0;
       enemy.attackHasHit = false;
       enemy.attackTelegraph = 0;
+      enemy.attackFacing = 0;
     }
     enemy.attackTelegraph = Math.max(0, (enemy.attackTelegraph || 0) - dt);
     enemy.attack = Math.max(0, enemy.attack - (enemy.attackTelegraph > 0 ? 0 : dt));
     if (enemy.attack > 0) {
+      if (enemy.attackFacing) enemy.facing = enemy.attackFacing;
       if (enemy.attackTelegraph > 0) {
         enemy.anim = 0;
       } else {
@@ -6875,7 +7110,12 @@ function updateEnemies(dt) {
     }
     const dx = player.x - enemy.x;
     const dy = player.y - enemy.y;
-    enemy.facing = dx >= 0 ? 1 : -1;
+    if (enemy.attack > 0 && enemy.attackFacing) {
+      enemy.facing = enemy.attackFacing;
+    } else {
+      enemy.attackFacing = 0;
+      enemy.facing = dx >= 0 ? 1 : -1;
+    }
     const dist = Math.hypot(dx, dy);
 
     if (enemy.attack > 0) {
@@ -6891,6 +7131,7 @@ function updateEnemies(dt) {
       enemy.attack = enemyAttackData[enemy.attackKind].lock;
       enemy.attackHasHit = false;
       enemy.attackTelegraph = ENEMY_ATTACK_TELEGRAPH_TIME;
+      enemy.attackFacing = enemy.facing;
       enemy.anim = 0;
       enemy.cooldown = 0.92 + Math.random() * 0.5;
     }
@@ -8141,6 +8382,28 @@ function update(dt) {
     updateResolveDuoOutline();
     return;
   }
+  if (state === "beatriceTutorial" || state === "beatriceStakeTutorial") {
+    resetAttackHolds();
+    beatriceTutorial.skipCooldown = Math.max(0, beatriceTutorial.skipCooldown - dt);
+    beatriceStakeTutorial.skipCooldown = Math.max(0, beatriceStakeTutorial.skipCooldown - dt);
+    updateBeatrice(dt);
+    updateParticles(dt);
+    updateBeatriceStakeParryLine(dt);
+    updateCrystalTrails(dt);
+    updateCrystalShockwaves(dt);
+    updateKonpeitoGeysers(dt);
+    updateKonpeitoDomeBursts(dt);
+    updateSummonPillars(dt);
+    screenFlashTimer = Math.max(0, screenFlashTimer - dt);
+    screenShakeTimer = Math.max(0, screenShakeTimer - dt);
+    messageTimer = Math.max(0, messageTimer - dt);
+    healthBar.style.width = `${player.hp}%`;
+    updateResolveHud(dt);
+    waveLabel.textContent = currentWaveLabel();
+    scoreLabel.textContent = `Score ${score}`;
+    updateResolveDuoOutline();
+    return;
+  }
   if (state === "paused") {
     resetAttackHolds();
     updateResolveHud(dt);
@@ -8281,8 +8544,24 @@ function update(dt) {
   updateCrystalShockwaves(dt);
   updateKonpeito(dt);
   updateBeatrice(dt);
+  if (startBeatriceBarrierTutorial()) {
+    healthBar.style.width = `${player.hp}%`;
+    updateResolveHud(dt);
+    waveLabel.textContent = currentWaveLabel();
+    scoreLabel.textContent = `Score ${score}`;
+    updateResolveDuoOutline();
+    return;
+  }
   updateBeatriceStakes(dt);
   updateBeatriceStakeParryLine(dt);
+  if (maybeStartBeatriceStakeTutorial() || maybeStartBeatriceStakeParryPrompt()) {
+    healthBar.style.width = `${player.hp}%`;
+    updateResolveHud(dt);
+    waveLabel.textContent = currentWaveLabel();
+    scoreLabel.textContent = `Score ${score}`;
+    updateResolveDuoOutline();
+    return;
+  }
   updateLambda(dt);
   updateBernReviveHazard(dt);
   updateBernkastel(dt);
@@ -10983,10 +11262,16 @@ function drawBeatriceBossHud() {
   ctx.strokeRect(x, y + 4, barW, barH);
   if (beatriceBoss.barrierActive) {
     const pulse = pulseValue(7);
+    const barrierT = clamp((beatriceBoss.barrierHp ?? beatriceBoss.barrierMax ?? BEATRICE_BARRIER_MAX) / Math.max(1, beatriceBoss.barrierMax || BEATRICE_BARRIER_MAX), 0, 1);
     ctx.globalCompositeOperation = "lighter";
     ctx.strokeStyle = `rgba(255, 211, 77, ${0.82 + pulse * 0.18})`;
     ctx.lineWidth = 4 + pulse * 2;
     ctx.strokeRect(x - 5, y - 1, barW + 10, barH + 10);
+    ctx.fillStyle = `rgba(255, 226, 93, ${0.7 + pulse * 0.18})`;
+    ctx.fillRect(x - 5, y - 8, (barW + 10) * barrierT, 4);
+    ctx.strokeStyle = "rgba(255, 246, 188, 0.72)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 5, y - 8, barW + 10, 4);
     ctx.strokeStyle = `rgba(255, 247, 181, ${0.36 + pulse * 0.24})`;
     ctx.lineWidth = 1.5;
     ctx.strokeRect(x - 10, y - 6, barW + 20, barH + 20);
@@ -11125,6 +11410,161 @@ function drawLambdaGameOverDialogue() {
   ctx.restore();
 }
 
+function drawBeatriceStakeTutorialArrow() {
+  if (!beatriceStakeTutorial.armed) return;
+  if (!beatriceStakeTutorial.active && !beatriceStakeTutorial.explained) return;
+  const stake = findBeatriceStakeTutorialTarget();
+  if (!stake || stake.mode !== "launch") return;
+  const x = stake.targetX - cameraX;
+  const y = stake.targetY + 10;
+  if (x < -120 || x > W + 120) return;
+  const pulse = pulseValue(10);
+  const arrowTop = Math.max(92, y - 190);
+  const arrowTip = Math.max(122, y - 86);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.strokeStyle = `rgba(102, 244, 255, ${0.62 + pulse * 0.28})`;
+  ctx.fillStyle = `rgba(102, 244, 255, ${0.74 + pulse * 0.22})`;
+  ctx.shadowColor = "rgba(89, 238, 255, 0.96)";
+  ctx.shadowBlur = 18 + pulse * 12;
+  ctx.lineWidth = 6;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x, arrowTop);
+  ctx.lineTo(x, arrowTip);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x, arrowTip + 22);
+  ctx.lineTo(x - 22, arrowTip - 14);
+  ctx.lineTo(x + 22, arrowTip - 14);
+  ctx.closePath();
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(4, 18, 24, 0.82)";
+  ctx.strokeStyle = "rgba(118, 246, 255, 0.92)";
+  ctx.lineWidth = 2;
+  const label = beatriceStakeTutorial.active && beatriceStakeTutorial.stage === "parryNow" ? "PARRY NOW" : "Stake lands here";
+  ctx.font = "900 18px Segoe UI, Arial";
+  ctx.textAlign = "center";
+  const labelW = ctx.measureText(label).width + 28;
+  ctx.fillRect(x - labelW / 2, arrowTop - 36, labelW, 28);
+  ctx.strokeRect(x - labelW / 2 + 0.5, arrowTop - 35.5, labelW - 1, 27);
+  ctx.fillStyle = beatriceStakeTutorial.active && beatriceStakeTutorial.stage === "parryNow" ? "#fff37a" : "#bffbff";
+  ctx.fillText(label, x, arrowTop - 16);
+  ctx.restore();
+}
+
+function drawBeatriceTutorialDialogue() {
+  if (!beatriceTutorial.active && !beatriceStakeTutorial.active) return;
+  const tutorial = beatriceTutorial.active ? beatriceTutorial : beatriceStakeTutorial;
+  const line = beatriceTutorial.active ? BEATRICE_TUTORIAL_DIALOGUE[beatriceTutorial.index] : beatriceStakeTutorialLine();
+  if (!line) return;
+  const portrait = dialoguePortraits[line.portrait];
+  const isBattler = line.speaker === "Battler";
+  const boxX = 48;
+  const boxY = H - 218;
+  const boxW = W - 96;
+  const boxH = 170;
+  const portraitH = isBattler ? 430 : 450;
+  const portraitW = portrait ? portrait.width * (portraitH / portrait.height) : 0;
+  const portraitX = isBattler ? 38 : W - portraitW - 34;
+  const portraitY = boxY - portraitH + 8;
+  const nameW = isBattler ? 154 : 166;
+  const nameColor = isBattler ? "rgba(20, 52, 82, 0.94)" : "rgba(91, 46, 13, 0.94)";
+  const strokeColor = isBattler ? "rgba(176, 229, 255, 0.86)" : "rgba(255, 218, 140, 0.9)";
+  const textX = boxX + 38;
+  const textMax = boxW - 76;
+  const textTop = boxY + 45;
+  const textBottom = boxY + boxH - 34;
+  const lineHeight = 30;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(2, 3, 7, 0.32)";
+  ctx.fillRect(0, 0, W, H);
+  if (portrait) ctx.drawImage(portrait, portraitX, portraitY, portraitW, portraitH);
+
+  ctx.fillStyle = "rgba(8, 9, 16, 0.9)";
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 3;
+  ctx.fillRect(boxX, boxY, boxW, boxH);
+  ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxW - 1, boxH - 1);
+
+  ctx.fillStyle = nameColor;
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 2;
+  ctx.fillRect(boxX + 24, boxY - 28, nameW, 38);
+  ctx.strokeRect(boxX + 24.5, boxY - 27.5, nameW - 1, 37);
+  ctx.fillStyle = isBattler ? "#e8f7ff" : "#fff0c8";
+  ctx.font = "800 18px Segoe UI, Arial";
+  ctx.textAlign = "left";
+  ctx.fillText(line.speaker, boxX + 42, boxY - 4);
+
+  ctx.fillStyle = line.thought ? "#dfe9ff" : "#fff8df";
+  ctx.font = line.thought ? "italic 700 24px Segoe UI, Arial" : "700 24px Segoe UI, Arial";
+  const hintLines = line.parryHint ? [
+    { text: "I need to be in range of Beatrice's stakes when she fires them across the room", font: "italic 700 21px Segoe UI, Arial", color: "#dfe9ff" },
+    { text: "so that I can", font: "italic 700 21px Segoe UI, Arial", color: "#dfe9ff" },
+    { text: "PARRY", font: "italic 900 32px Segoe UI, Arial", color: "#62f5ff" },
+    { text: "them back at her. I need to stand where they'll land to do so.", font: "italic 700 21px Segoe UI, Arial", color: "#dfe9ff" }
+  ] : line.stakeHint ? [
+    { text: "This is it! I can send the stake back at her. I need to find", font: "italic 700 20px Segoe UI, Arial", color: "#dfe9ff" },
+    { text: "where it will land", font: "italic 900 24px Segoe UI, Arial", color: "#ffffff", underline: true },
+    { text: "stand in it, and wait for the right time to", font: "italic 700 20px Segoe UI, Arial", color: "#dfe9ff" },
+    { text: "PARRY", font: "italic 900 34px Segoe UI, Arial", color: "#62f5ff" },
+    { text: "the stake at her.", font: "italic 700 20px Segoe UI, Arial", color: "#dfe9ff" }
+  ] : null;
+  const lines = hintLines || wrapText(line.text, Math.max(250, textMax)).map((text) => ({
+    text,
+    font: line.parryNow ? "900 42px Segoe UI, Arial" : line.thought ? "italic 700 24px Segoe UI, Arial" : "700 24px Segoe UI, Arial",
+    color: line.parryNow ? "#62f5ff" : line.thought ? "#dfe9ff" : "#fff8df"
+  }));
+  const totalTextHeight = lines.length * lineHeight;
+  const viewHeight = textBottom - textTop;
+  const scrollMax = Math.max(0, totalTextHeight - viewHeight);
+  tutorial.scroll = clamp(tutorial.scroll, 0, scrollMax);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(textX - 2, textTop - 22, textMax + 8, viewHeight + 26);
+  ctx.clip();
+  lines.forEach((textLine, index) => {
+    ctx.font = textLine.font;
+    ctx.fillStyle = textLine.color;
+    const y = textTop + index * lineHeight - tutorial.scroll;
+    ctx.fillText(textLine.text, textX, y);
+    if (textLine.underline) {
+      const underlineW = ctx.measureText(textLine.text).width;
+      ctx.strokeStyle = textLine.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(textX, y + 5);
+      ctx.lineTo(textX + underlineW, y + 5);
+      ctx.stroke();
+    }
+  });
+  ctx.restore();
+  if (scrollMax > 0) {
+    const barX = boxX + boxW - 18;
+    const barY = textTop - 20;
+    const barH = viewHeight + 20;
+    const thumbH = Math.max(18, barH * (viewHeight / totalTextHeight));
+    const thumbY = barY + (barH - thumbH) * (tutorial.scroll / scrollMax);
+    ctx.fillStyle = "rgba(255, 244, 210, 0.16)";
+    ctx.fillRect(barX, barY, 5, barH);
+    ctx.fillStyle = "rgba(255, 244, 210, 0.58)";
+    ctx.fillRect(barX, thumbY, 5, thumbH);
+  }
+
+  ctx.fillStyle = "rgba(255, 244, 210, 0.72)";
+  ctx.font = "600 14px Segoe UI, Arial";
+  ctx.textAlign = "right";
+  let prompt = "";
+  if (tutorial.skipCooldown <= 0) {
+    prompt = beatriceStakeTutorial.active && beatriceStakeTutorial.stage === "parryNow" ? "Punch or Kick" : "Press any key or click";
+  }
+  ctx.fillText(prompt, boxX + boxW - 28, boxY + boxH - 18);
+  ctx.restore();
+}
+
 function lambdaChoiceButtonRects() {
   const boxW = 620;
   const boxH = 174;
@@ -11209,7 +11649,7 @@ function drawLambdaRetaliationOverlay() {
 
 function drawOverlay() {
   runDetailsButton.visible = false;
-  if (state === "playing" || state === "paused" || state === "lost" || state === "itemTutorial" || state === "bossBlessing") {
+  if (state === "playing" || state === "paused" || state === "lost" || state === "itemTutorial" || state === "bossBlessing" || state === "beatriceTutorial" || state === "beatriceStakeTutorial") {
     drawBeatriceBossHud();
     drawItemHud();
   }
@@ -11253,6 +11693,8 @@ function drawOverlay() {
   drawLambdaGameOverDialogue();
   drawLambdaKonpeitoQuestion();
   drawLambdaRetaliationOverlay();
+  drawBeatriceStakeTutorialArrow();
+  drawBeatriceTutorialDialogue();
   if (messageTimer > 0 && state === "playing") {
     ctx.font = "700 24px Segoe UI, Arial";
     ctx.textAlign = "center";
@@ -11565,6 +12007,16 @@ window.addEventListener("keydown", (event) => {
     handleLambdaKonpeitoChoiceKey(key);
     return;
   }
+  if (beatriceTutorial.active) {
+    event.preventDefault();
+    advanceBeatriceTutorialDialogue();
+    return;
+  }
+  if (beatriceStakeTutorial.active) {
+    event.preventDefault();
+    handleBeatriceStakeTutorialKey(key);
+    return;
+  }
   if (key === "escape" && runDetailsPanel && !runDetailsPanel.hidden) {
     event.preventDefault();
     hideRunDetails();
@@ -11623,6 +12075,12 @@ canvas.addEventListener("mouseenter", (event) => {
 canvas.addEventListener("mouseleave", () => {
   mouse.inside = false;
 });
+canvas.addEventListener("wheel", (event) => {
+  if (!beatriceTutorial.active && !beatriceStakeTutorial.active) return;
+  event.preventDefault();
+  const tutorial = beatriceTutorial.active ? beatriceTutorial : beatriceStakeTutorial;
+  tutorial.scroll = Math.max(0, tutorial.scroll + event.deltaY * 0.45);
+}, { passive: false });
 canvas.addEventListener("click", (event) => {
   if (state === "bossBlessing") {
     const point = canvasPointFromEvent(event);
@@ -11648,6 +12106,14 @@ canvas.addEventListener("click", (event) => {
       return;
     }
     lambdaKonpeitoQuestion.selection = point.x < W / 2 ? 0 : 1;
+    return;
+  }
+  if (beatriceTutorial.active) {
+    advanceBeatriceTutorialDialogue();
+    return;
+  }
+  if (beatriceStakeTutorial.active) {
+    if (beatriceStakeTutorial.stage !== "parryNow") advanceBeatriceStakeTutorialDialogue();
     return;
   }
   if (itemTutorial.active) {
