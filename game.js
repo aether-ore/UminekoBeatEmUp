@@ -21,6 +21,11 @@ const SPECIAL_BEAM_DRAIN = 42;
 const SPECIAL_BEAM_DAMAGE = 38;
 const CHARGED_ATTACK_HOLD_TIME = 0.34;
 const CHARGED_ATTACK_RESOLVE_COST = 25;
+const SUPER_CHARGE_DAMAGE_MULTIPLIER = 1.25;
+const SUPER_CHARGE_SHOCKWAVE_RADIUS = 220;
+const SUPER_CHARGE_SHOCKWAVE_LIFT = 430;
+const SUPER_CHARGE_SHOCKWAVE_DRIFT = 150;
+const RESOLVE_GAIN_MULTIPLIER = 0.5;
 const DUO_CHARGE_TIME = 1.35;
 const DUO_STAGE_DURATION = 0.78;
 const DUO_SPIRAL_DURATION = 3.2;
@@ -71,6 +76,47 @@ const ITEM_TUTORIALS = {
     tip: "Mirrors Battler's attacks from behind him, dealing half damage and copying launch effects. Pick up more Crests to extend its range up to level 5."
   }
 };
+const LAMBDA_BLESSINGS = [
+  {
+    id: "launchExtension",
+    source: "Lambdadelta",
+    title: "Blessing of Certainty: +1 Launch Extension",
+    text: "Once per combo target, Battler may launch or ground bounce one extra time before that attack becomes a prorated juggle."
+  },
+  {
+    id: "superCharge",
+    source: "Lambdadelta",
+    title: "Blessing of Certainty: Super Charge",
+    text: "Charged attacks consume 50% Resolve and teleport Battler to the nearest enemy before the stage 3 attack."
+  },
+  {
+    id: "paperArmor",
+    source: "Lambdadelta",
+    title: "Blessing of Certainty: +1 Super Paper Armor",
+    text: "While attacking, Battler gains poise that can ignore non-launch interruptions up to 25% of his health."
+  }
+];
+const BERN_BLESSINGS = [];
+BERN_BLESSINGS.push(
+  {
+    id: "miracleRevival",
+    source: "Bernkastel",
+    title: "Blessing of Miracles: +1 Revival",
+    text: "Once per blessing, defeat is rewritten without making the Plum Tea go cold."
+  },
+  {
+    id: "miracleShardFollowup",
+    source: "Bernkastel",
+    title: "Blessing of Miracles: Crystal Follow-Up",
+    text: "Stage 3 attacks have a 50% chance to call down a crystal shard follow-up."
+  },
+  {
+    id: "miracleRisk",
+    source: "Bernkastel",
+    title: "Blessing of Miracles: Cruel Equation",
+    text: "Battler deals 50% more damage, but also takes 50% more damage."
+  }
+);
 const EAGLE_CREST_DAMAGE_MULTIPLIER = 0.5;
 const EAGLE_CREST_PICKUP_SIZE = 58;
 const EAGLE_CREST_ECHO_WIDTH = 285;
@@ -147,7 +193,8 @@ const LAMBDA_RETALIATION_RED_DURATION = 2.2;
 const BEATRICE_STAKE_INTERVAL = 5;
 const BEATRICE_STAKE_BOUNCES = 6;
 const BEATRICE_STAKE_RICOCHET_SPEED = 860;
-const BEATRICE_STAKE_FAST_RICOCHET_SPEED = 1420;
+const BEATRICE_STAKE_FAST_RICOCHET_SPEED = 2850;
+const BEATRICE_STAKE_PENULTIMATE_RICOCHET_SPEED = 1120;
 const BEATRICE_STAKE_LAUNCH_SPEED = 880;
 const BEATRICE_STAKE_RETURN_SPEED = 2850;
 const BEATRICE_STAKE_RETURN_FREEZE = 0.58;
@@ -166,12 +213,49 @@ const BEATRICE_RING_ATTACK_DELAY = 1.15;
 const BEATRICE_RING_ATTACK_DAMAGE = 18;
 const BEATRICE_RING_ATTACK_LIFT = 430;
 const BEATRICE_RING_ATTACK_DRIFT = 150;
+const BEATRICE_RING_ATTACK_RADIUS = 186;
+const LEVIATHAN_SLASH_ACTIVE_FRAME = 519;
+const LEVIATHAN_SLASH_ANIM_SPEED = 13;
+const SATAN_AERIAL_ACTIVE_FRAME = 489;
+const SATAN_AERIAL_ANIM_SPEED = 15;
+const SATAN_AERIAL_LIFT = 820;
+const SATAN_AERIAL_DRIFT = 88;
+const SATAN_AERIAL_HOVER = 250;
+const BELPHEGOR_SLAM_ACTIVE_FRAME = 479;
+const BELPHEGOR_SLAM_ANIM_SPEED = 15;
+const BELPHEGOR_SLAM_HOVER = 410;
+const BELPHEGOR_SLAM_DOWN_SPEED = 820;
+const BELPHEGOR_SLAM_DRIFT = 150;
+const BELPHEGOR_SIDE_OFFSET = 112;
+const BELPHEGOR_SPAWN_DELAY = 0.3;
 const BEATRICE_NEXT_MECHANIC_DELAY = 0.85;
 const BEATRICE_GOAT_RUSH_TELEGRAPH_TIME = 1.35;
+const BEATRICE_GOAT_RUSH_WAVES = 3;
+const BEATRICE_GOAT_RUSH_WAVE_GAP = 0.72;
+const BEATRICE_GOAT_RUSH_STAGGER = 0.26;
 const BEATRICE_GOAT_RUSH_LANES = 4;
 const BEATRICE_GOAT_RUSH_DANGER_LANES = 2;
 const BEATRICE_GOAT_RUSH_SPEED_MULTIPLIER = 1.45;
-const BEATRICE_MECHANIC_CHOICES = ["goatTrial", "ringAttack", "teleportAttack", "goatRush"];
+const BEATRICE_TOWER_VOLLEY_EMERGE_TIME = 0.62;
+const BEATRICE_TOWER_VOLLEY_TELEGRAPH_TIME = 1.18;
+const BEATRICE_TOWER_VOLLEY_SWEEP_TIME = 2.35;
+const BEATRICE_TOWER_VOLLEY_WAVE_GAP = 0.58;
+const BEATRICE_TOWER_VOLLEY_RETREAT_TIME = 0.72;
+const BEATRICE_TOWER_VOLLEY_RADIUS = 58;
+const BEATRICE_TOWER_VOLLEY_SPACING = 29;
+const BEATRICE_TOWER_VOLLEY_SCREEN_SCATTER = 18;
+const BEATRICE_TOWER_VOLLEY_LANE_SCATTER = 38;
+const BEATRICE_TOWER_VOLLEY_OUTSIDE_BIAS = 0.74;
+const BEATRICE_TOWER_VOLLEY_TIMING_SCATTER = 0.2;
+const BEATRICE_TOWER_VOLLEY_MISSILE_TIME = 0.28;
+const BEATRICE_TOWER_VOLLEY_TRAIL_POINTS = 10;
+const BEATRICE_TOWER_VOLLEY_DAMAGE = 18;
+const BEATRICE_TOWER_VOLLEY_LIFT = 470;
+const BEATRICE_TOWER_VOLLEY_DRIFT = 155;
+const BEATRICE_TOWER_VOLLEY_TOWER_SCALE = 1.08;
+const BEATRICE_TOWER_VOLLEY_EDGE_OVERHANG = 22;
+const BEATRICE_TOWER_VOLLEY_TOWER_SEPARATION = 176;
+const BEATRICE_MECHANIC_CHOICES = ["goatTrial", "ringAttack", "teleportAttack", "goatRush", "towerVolley"];
 const DEBUG_START_BEATRICE_BOSS_WAVE = true;
 const DEBUG_BEATRICE_TELEPORT_PREP_TEST = false;
 const BEATRICE_TELEPORT_PREP_JUMPS = 7;
@@ -185,6 +269,29 @@ const BEATRICE_MELEE_KICK_DRIFT = 190;
 const BEATRICE_MELEE_KICK_PARRY_RING_RADIUS = 66;
 const BEATRICE_MELEE_KICK_PARRY_START_RADIUS = 132;
 const BEATRICE_MELEE_KICK_PARRY_WINDOW = 16;
+const BEATRICE_MELEE_KICK_PARRY_FAIL_FADE = 0.46;
+const BEATRICE_MELEE_KICK_TELEGRAPH_WIDTH = 190;
+const BEATRICE_MELEE_KICK_TELEGRAPH_DEPTH = 92;
+const BEATRICE_MELEE_KICK_WALL_SLAM_TIME = 0.34;
+const BEATRICE_MELEE_PARRY_BEATRICE_RECOIL_SPEED = 1320;
+const BEATRICE_MELEE_PARRY_BATTLER_RECOIL_SPEED = 760;
+const BEATRICE_MELEE_PARRY_RECOIL_DRAG = 4.2;
+const BEATRICE_ASMO_DROP_KICK_DAMAGE = 18;
+const BEATRICE_ASMO_DROP_KICK_APPEAR_TIME = 0.18;
+const BEATRICE_ASMO_DROP_KICK_ACTIVE_FRAME = 370;
+const BEELZEBUB_DROP_SLASH_ACTIVE_FRAME = 509;
+const BEELZEBUB_DROP_SLASH_HOVER = 360;
+const BEELZEBUB_DROP_SLASH_ANIM_SPEED = 20;
+const BEATRICE_ASMO_UPPERCUT_LIFT = 650;
+const BEATRICE_ASMO_UPPERCUT_DRIFT = 210;
+const BEATRICE_ASMO_DROP_KICK_HOVER = 220;
+const BEATRICE_ASMO_DROP_KICK_SIDE_OFFSET = 92;
+const BEATRICE_ASMO_DROP_KICK_DOWN_SPEED = 760;
+const BEATRICE_ASMO_DROP_KICK_DRIFT = 340;
+const BEATRICE_ASMO_DROP_KICK_CATCH_OFFSET = 54;
+const BEATRICE_ASMO_DROP_KICK_BOUNCE_DELAY = 0.16;
+const BEATRICE_ASMO_DROP_KICK_BOUNCE_LIFT = 310;
+const BEATRICE_ASMO_DROP_KICK_BOUNCE_DRIFT = 115;
 const BEATRICE_BOSS_HP_MULTIPLIER = 3;
 const BEATRICE_BARRIER_BREAK_DRIFT = 260;
 const BEATRICE_BARRIER_BREAK_FADE_START = 0.18;
@@ -201,7 +308,9 @@ const BEATRICE_DOWNED_DURATION = 0.95;
 const BEATRICE_STUN_RECOVERY_TIME = 0.58;
 const BEATRICE_SPRITE_SCALE = 1.2;
 const BEATRICE_BOSS_HEALTH_GROWTH = 0.25;
-const BEATRICE_DEFEAT_DISSIPATE_TIME = 2.25;
+const BEATRICE_DEFEAT_DISSIPATE_TIME = 1.35;
+const BEATRICE_DEFEAT_MOVE_TIME = 0.82;
+const BEATRICE_DEFEAT_FINAL_SPEED = 8.2;
 const BEATRICE_DEFEAT_WISP_COUNT = 64;
 const LAMBDA_GAME_OVER_DIALOGUE = [
   { portrait: "SurprisedLambda1", text: "What? You died even with me around?", duration: 3.2 },
@@ -246,6 +355,7 @@ const BERN_CAT_WALK_FRAMES = Array.from({ length: 24 }, (_, i) => i).filter((i) 
 const DASH_START_INVULN = 0.5;
 const DASH_COOLDOWN = 1.5;
 const DASH_START_DURATION = 0.24;
+const DASH_RUN_ACCEL_TIME = 0.78;
 const DASH_TAP_DODGE_BRAKE_DURATION = 0.32;
 const DASH_TAP_DODGE_DRIFT = 122;
 const DASH_TAP_DODGE_DRIFT_SPEED = 520;
@@ -295,6 +405,7 @@ const frames = {
   special: [326, 327, 328, 329, 330, 331, 332],
   specialBeam: [333, 334, 335],
   stakeParryPose: [333, 334, 335],
+  beatriceMeleeParry: [409, 410, 411, 412, 413],
   duoCharge: [326, 327, 328, 329, 330, 331, 332],
   duoBeamPose: [333, 334, 335],
   hurt: [118, 119, 120, 121, 122, 123],
@@ -357,6 +468,11 @@ const enemyAttackData = {
   punch: { lock: 0.54, range: 96, depth: 54, damage: 8, activeFrames: [221] },
   kick: { lock: 0.58, range: 128, depth: 62, damage: 10, activeFrames: [213, 214] }
 };
+const ENEMY_ATTACK_TELEGRAPH_TIME = 0.22;
+const ENEMY_PUNCH_TELEGRAPH_RANGE = 112;
+const ENEMY_PUNCH_TELEGRAPH_DEPTH = 58;
+const ENEMY_KICK_TELEGRAPH_RADIUS = 104;
+const ENEMY_KICK_TELEGRAPH_Y_SCALE = 0.46;
 const launchFallFrames = [153, 154, 155];
 const enemyFrames = [60, 100, 130, 150];
 const goatFrames = {
@@ -375,12 +491,25 @@ const beatriceFrames = {
   stakeCast: [321, 322, 323, 324, 325, 326, 327, 328, 329, 330, 331],
   teleportPrep: [470, 471, 472, 473, 474],
   meleeKick: [269, 270, 271, 272, 273, 274, 275, 276, 277],
+  asmoDropKick: [366, 367, 368, 369, 370, 371, 372, 373, 374],
   barrierBreak: [196, 197, 198, 199, 200, 201, 202, 203, 204, 205],
   dizzy: [591, 592, 593, 594, 595, 596, 597, 598, 599, 600],
   hurt: [153, 154, 155, 156, 157, 158, 159, 160, 161],
   launchedUp: [206, 207],
   launchedFall: [208],
-  downed: [209, 210, 211, 212, 213]
+  downed: [209, 210, 211, 212, 213],
+  defeatMove: [819, 820, 821],
+  defeatFinal: [822, 823, 824, 825, 826, 827, 828, 829, 830, 831],
+  defeatLoop: [829, 830, 831]
+};
+const beelzebubFrames = [503, 504, 505, 506, 507, 508, 509, 510, 511, 512];
+const leviathanFrames = [513, 514, 515, 516, 517, 518, 519, 520, 521, 522];
+const satanFrames = [483, 484, 485, 486, 487, 488, 489, 490, 491, 492];
+const belphegorFrames = [473, 474, 475, 476, 477, 478, 479, 480, 481, 482];
+const beatriceDefeatLoopAnchors = {
+  829: 139.3,
+  830: 137.9,
+  831: 136.3
 };
 const images = {};
 const goatImages = {};
@@ -863,6 +992,12 @@ let screenShakeTimer = 0;
 let enemyFreezeTimer = 0;
 let beatriceStakeParryFreezeTimer = 0;
 let bernParryOverlayTimer = 0;
+const bossBlessingChoice = {
+  active: false,
+  choices: [],
+  pendingBoss: false,
+  selected: 0
+};
 const pickups = [];
 const crystalShards = [];
 const crystalTrails = [];
@@ -875,6 +1010,17 @@ const beatriceStakes = [];
 const beatriceStakeTrails = [];
 const beatriceStakeShockwaves = [];
 const beatriceStakeSparkles = [];
+const beatriceTowerVolley = {
+  active: false,
+  phase: "",
+  timer: 0,
+  wave: 0,
+  side: -1,
+  towers: [],
+  points: [],
+  missiles: [],
+  hitWaves: []
+};
 const beatriceDefeatWisps = [];
 const beatriceDefeatTrails = [];
 const beatriceStakeParryLine = {
@@ -890,6 +1036,10 @@ const beatriceStakeParryPendingHit = {
   direction: 1
 };
 const asmodeusAttacks = [];
+const beelzebubAttacks = [];
+const leviathanAttacks = [];
+const satanAttacks = [];
+const belphegorAttacks = [];
 const beatriceAfterimages = [];
 const messageBottles = [];
 const summonPillars = [];
@@ -954,6 +1104,7 @@ const beatriceBoss = {
   goatRushTelegraphs: [],
   goatRushTimer: 0,
   goatRushSpawned: false,
+  towerVolleyStarted: false,
   flavor: "idle",
   flavorTimer: 2.4,
   stakeCastFired: false,
@@ -964,10 +1115,24 @@ const beatriceBoss = {
   materializeTimer: 0,
   meleeKickHit: false,
   meleeKickParried: false,
+  meleeKickParryFailed: false,
+  meleeKickParryFailFade: 0,
+  meleeParryRecoilVx: 0,
+  asmoDropKickPending: false,
+  asmoDropKickTimer: 0,
+  asmoDropKickHit: false,
+  asmoDropKickSide: 1,
   hp: 1,
   maxHp: 1,
   stunDamageTaken: 0,
   defeatTimer: 0,
+  defeatPhase: "",
+  defeatMoveTimer: 0,
+  defeatTrailTimer: 0,
+  defeatStartX: 0,
+  defeatStartY: 0,
+  defeatTargetX: 0,
+  defeatTargetY: 0,
   barrierActive: true,
   vulnerable: false,
   breakVx: 0,
@@ -979,6 +1144,7 @@ const beatriceBoss = {
   juggleCount: 0,
   battlerLaunchSpent: false,
   battlerGroundBounceSpent: false,
+  battlerExtraLaunchExtensionSpent: false,
   groundBouncePending: false,
   groundBounceTimer: 0,
   groundBounceDirection: 0,
@@ -1024,8 +1190,9 @@ function resetRunStats() {
 
 function damageEnemy(enemy, amount) {
   if (!enemy || amount <= 0) return 0;
-  const actual = Math.max(0, Math.min(enemy.hp, amount));
-  enemy.hp -= amount;
+  const scaledAmount = player.blessings.miracleRisk ? amount * 1.5 : amount;
+  const actual = Math.max(0, Math.min(enemy.hp, scaledAmount));
+  enemy.hp -= scaledAmount;
   runStats.damageDealt += actual;
   return actual;
 }
@@ -1066,10 +1233,11 @@ function beatriceHurtbox() {
 
 function damageBeatrice(amount, direction = 0) {
   if (!beatriceCanBeDamaged() || amount <= 0) return 0;
+  const incomingAmount = player.blessings.miracleRisk ? amount * 1.5 : amount;
   const fullDamageCap = beatriceBoss.maxHp * BEATRICE_STUN_FULL_DAMAGE_FRACTION;
   const fullDamageRemaining = Math.max(0, fullDamageCap - (beatriceBoss.stunDamageTaken || 0));
-  const fullPortion = Math.min(amount, fullDamageRemaining);
-  const reducedPortion = Math.max(0, amount - fullPortion) * BEATRICE_STUN_OVER_CAP_DAMAGE_MULTIPLIER;
+  const fullPortion = Math.min(incomingAmount, fullDamageRemaining);
+  const reducedPortion = Math.max(0, incomingAmount - fullPortion) * BEATRICE_STUN_OVER_CAP_DAMAGE_MULTIPLIER;
   const scaledAmount = fullPortion + reducedPortion;
   const actual = Math.max(0, Math.min(beatriceBoss.hp, scaledAmount));
   beatriceBoss.hp -= actual;
@@ -1090,14 +1258,39 @@ function damageBeatrice(amount, direction = 0) {
 
 function damagePlayer(amount) {
   if (amount <= 0) return 0;
-  const actual = Math.max(0, Math.min(player.hp, amount));
-  player.hp -= amount;
+  const scaledAmount = player.blessings.miracleRisk ? amount * 1.5 : amount;
+  const actual = Math.max(0, Math.min(player.hp, scaledAmount));
+  player.hp -= scaledAmount;
   if (actual > 0) {
     runStats.damageReceived += actual;
     runStats.hitsReceived += 1;
     triggerBeatriceHitReaction();
   }
   return actual;
+}
+
+function canUseAttackPoise() {
+  return Boolean(player.blessings.paperArmor)
+    && player.attackLock > 0
+    && attackData[player.action]
+    && !player.airborne
+    && !player.knockedDown;
+}
+
+function absorbPlayerPoise(amount, launch = false) {
+  if (launch) {
+    player.poise = 0;
+    return false;
+  }
+  if (!canUseAttackPoise()) return false;
+  if (player.poise <= 0) player.poise = 25;
+  player.poise -= Math.max(0, amount);
+  if (player.poise > 0) {
+    burst(player.x, player.y - 92, "special");
+    return true;
+  }
+  player.poise = 0;
+  return false;
 }
 
 function triggerBeatriceHitReaction() {
@@ -1331,6 +1524,7 @@ const lambdaCompanion = {
   state: "idle",
   moveSettle: 0,
   konpeitoTimer: LAMBDA_KONPEITO_INTERVAL,
+  konpeitoCharge: 100,
   castHasFired: false,
   queuedKonpeito: false
 };
@@ -1345,6 +1539,7 @@ const bernCompanion = {
   state: "idle",
   moveSettle: 0,
   crystalTimer: BERN_CRYSTAL_INTERVAL,
+  crystalChargeGauge: 100,
   crystalCharge: 0,
   crystalHasFired: false,
   queuedCrystal: false,
@@ -1374,10 +1569,13 @@ const player = {
   attackLock: 0,
   attackHasHit: false,
   crestAttackHasHit: false,
+  superChargeShockwaveDone: false,
   comboStep: 0,
   comboTimer: 0,
   comboQueuedKind: "",
   currentAttack: "",
+  attackConsumesResolve: false,
+  pendingResolveAttack: false,
   attackLungeRemaining: 0,
   goatParryCounter: false,
   stage3KickAir: false,
@@ -1388,6 +1586,14 @@ const player = {
   airVx: 0,
   knockedDown: false,
   downTime: 0,
+  beatriceDropKickBouncePending: false,
+  beatriceDropKickBounceTimer: 0,
+  beatriceDropKickBounceDirection: 1,
+  wallSlamTimer: 0,
+  wallSlamTargetX: 0,
+  wallSlamStartX: 0,
+  wallSlamHit: false,
+  meleeParryRecoilVx: 0,
   runState: "none",
   runTimer: 0,
   runCharge: 0,
@@ -1407,6 +1613,15 @@ const player = {
   plumTeaBurned: false,
   oneWingedEagleActive: false,
   oneWingedEagleLevel: 0,
+  blessings: {
+    launchExtension: 0,
+    superCharge: false,
+    paperArmor: false,
+    miracleRevival: 0,
+    miracleShardFollowup: false,
+    miracleRisk: false
+  },
+  poise: 0,
   bernHazardTimer: BERN_REVIVE_HAZARD_INTERVAL,
   bernHazardAmuseKills: 0,
   itemOrder: [],
@@ -1570,10 +1785,51 @@ function loadImages() {
     ["oneWingedEagle", "assets/effects/OneWingedEagle.webp"],
     ["oneWingedEagleGlow", "assets/effects/OneWingedEagle - Glow.png"],
     ["beatriceStake", "assets/effects/BeatriceStake.png"],
+    ["beatriceTowers", "assets/effects/BeatriceTowers.png"],
     ["asmo1", "assets/effects/Asmo1.png"],
     ["asmo2", "assets/effects/Asmo2.png"],
     ["asmo3", "assets/effects/Asmo3.png"],
     ["asmo4", "assets/effects/Asmo4.png"],
+    ["beelzebub503", "assets/effects/Beelzebub1.png"],
+    ["beelzebub504", "assets/effects/Beelzebub2.png"],
+    ["beelzebub505", "assets/effects/Beelzebub3.png"],
+    ["beelzebub506", "assets/effects/Beelzebub4.png"],
+    ["beelzebub507", "assets/effects/Beelzebub5.png"],
+    ["beelzebub508", "assets/effects/Beelzebub6.png"],
+    ["beelzebub509", "assets/effects/Beelzebub7.png"],
+    ["beelzebub510", "assets/effects/Beelzebub8.png"],
+    ["beelzebub511", "assets/effects/Beelzebub9.png"],
+    ["beelzebub512", "assets/effects/Beelzebub10.png"],
+    ["leviathan513", "assets/effects/Leviathan1.png"],
+    ["leviathan514", "assets/effects/Leviathan2.png"],
+    ["leviathan515", "assets/effects/Leviathan3.png"],
+    ["leviathan516", "assets/effects/Leviathan4.png"],
+    ["leviathan517", "assets/effects/Leviathan5.png"],
+    ["leviathan518", "assets/effects/Leviathan6.png"],
+    ["leviathan519", "assets/effects/Leviathan7.png"],
+    ["leviathan520", "assets/effects/Leviathan8.png"],
+    ["leviathan521", "assets/effects/Leviathan9.png"],
+    ["leviathan522", "assets/effects/Leviathan10.png"],
+    ["satan483", "assets/effects/Satan1.png"],
+    ["satan484", "assets/effects/Satan2.png"],
+    ["satan485", "assets/effects/Satan3.png"],
+    ["satan486", "assets/effects/Satan4.png"],
+    ["satan487", "assets/effects/Satan5.png"],
+    ["satan488", "assets/effects/Satan6.png"],
+    ["satan489", "assets/effects/Satan7.png"],
+    ["satan490", "assets/effects/Satan8.png"],
+    ["satan491", "assets/effects/Satan9.png"],
+    ["satan492", "assets/effects/Satan10.png"],
+    ["belphegor482", "assets/effects/Belphegor1.png"],
+    ["belphegor473", "assets/effects/Belphegor2.png"],
+    ["belphegor474", "assets/effects/Belphegor3.png"],
+    ["belphegor475", "assets/effects/Belphegor4.png"],
+    ["belphegor476", "assets/effects/Belphegor5.png"],
+    ["belphegor477", "assets/effects/Belphegor6.png"],
+    ["belphegor478", "assets/effects/Belphegor7.png"],
+    ["belphegor479", "assets/effects/Belphegor8.png"],
+    ["belphegor480", "assets/effects/Belphegor9.png"],
+    ["belphegor481", "assets/effects/Belphegor10.png"],
     ["bernParryOverlay", "assets/effects/BernParryOverlay.webp"],
     ["lambdaDuoSplash", "assets/lambdadelta/LambdaDuoSplash.png"],
     ["bernDuoSplash", "assets/bernkastel/BernDuoSplash.png"],
@@ -1581,7 +1837,7 @@ function loadImages() {
   ].map(([name, src]) => new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      effectImages[name] = name === "beatriceStake" || name.startsWith("asmo") ? removeWhiteBackground(img) : img;
+      effectImages[name] = name === "beatriceStake" || name === "beatriceTowers" || name.startsWith("asmo") || name.startsWith("beelzebub") || name.startsWith("leviathan") || name.startsWith("satan") || name.startsWith("belphegor") ? removeWhiteBackground(img) : img;
       resolve();
     };
     img.src = src;
@@ -1818,6 +2074,7 @@ function chooseItemDrop() {
 }
 
 function maybeDropEnemyItem(enemy) {
+  if (waveMode === "boss") return;
   if (Math.random() > GLOBAL_ENEMY_DROP_RATE) return;
   const type = chooseItemDrop();
   if (!type) return;
@@ -1914,7 +2171,7 @@ function activatePickup(pickup) {
     player.konpeitoActive = true;
     if (firstSummon) summonLambda();
     else {
-      lambdaCompanion.konpeitoTimer = 0;
+      addLambdaKonpeitoCharge(100);
       triggerLambdaKonpeito(true);
     }
     message = "Konpeito";
@@ -1928,7 +2185,7 @@ function activatePickup(pickup) {
     player.plumTeaActive = true;
     if (firstSummon) summonBernkastel();
     else {
-      bernCompanion.crystalTimer = 0;
+      addBernCrystalCharge(100);
       triggerBernCrystalAttack(true);
     }
     message = "Plum Tea";
@@ -2028,6 +2285,37 @@ function strongestEnemyTo(x, y) {
   return strongest;
 }
 
+function companionChargeCooldown(charge, interval) {
+  if (charge >= 100) return 0;
+  return interval * (1 - clamp(charge / 100, 0, 1));
+}
+
+function addLambdaKonpeitoCharge(amount = 100) {
+  lambdaCompanion.konpeitoCharge = Math.max(0, (lambdaCompanion.konpeitoCharge || 0) + amount);
+  lambdaCompanion.konpeitoTimer = companionChargeCooldown(lambdaCompanion.konpeitoCharge, LAMBDA_KONPEITO_INTERVAL);
+}
+
+function addBernCrystalCharge(amount = 100) {
+  bernCompanion.crystalChargeGauge = Math.max(0, (bernCompanion.crystalChargeGauge || 0) + amount);
+  bernCompanion.crystalTimer = companionChargeCooldown(bernCompanion.crystalChargeGauge, BERN_CRYSTAL_INTERVAL);
+}
+
+function updateLambdaKonpeitoCharge(dt) {
+  if (!player.konpeitoActive || state !== "playing") return;
+  if ((lambdaCompanion.konpeitoCharge || 0) < 100) {
+    lambdaCompanion.konpeitoCharge = Math.min(100, (lambdaCompanion.konpeitoCharge || 0) + (dt / LAMBDA_KONPEITO_INTERVAL) * 100);
+  }
+  lambdaCompanion.konpeitoTimer = companionChargeCooldown(lambdaCompanion.konpeitoCharge || 0, LAMBDA_KONPEITO_INTERVAL);
+}
+
+function updateBernCrystalGauge(dt) {
+  if (!player.plumTeaActive || state !== "playing") return;
+  if ((bernCompanion.crystalChargeGauge || 0) < 100) {
+    bernCompanion.crystalChargeGauge = Math.min(100, (bernCompanion.crystalChargeGauge || 0) + (dt / BERN_CRYSTAL_INTERVAL) * 100);
+  }
+  bernCompanion.crystalTimer = companionChargeCooldown(bernCompanion.crystalChargeGauge || 0, BERN_CRYSTAL_INTERVAL);
+}
+
 function summonLambda() {
   runStats.companionsEncountered.add("Lambdadelta");
   lambdaCompanion.active = true;
@@ -2038,7 +2326,8 @@ function summonLambda() {
   lambdaCompanion.anim = 0;
   lambdaCompanion.state = "summon";
   lambdaCompanion.moveSettle = 0;
-  lambdaCompanion.konpeitoTimer = LAMBDA_KONPEITO_INTERVAL;
+  lambdaCompanion.konpeitoCharge = 100;
+  lambdaCompanion.konpeitoTimer = 0;
   lambdaCompanion.castHasFired = false;
   lambdaCompanion.queuedKonpeito = false;
   spawnKonpeitoGeyser(lambdaCompanion.x, lambdaCompanion.y);
@@ -2067,7 +2356,8 @@ function summonBernkastel() {
   bernCompanion.anim = 0;
   bernCompanion.state = "summon";
   bernCompanion.moveSettle = 0;
-  bernCompanion.crystalTimer = BERN_CRYSTAL_INTERVAL;
+  bernCompanion.crystalChargeGauge = 100;
+  bernCompanion.crystalTimer = 0;
   bernCompanion.crystalCharge = 0;
   bernCompanion.crystalHasFired = false;
   bernCompanion.queuedCrystal = false;
@@ -2093,12 +2383,16 @@ function placeBernAtFollowPosition() {
 function startBernCrystalAttack(force = false) {
   if (!bernCompanion.active || state !== "playing") return false;
   if (bernCompanion.state === "summon") return false;
+  if ((bernCompanion.crystalChargeGauge || 0) < 100) return false;
   const target = strongestEnemyTo(bernCompanion.x, bernCompanion.y);
   if (!target) {
+    bernCompanion.crystalChargeGauge = Math.max(100, bernCompanion.crystalChargeGauge || 100);
     bernCompanion.crystalTimer = 0;
     bernCompanion.crystalCharge = 0;
     return false;
   }
+  bernCompanion.crystalChargeGauge = Math.max(0, (bernCompanion.crystalChargeGauge || 0) - 100);
+  bernCompanion.crystalTimer = companionChargeCooldown(bernCompanion.crystalChargeGauge, BERN_CRYSTAL_INTERVAL);
   bernCompanion.attackTargetX = target.x;
   bernCompanion.attackTargetY = target.y;
   bernCompanion.facing = target.x >= bernCompanion.x ? 1 : -1;
@@ -2132,22 +2426,24 @@ function bernIsCrystalAttacking() {
 function queueBernCrystalAttack() {
   if (!bernCompanion.active || state !== "playing") return false;
   if (!strongestEnemyTo(bernCompanion.x, bernCompanion.y)) {
+    bernCompanion.crystalChargeGauge = Math.max(100, bernCompanion.crystalChargeGauge || 100);
     bernCompanion.crystalTimer = 0;
   }
-  bernCompanion.queuedCrystal = true;
   return true;
 }
 
 function beginQueuedBernCrystalBarrage() {
+  if ((bernCompanion.crystalChargeGauge || 0) < 100) return false;
   const target = strongestEnemyTo(bernCompanion.x, bernCompanion.y);
   if (!target) {
-    bernCompanion.queuedCrystal = false;
     bernCompanion.state = "teleportBackOut";
     bernCompanion.anim = 0;
+    bernCompanion.crystalChargeGauge = Math.max(100, bernCompanion.crystalChargeGauge || 100);
     bernCompanion.crystalTimer = 0;
     return false;
   }
-  bernCompanion.queuedCrystal = false;
+  bernCompanion.crystalChargeGauge = Math.max(0, (bernCompanion.crystalChargeGauge || 0) - 100);
+  bernCompanion.crystalTimer = companionChargeCooldown(bernCompanion.crystalChargeGauge, BERN_CRYSTAL_INTERVAL);
   bernCompanion.catForm = false;
   bernCompanion.attackTargetX = target.x;
   bernCompanion.attackTargetY = target.y;
@@ -2434,10 +2730,11 @@ function updateResolveDuoOutline() {
 function updateResolveHud(dt = 0) {
   resolveSpendFlashTimer = Math.max(0, resolveSpendFlashTimer - dt);
   const value = clamp(player.resolve, 0, 100);
+  const chargeCost = chargedAttackResolveCost();
   resolveBar.style.width = `${value}%`;
-  resolveMeter.classList.toggle("resolve-ready", value >= CHARGED_ATTACK_RESOLVE_COST && value < 100);
+  resolveMeter.classList.toggle("resolve-ready", value >= chargeCost && value < 100);
   resolveMeter.classList.toggle("resolve-full", value >= 100);
-  resolveMeter.classList.toggle("resolve-building", value > 0 && value < CHARGED_ATTACK_RESOLVE_COST);
+  resolveMeter.classList.toggle("resolve-building", value > 0 && value < chargeCost);
   const flash = clamp(resolveSpendFlashTimer / 0.34, 0, 1);
   resolveBar.style.setProperty("--resolve-flash", flash.toFixed(3));
 }
@@ -2684,6 +2981,27 @@ function beatriceMeleeKickParryRingRadius() {
   return BEATRICE_MELEE_KICK_PARRY_START_RADIUS - t * (BEATRICE_MELEE_KICK_PARRY_START_RADIUS - BEATRICE_MELEE_KICK_PARRY_RING_RADIUS);
 }
 
+function beatriceMeleeKickTelegraph() {
+  const facing = beatriceBoss.facing || 1;
+  const front = beatriceBoss.x + facing * 20;
+  const x1 = front - (facing < 0 ? BEATRICE_MELEE_KICK_TELEGRAPH_WIDTH : 0);
+  return {
+    x: x1,
+    y: beatriceBoss.y - BEATRICE_MELEE_KICK_TELEGRAPH_DEPTH * 0.5,
+    w: BEATRICE_MELEE_KICK_TELEGRAPH_WIDTH,
+    h: BEATRICE_MELEE_KICK_TELEGRAPH_DEPTH
+  };
+}
+
+function playerInBeatriceMeleeKickTelegraph() {
+  if (!beatriceBoss.active || beatriceBoss.flavor !== "meleeKick") return false;
+  const zone = beatriceMeleeKickTelegraph();
+  return player.x >= zone.x
+    && player.x <= zone.x + zone.w
+    && player.y >= zone.y
+    && player.y <= zone.y + zone.h;
+}
+
 function playerInBeatriceMeleeKickRange() {
   if (!beatriceBoss.active || beatriceBoss.flavor !== "meleeKick") return false;
   const forward = (player.x - beatriceBoss.x) * beatriceBoss.facing;
@@ -2694,7 +3012,8 @@ function playerInBeatriceMeleeKickRange() {
 
 function beatriceMeleeKickParryReady() {
   if (!beatriceBoss.active || beatriceBoss.flavor !== "meleeKick" || beatriceBoss.meleeKickParried) return false;
-  if (!playerInBeatriceMeleeKickRange()) return false;
+  if (beatriceBoss.meleeKickParryFailed) return false;
+  if (!playerInBeatriceMeleeKickTelegraph()) return false;
   return Math.abs(beatriceMeleeKickParryRingRadius() - BEATRICE_MELEE_KICK_PARRY_RING_RADIUS) <= BEATRICE_MELEE_KICK_PARRY_WINDOW;
 }
 
@@ -2702,6 +3021,7 @@ function beatriceMeleeKickParryIndicatorActive() {
   return beatriceBoss.active
     && beatriceBoss.flavor === "meleeKick"
     && !beatriceBoss.meleeKickParried
+    && !beatriceBoss.meleeKickParryFailed
     && beatriceMeleeKickFrame() <= 273;
 }
 
@@ -2761,13 +3081,25 @@ function tryBernHazardParry() {
 }
 
 function resolveBeatriceMeleeKickParry() {
+  const recoilDirection = player.x >= beatriceBoss.x ? 1 : -1;
   beatriceBoss.meleeKickParried = true;
   beatriceBoss.meleeKickHit = true;
-  beatriceBoss.flavor = "idle";
+  beatriceBoss.meleeKickParryFailed = false;
+  beatriceBoss.meleeKickParryFailFade = 0;
+  beatriceBoss.flavor = "meleeParryHurt";
   beatriceBoss.anim = 0;
   beatriceBoss.materializeTimer = 0;
-  completeBeatriceMechanic();
-  spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 36);
+  beatriceBoss.meleeParryRecoilVx = -Math.sign(player.x - beatriceBoss.x || beatriceBoss.facing || 1) * BEATRICE_MELEE_PARRY_BEATRICE_RECOIL_SPEED;
+  player.facing = -recoilDirection;
+  player.action = "beatriceMeleeParry";
+  player.anim = 0;
+  player.attackLock = 0.56;
+  player.attackHasHit = false;
+  player.crestAttackHasHit = false;
+  player.currentAttack = "";
+  player.meleeParryRecoilVx = recoilDirection * BEATRICE_MELEE_PARRY_BATTLER_RECOIL_SPEED;
+  spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 42);
+  spawnAsmodeusGoldenWisps(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 14);
   screenShakeTimer = Math.max(screenShakeTimer, 0.18);
   enemyFreezeTimer = Math.max(enemyFreezeTimer, 0.45);
   runStats.parriesPerformed += 1;
@@ -2775,9 +3107,26 @@ function resolveBeatriceMeleeKickParry() {
   messageTimer = 0.7;
 }
 
+function failBeatriceMeleeKickParry() {
+  if (!beatriceBoss.active || beatriceBoss.flavor !== "meleeKick") return false;
+  beatriceBoss.meleeKickParryFailed = true;
+  beatriceBoss.meleeKickParryFailFade = BEATRICE_MELEE_KICK_PARRY_FAIL_FADE;
+  const activeIndex = Math.max(0, beatriceFrames.meleeKick.indexOf(273));
+  beatriceBoss.anim = Math.max(beatriceBoss.anim, activeIndex);
+  beatriceBoss.materializeTimer = 0;
+  beatriceBoss.meleeKickHit = true;
+  applyBeatriceMeleeKickHit();
+  message = "Parry failed";
+  messageTimer = 0.55;
+  return true;
+}
+
 function tryBeatriceMeleeKickParry() {
   if (!beatriceMeleeKickParryIndicatorActive()) return false;
-  if (!beatriceMeleeKickParryReady()) return false;
+  if (!beatriceMeleeKickParryReady()) {
+    if (playerInBeatriceMeleeKickTelegraph()) return failBeatriceMeleeKickParry();
+    return false;
+  }
   resolveBeatriceMeleeKickParry();
   return true;
 }
@@ -2943,6 +3292,31 @@ function spawnCrystalShardStrike() {
   });
 }
 
+function spawnMiracleCrystalFollowup(preferredTarget) {
+  if (!player.blessings.miracleShardFollowup || Math.random() >= 0.5) return;
+  const target = preferredTarget && !preferredTarget.dead && preferredTarget.hp > 0
+    ? preferredTarget
+    : strongestEnemyTo(player.x, player.y);
+  if (!target) return;
+  const spawnOffsetX = (Math.random() < 0.5 ? -1 : 1) * (120 + Math.random() * 220);
+  const spawnOffsetY = -34 + Math.random() * 68;
+  const targetX = clamp(target.x + (Math.random() - 0.5) * 34, 80, STAGE_W - 120);
+  const targetY = clamp(target.y + (Math.random() - 0.5) * 36, FLOOR_Y - 94, FLOOR_Y + 72);
+  crystalShards.push({
+    x: targetX + spawnOffsetX,
+    y: targetY + spawnOffsetY,
+    targetX,
+    targetY,
+    z: 500,
+    startZ: 500,
+    speed: CRYSTAL_SHARD_FALL_SPEED + 170,
+    delay: 0.05,
+    source: "bern",
+    shockwaveDamage: BERN_CRYSTAL_SHOCKWAVE_DAMAGE,
+    hit: false
+  });
+}
+
 function triggerCrystalShardStack(stack) {
   spawnCrystalShardStrike();
   stack.cooldown = CRYSTAL_SHARD_INTERVAL;
@@ -3000,7 +3374,10 @@ function startLambdaKonpeitoCast(force = false) {
   if (state !== "playing") return false;
   if (!lambdaCompanion.active || lambdaCompanion.state === "summon") return false;
   if (!force && lambdaCompanion.state === "konpeitoCast") return false;
+  if ((lambdaCompanion.konpeitoCharge || 0) < 100) return false;
   if (!nearestEnemyTo(lambdaCompanion.x, lambdaCompanion.y)) return false;
+  lambdaCompanion.konpeitoCharge = Math.max(0, (lambdaCompanion.konpeitoCharge || 0) - 100);
+  lambdaCompanion.konpeitoTimer = companionChargeCooldown(lambdaCompanion.konpeitoCharge, LAMBDA_KONPEITO_INTERVAL);
   lambdaCompanion.state = "konpeitoCast";
   lambdaCompanion.anim = 0;
   lambdaCompanion.moveSettle = 0;
@@ -3010,11 +3387,7 @@ function startLambdaKonpeitoCast(force = false) {
 
 function triggerLambdaKonpeito(force = false) {
   if (lambdaCompanion.state === "konpeitoCast") {
-    if (force && nearestEnemyTo(lambdaCompanion.x, lambdaCompanion.y)) {
-      lambdaCompanion.queuedKonpeito = true;
-      return true;
-    }
-    return false;
+    return force && (lambdaCompanion.konpeitoCharge || 0) >= 100 && Boolean(nearestEnemyTo(lambdaCompanion.x, lambdaCompanion.y));
   }
   return startLambdaKonpeitoCast(force);
 }
@@ -3121,6 +3494,7 @@ function chooseLambdaKonpeitoAnswer(yes) {
   state = "playing";
   lambdaCompanion.state = "idle";
   lambdaCompanion.anim = 0;
+  lambdaCompanion.konpeitoCharge = 0;
   lambdaCompanion.konpeitoTimer = LAMBDA_KONPEITO_INTERVAL;
   lambdaCompanion.castHasFired = false;
   lambdaCompanion.queuedKonpeito = false;
@@ -3341,6 +3715,7 @@ function launchActor(actor, direction, lift = 470, drift = 170) {
     actor.stage3KickAir = false;
     actor.stage3KickTimer = 0;
     actor.stage3KickVz = 0;
+    actor.poise = 0;
   }
   actor.z = 6;
   actor.vz = lift;
@@ -3362,6 +3737,14 @@ function isBattlerOwnedSource(source = "") {
 function resetBattlerLaunchComboFlags(target) {
   target.battlerLaunchSpent = false;
   target.battlerGroundBounceSpent = false;
+  target.battlerExtraLaunchExtensionSpent = false;
+}
+
+function spendBattlerExtraLaunchExtension(target) {
+  if ((player.blessings.launchExtension || 0) <= 0) return false;
+  if (target.battlerExtraLaunchExtensionSpent) return false;
+  target.battlerExtraLaunchExtensionSpent = true;
+  return true;
 }
 
 function proratedEnemyJuggle(enemy, direction, source, lift = 260, drift = 90) {
@@ -3380,17 +3763,23 @@ function proratedEnemyJuggle(enemy, direction, source, lift = 260, drift = 90) {
 
 function launchEnemyByBattlerRules(enemy, direction, source, lift = 470, drift = 170) {
   if (isBattlerOwnedSource(source) && enemy.battlerLaunchSpent) {
-    return proratedEnemyJuggle(enemy, direction, source, lift, drift);
+    if (!spendBattlerExtraLaunchExtension(enemy)) {
+      return proratedEnemyJuggle(enemy, direction, source, lift, drift);
+    }
+  } else if (isBattlerOwnedSource(source)) {
+    enemy.battlerLaunchSpent = true;
   }
-  if (isBattlerOwnedSource(source)) enemy.battlerLaunchSpent = true;
   return launchEnemy(enemy, direction, lift, drift, source);
 }
 
 function groundBounceEnemyByBattlerRules(enemy, direction, source, lift = STAGE3_KICK_BOUNCE_LIFT, drift = STAGE3_KICK_BOUNCE_DRIFT) {
   if (isBattlerOwnedSource(source) && enemy.battlerGroundBounceSpent) {
-    return proratedEnemyJuggle(enemy, direction, source, lift, drift);
+    if (!spendBattlerExtraLaunchExtension(enemy)) {
+      return proratedEnemyJuggle(enemy, direction, source, lift, drift);
+    }
+  } else if (isBattlerOwnedSource(source)) {
+    enemy.battlerGroundBounceSpent = true;
   }
-  if (isBattlerOwnedSource(source)) enemy.battlerGroundBounceSpent = true;
   return groundBounceEnemy(enemy, direction, source, lift, drift);
 }
 
@@ -3549,6 +3938,7 @@ function makeEnemy(x, y, index = 0, typeOverride = "") {
     attack: 0,
     attackKind: "punch",
     attackHasHit: false,
+    attackTelegraph: 0,
     goatAction: "idle",
     goatHasHit: false,
     goatHurtAnim: 0,
@@ -3568,6 +3958,7 @@ function makeEnemy(x, y, index = 0, typeOverride = "") {
     juggleCount: 0,
     battlerLaunchSpent: false,
     battlerGroundBounceSpent: false,
+    battlerExtraLaunchExtensionSpent: false,
     groundBouncePending: false,
     groundBounceTimer: 0,
     groundBounceDirection: 0,
@@ -3640,6 +4031,14 @@ function scheduledBossNumberForWave() {
   return Math.floor(wave / BOSS_WAVE_INTERVAL);
 }
 
+function debugBossesDefeatedBeforeSchedule() {
+  return DEBUG_START_BEATRICE_BOSS_WAVE && (wave > 1 || runStats.bossesDefeated > 0) ? 1 : 0;
+}
+
+function scheduledBossesDefeated() {
+  return Math.max(0, runStats.bossesDefeated - debugBossesDefeatedBeforeSchedule());
+}
+
 function currentBossWaveNumber() {
   if (DEBUG_START_BEATRICE_BOSS_WAVE && wave === 1 && runStats.bossesDefeated === 0) return 1;
   return Math.max(1, scheduledBossNumberForWave());
@@ -3648,11 +4047,105 @@ function currentBossWaveNumber() {
 function currentWaveMode() {
   if (DEBUG_START_BEATRICE_BOSS_WAVE && wave === 1 && runStats.bossesDefeated === 0) return "boss";
   const scheduledBoss = scheduledBossNumberForWave();
-  return scheduledBoss > 0 && runStats.bossesDefeated < scheduledBoss ? "boss" : "normal";
+  return scheduledBoss > 0 && scheduledBossesDefeated() < scheduledBoss ? "boss" : "normal";
 }
 
 function currentWaveLabel() {
   return waveMode === "boss" ? `Boss Wave ${currentBossWaveNumber()}` : `Wave ${wave}`;
+}
+
+function randomChoice(list) {
+  if (!list || !list.length) return null;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function bossBlessingOptionsFromCompanions() {
+  const options = [];
+  const hadLambda = lambdaCompanion.summoned || lambdaCompanion.active;
+  const hadBern = (bernCompanion.summoned || bernCompanion.active) && player.plumTeaActive && !player.plumTeaBurned;
+  if (hadLambda) {
+    const blessing = randomChoice(LAMBDA_BLESSINGS);
+    if (blessing) options.push({ ...blessing, color: "pink" });
+  }
+  if (hadBern) {
+    const blessing = randomChoice(BERN_BLESSINGS);
+    if (blessing) options.push({ ...blessing, color: "purple" });
+  }
+  return options;
+}
+
+function dismissCompanionsForBossWave() {
+  if (lambdaCompanion.active || lambdaCompanion.summoned) {
+    spawnKonpeitoGeyser(lambdaCompanion.x || player.x, lambdaCompanion.y || player.y);
+  }
+  if (bernCompanion.active || bernCompanion.summoned) {
+    spawnGoldenButterflies(bernCompanion.x || player.x, (bernCompanion.y || player.y) - 96, 26);
+  }
+  lambdaCompanion.active = false;
+  lambdaCompanion.summoned = false;
+  lambdaCompanion.state = "idle";
+  lambdaCompanion.anim = 0;
+  lambdaCompanion.queuedKonpeito = false;
+  lambdaCompanion.konpeitoTimer = 0;
+  bernCompanion.active = false;
+  bernCompanion.summoned = false;
+  bernCompanion.state = "idle";
+  bernCompanion.anim = 0;
+  bernCompanion.queuedCrystal = false;
+  bernCompanion.crystalTimer = 0;
+  bernCompanion.crystalCharge = 0;
+  bernCompanion.catForm = false;
+}
+
+function startBossBlessingChoice(options) {
+  bossBlessingChoice.active = true;
+  bossBlessingChoice.choices = options;
+  bossBlessingChoice.pendingBoss = true;
+  bossBlessingChoice.selected = 0;
+  state = "bossBlessing";
+  message = "Choose a blessing";
+  messageTimer = 1.25;
+}
+
+function applyBossBlessing(blessing) {
+  if (!blessing) return;
+  if (blessing.id === "launchExtension") {
+    player.blessings.launchExtension = (player.blessings.launchExtension || 0) + 1;
+  } else if (blessing.id === "superCharge") {
+    player.blessings.superCharge = true;
+  } else if (blessing.id === "paperArmor") {
+    player.blessings.paperArmor = true;
+  } else if (blessing.id === "miracleRevival") {
+    player.blessings.miracleRevival = (player.blessings.miracleRevival || 0) + 1;
+  } else if (blessing.id === "miracleShardFollowup") {
+    player.blessings.miracleShardFollowup = true;
+  } else if (blessing.id === "miracleRisk") {
+    player.blessings.miracleRisk = true;
+  }
+  message = blessing.title.replace(/^Blessing of (Certainty|Miracles): /, "");
+  messageTimer = 1.35;
+}
+
+function chooseBossBlessing(index = bossBlessingChoice.selected || 0) {
+  if (!bossBlessingChoice.active) return;
+  const choice = bossBlessingChoice.choices[index] || bossBlessingChoice.choices[0];
+  applyBossBlessing(choice);
+  bossBlessingChoice.active = false;
+  bossBlessingChoice.choices = [];
+  bossBlessingChoice.pendingBoss = false;
+  bossBlessingChoice.selected = 0;
+  state = "playing";
+  activateBeatriceBoss();
+}
+
+function beginBossWave() {
+  const options = bossBlessingOptionsFromCompanions();
+  dismissCompanionsForBossWave();
+  if (options.length > 0) {
+    startBossBlessingChoice(options);
+  } else {
+    activateBeatriceBoss();
+  }
 }
 
 function beatriceBossMaxHealthForEncounter(bossNumber) {
@@ -3684,6 +4177,12 @@ function activateBeatriceBoss() {
   beatriceBoss.materializeTimer = 0;
   beatriceBoss.meleeKickHit = false;
   beatriceBoss.meleeKickParried = false;
+  beatriceBoss.meleeKickParryFailed = false;
+  beatriceBoss.meleeKickParryFailFade = 0;
+  beatriceBoss.asmoDropKickPending = false;
+  beatriceBoss.asmoDropKickTimer = 0;
+  beatriceBoss.asmoDropKickHit = false;
+  beatriceBoss.asmoDropKickSide = 1;
   beatriceBoss.maxHp = beatriceBossMaxHealthForEncounter(bossNumber);
   beatriceBoss.hp = beatriceBoss.maxHp;
   beatriceBoss.defeatTimer = 0;
@@ -3698,6 +4197,7 @@ function activateBeatriceBoss() {
   beatriceBoss.juggleCount = 0;
   beatriceBoss.battlerLaunchSpent = false;
   beatriceBoss.battlerGroundBounceSpent = false;
+  beatriceBoss.battlerExtraLaunchExtensionSpent = false;
   beatriceBoss.groundBouncePending = false;
   beatriceBoss.groundBounceTimer = 0;
   beatriceBoss.groundBounceDirection = 0;
@@ -3723,9 +4223,14 @@ function completeBeatriceMechanic() {
   beatriceBoss.trialGoat = null;
   beatriceBoss.rings = [];
   beatriceBoss.ringAttackStarted = false;
+  beatriceBoss.goatRushTelegraphs = [];
+  beatriceBoss.goatRushTimer = 0;
+  beatriceBoss.goatRushSpawned = false;
+  beatriceBoss.towerVolleyStarted = false;
+  resetBeatriceTowerVolley();
   beatriceBoss.rewardStakePending = true;
   beatriceBoss.nextMechanicTimer = BEATRICE_NEXT_MECHANIC_DELAY;
-  message = "Beatrice opens a line";
+  message = "Come, come, Seven Sisters of Purgatory!";
   messageTimer = 1.1;
 }
 
@@ -3741,6 +4246,8 @@ function startRandomBeatriceMechanic() {
   beatriceBoss.goatRushTelegraphs = [];
   beatriceBoss.goatRushTimer = 0;
   beatriceBoss.goatRushSpawned = false;
+  beatriceBoss.towerVolleyStarted = false;
+  resetBeatriceTowerVolley();
   if (choice === "goatTrial") {
     startBeatriceGoatTrial();
     return true;
@@ -3754,6 +4261,10 @@ function startRandomBeatriceMechanic() {
   }
   if (choice === "goatRush") {
     startBeatriceGoatRush();
+    return true;
+  }
+  if (choice === "towerVolley") {
+    startBeatriceTowerVolley();
     return true;
   }
   return false;
@@ -3790,20 +4301,19 @@ function startBeatriceRingAttack() {
   if (!beatriceBoss.active) return;
   const centerX = player.x;
   const centerY = player.y;
-  const radii = [186, 148, 112, 78, 48, 22];
-  const appearDelays = [0, 0.5, 0.6, 0.7, 0.8, 0.9];
   beatriceBoss.mechanic = "ringAttack";
   beatriceBoss.ringAttackStarted = true;
   beatriceBoss.rewardStakePending = false;
-  beatriceBoss.rings = radii.map((radius, index) => ({
+  beatriceBoss.rings = [{
     x: centerX,
     y: centerY,
-    radius,
-    appearAt: appearDelays[index],
-    detonateAt: appearDelays[index] + 1.25 + index * 0.08,
+    radius: BEATRICE_RING_ATTACK_RADIUS,
+    appearAt: 0,
+    detonateAt: BEATRICE_RING_ATTACK_DELAY,
     timer: 0,
-    detonated: false
-  }));
+    detonated: false,
+    leviathanSpawned: false
+  }];
   message = "Run!";
   messageTimer = 0.9;
 }
@@ -3813,67 +4323,389 @@ function finishBeatriceRingAttack() {
   completeBeatriceMechanic();
 }
 
+function spawnLeviathanSlash(x, y, radius) {
+  const facing = player.x >= x ? 1 : -1;
+  leviathanAttacks.push({
+    x,
+    y,
+    radius,
+    facing,
+    anim: 0,
+    age: 0,
+    life: leviathanFrames.length / LEVIATHAN_SLASH_ANIM_SPEED + 0.12,
+    hit: false
+  });
+  spawnGoldenButterflies(x, y - 58, 22);
+  spawnAsmodeusGoldenWisps(x, y - 48, 10);
+}
+
+function applyLeviathanSlashHit(attack) {
+  const dx = player.x - attack.x;
+  const dy = (player.y - attack.y) / 0.42;
+  const inRing = Math.hypot(dx, dy) <= attack.radius;
+  let launchedPlayer = false;
+  let chainDirection = player.facing || 1;
+  if (inRing && !isPlayerInvulnerable() && !player.airborne && !player.knockedDown) {
+    const direction = Math.sign(player.x - attack.x) || player.facing || 1;
+    chainDirection = direction;
+    damagePlayer(BEATRICE_RING_ATTACK_DAMAGE);
+    player.invuln = 0.45;
+    player.action = "down";
+    player.attackLock = 0;
+    player.attackLungeRemaining = 0;
+    launchActor(player, direction, BEATRICE_RING_ATTACK_LIFT, BEATRICE_RING_ATTACK_DRIFT);
+    launchedPlayer = true;
+    resetPlayerCombo();
+    if (player.hp <= 0) defeatPlayer();
+  }
+  screenShakeTimer = Math.max(screenShakeTimer, 0.18);
+  beatriceStakeShockwaves.push({ x: attack.x, y: attack.y, radius: attack.radius, life: 0.42, max: 0.42, color: "red" });
+  if (launchedPlayer && player.hp > 0) spawnSatanAerialLaunch(chainDirection);
+}
+
+function spawnSatanAerialLaunch(direction) {
+  const facing = direction || player.facing || 1;
+  const x = clamp(player.x - facing * 70, cameraX + 72, cameraX + W - 72);
+  const y = player.y;
+  satanAttacks.push({
+    x,
+    y,
+    z: SATAN_AERIAL_HOVER,
+    facing,
+    anim: 0,
+    age: 0,
+    life: satanFrames.length / SATAN_AERIAL_ANIM_SPEED + 0.14,
+    hit: false
+  });
+  spawnGoldenButterflies(x, y - SATAN_AERIAL_HOVER - 32, 26);
+  spawnAsmodeusGoldenWisps(x, y - SATAN_AERIAL_HOVER - 28, 12);
+}
+
+function applySatanAerialLaunchHit(attack) {
+  if (state !== "playing" || player.hp <= 0) return;
+  const direction = attack.facing || player.facing || 1;
+  player.knockedDown = false;
+  player.downTime = 0;
+  player.airborne = true;
+  player.z = Math.max(player.z, SATAN_AERIAL_HOVER * 0.72);
+  player.vz = SATAN_AERIAL_LIFT;
+  player.airVx = direction * SATAN_AERIAL_DRIFT;
+  player.invuln = Math.max(player.invuln, 0.2);
+  player.attackLock = 0;
+  player.attackLungeRemaining = 0;
+  player.currentAttack = "";
+  resetPlayerCombo();
+  burst(player.x, player.y - player.z - 34, "special");
+  screenShakeTimer = Math.max(screenShakeTimer, 0.16);
+  spawnBelphegorGroundBounceSlam(direction);
+}
+
+function spawnBelphegorGroundBounceSlam(direction) {
+  const chainDirection = direction || player.facing || 1;
+  const facing = -chainDirection;
+  const x = clamp(player.x + chainDirection * BELPHEGOR_SIDE_OFFSET, cameraX + 70, cameraX + W - 70);
+  const y = player.y;
+  belphegorAttacks.push({
+    x,
+    y,
+    z: BELPHEGOR_SLAM_HOVER,
+    facing,
+    impactDirection: chainDirection,
+    delay: BELPHEGOR_SPAWN_DELAY,
+    appeared: false,
+    anim: 0,
+    age: 0,
+    life: belphegorFrames.length / BELPHEGOR_SLAM_ANIM_SPEED + 0.14,
+    hit: false
+  });
+}
+
+function applyBelphegorGroundBounceSlamHit(attack) {
+  if (state !== "playing" || player.hp <= 0) return;
+  const direction = attack.impactDirection || player.facing || 1;
+  player.knockedDown = false;
+  player.downTime = 0;
+  player.airborne = true;
+  player.z = Math.max(player.z, BELPHEGOR_SLAM_HOVER * 0.62);
+  player.vz = -BELPHEGOR_SLAM_DOWN_SPEED;
+  player.airVx = -direction * BELPHEGOR_SLAM_DRIFT;
+  player.beatriceDropKickBouncePending = true;
+  player.beatriceDropKickBounceTimer = BEATRICE_ASMO_DROP_KICK_BOUNCE_DELAY;
+  player.beatriceDropKickBounceDirection = -direction;
+  player.invuln = Math.max(player.invuln, 0.2);
+  player.attackLock = 0;
+  player.attackLungeRemaining = 0;
+  player.currentAttack = "";
+  resetPlayerCombo();
+  burst(player.x, player.y - player.z - 30, "special");
+  screenShakeTimer = Math.max(screenShakeTimer, 0.18);
+}
+
 function startBeatriceGoatRush() {
   if (!beatriceBoss.active) return;
   const top = FLOOR_Y - 94;
   const bottom = FLOOR_Y + 72;
   const laneHeight = (bottom - top) / BEATRICE_GOAT_RUSH_LANES;
-  const dangerLanes = shuffledIndices(BEATRICE_GOAT_RUSH_LANES).slice(0, BEATRICE_GOAT_RUSH_DANGER_LANES);
   beatriceBoss.mechanic = "goatRush";
   beatriceBoss.goatRushTimer = 0;
   beatriceBoss.goatRushSpawned = false;
   beatriceBoss.rewardStakePending = false;
   beatriceBoss.goatRushTelegraphs = [];
-  for (let i = 0; i < BEATRICE_GOAT_RUSH_LANES; i++) {
-    if (!dangerLanes.includes(i)) continue;
-    const y1 = top + i * laneHeight + 3;
-    const y2 = top + (i + 1) * laneHeight - 3;
-    beatriceBoss.goatRushTelegraphs.push({
-      lane: i,
-      y1,
-      y2,
-      y: (y1 + y2) * 0.5,
-      safe: false
+  for (let waveIndex = 0; waveIndex < BEATRICE_GOAT_RUSH_WAVES; waveIndex++) {
+    const dangerLanes = shuffledIndices(BEATRICE_GOAT_RUSH_LANES).slice(0, BEATRICE_GOAT_RUSH_DANGER_LANES);
+    dangerLanes.forEach((laneIndex, orderIndex) => {
+      const y1 = top + laneIndex * laneHeight + 3;
+      const y2 = top + (laneIndex + 1) * laneHeight - 3;
+      beatriceBoss.goatRushTelegraphs.push({
+        lane: laneIndex,
+        wave: waveIndex,
+        order: orderIndex,
+        y1,
+        y2,
+        y: (y1 + y2) * 0.5,
+        direction: Math.random() < 0.5 ? 1 : -1,
+        startAt: waveIndex * (BEATRICE_GOAT_RUSH_TELEGRAPH_TIME + BEATRICE_GOAT_RUSH_WAVE_GAP) + orderIndex * BEATRICE_GOAT_RUSH_STAGGER,
+        spawned: false,
+        safe: false
+      });
     });
   }
   message = "Find the gap!";
   messageTimer = 1.05;
 }
 
-function spawnBeatriceGoatRush() {
-  if (beatriceBoss.goatRushSpawned) return;
-  beatriceBoss.goatRushSpawned = true;
-  const direction = Math.random() < 0.5 ? 1 : -1;
+function spawnBeatriceGoatRush(lane) {
+  if (!lane || lane.spawned) return;
+  lane.spawned = true;
+  const direction = lane.direction || 1;
   const startX = direction === 1 ? cameraX - 170 : cameraX + W + 170;
   const travel = W + 380;
-  for (const lane of beatriceBoss.goatRushTelegraphs) {
-    const goat = makeEnemy(clamp(startX, -220, STAGE_W + 220), lane.y, 700 + lane.lane, "goat");
-    goat.bossMechanic = "beatriceGoatRush";
-    goat.spawnGrace = 0;
-    goat.facing = direction;
-    goat.goatAction = "charge";
-    goat.goatHasHit = false;
-    goat.goatChargeDx = direction;
-    goat.goatChargeDy = 0;
-    goat.goatChargeDistance = 0;
-    goat.goatChargeLimit = travel;
-    goat.goatChargeSpeed = GOAT_CHARGE_SPEED * BEATRICE_GOAT_RUSH_SPEED_MULTIPLIER;
-    goat.anim = 0;
-    goat.cooldown = 0;
-    enemies.push(goat);
-    summonPillars.push({ x: clamp(startX + direction * 70, cameraX + 40, cameraX + W - 40), y: lane.y, life: 0.32, max: 0.32 });
-  }
+  const goat = makeEnemy(clamp(startX, -220, STAGE_W + 220), lane.y, 700 + lane.wave * 10 + lane.lane, "goat");
+  goat.bossMechanic = "beatriceGoatRush";
+  goat.spawnGrace = 0;
+  goat.facing = direction;
+  goat.goatAction = "charge";
+  goat.goatHasHit = false;
+  goat.goatChargeDx = direction;
+  goat.goatChargeDy = 0;
+  goat.goatChargeDistance = 0;
+  goat.goatChargeLimit = travel;
+  goat.goatChargeSpeed = GOAT_CHARGE_SPEED * BEATRICE_GOAT_RUSH_SPEED_MULTIPLIER;
+  goat.anim = 0;
+  goat.cooldown = 0;
+  enemies.push(goat);
+  summonPillars.push({ x: clamp(startX + direction * 70, cameraX + 40, cameraX + W - 40), y: lane.y, life: 0.32, max: 0.32 });
 }
 
 function updateBeatriceGoatRush(dt) {
   if (beatriceBoss.mechanic !== "goatRush") return;
   beatriceBoss.goatRushTimer += dt;
-  if (!beatriceBoss.goatRushSpawned && beatriceBoss.goatRushTimer >= BEATRICE_GOAT_RUSH_TELEGRAPH_TIME) {
-    spawnBeatriceGoatRush();
+  for (const lane of beatriceBoss.goatRushTelegraphs) {
+    if (!lane.spawned && beatriceBoss.goatRushTimer >= lane.startAt + BEATRICE_GOAT_RUSH_TELEGRAPH_TIME) {
+      spawnBeatriceGoatRush(lane);
+    }
   }
+  beatriceBoss.goatRushSpawned = beatriceBoss.goatRushTelegraphs.every((lane) => lane.spawned);
   if (beatriceBoss.goatRushSpawned) {
     const activeRushGoats = enemies.some((enemy) => enemy.bossMechanic === "beatriceGoatRush" && !enemy.dead);
     if (!activeRushGoats) completeBeatriceMechanic();
+  }
+}
+
+function resetBeatriceTowerVolley() {
+  beatriceTowerVolley.active = false;
+  beatriceTowerVolley.phase = "";
+  beatriceTowerVolley.timer = 0;
+  beatriceTowerVolley.wave = 0;
+  beatriceTowerVolley.side = -1;
+  beatriceTowerVolley.towers = [];
+  beatriceTowerVolley.points = [];
+  beatriceTowerVolley.missiles = [];
+  beatriceTowerVolley.hitWaves = [];
+}
+
+function beatriceTowerLaneYs() {
+  return [
+    FLOOR_Y - 82,
+    FLOOR_Y - 34,
+    FLOOR_Y + 14,
+    FLOOR_Y + 62
+  ];
+}
+
+function startBeatriceTowerVolley() {
+  if (!beatriceBoss.active) return;
+  beatriceBoss.mechanic = "towerVolley";
+  beatriceBoss.rewardStakePending = false;
+  beatriceBoss.towerVolleyStarted = true;
+  const side = beatriceBoss.x - cameraX < W * 0.5 ? -1 : 1;
+  setupBeatriceTowerVolleyWave(0, side, true);
+  message = "Shoulder War Towers of the Gods!";
+  messageTimer = 1.25;
+}
+
+function setupBeatriceTowerVolleyWave(waveIndex, side, fresh = false) {
+  if (fresh) {
+    beatriceTowerVolley.towers = [];
+    beatriceTowerVolley.hitWaves = [];
+  }
+  beatriceTowerVolley.active = true;
+  beatriceTowerVolley.phase = "emerge";
+  beatriceTowerVolley.timer = 0;
+  beatriceTowerVolley.wave = waveIndex;
+  beatriceTowerVolley.side = side;
+  beatriceTowerVolley.points = [];
+  beatriceTowerVolley.missiles = [];
+  const towerScreenX = side < 0 ? -BEATRICE_TOWER_VOLLEY_EDGE_OVERHANG : W + BEATRICE_TOWER_VOLLEY_EDGE_OVERHANG;
+  const towerSlots = [
+    { xOffset: side * BEATRICE_TOWER_VOLLEY_TOWER_SEPARATION * 0.42, y: FLOOR_Y + 78 },
+    { xOffset: -side * BEATRICE_TOWER_VOLLEY_TOWER_SEPARATION * 0.42, y: FLOOR_Y + 190 }
+  ];
+  for (const slot of towerSlots) {
+    beatriceTowerVolley.towers.push({
+      screenX: towerScreenX + slot.xOffset,
+      y: slot.y,
+      side,
+      wave: waveIndex,
+      seed: Math.random() * 1000,
+      emerge: 0,
+      retreat: 0
+    });
+  }
+  const laneYs = beatriceTowerLaneYs();
+  const chosen = shuffledIndices(laneYs.length).slice(0, 2);
+  const startWorldX = side < 0 ? 18 : STAGE_W - 18;
+  const endWorldX = side < 0 ? STAGE_W - 18 : 18;
+  const startScreenX = startWorldX - cameraX;
+  const endScreenX = endWorldX - cameraX;
+  const distance = Math.abs(endWorldX - startWorldX);
+  const steps = Math.max(14, Math.floor(distance / BEATRICE_TOWER_VOLLEY_SPACING));
+  for (const laneIndex of chosen) {
+    const y = laneYs[laneIndex];
+    const laneOutside = y < FLOOR_Y ? -1 : 1;
+    for (let step = 0; step <= steps; step++) {
+      const t = step / steps;
+      const scatterOutward = Math.random() < BEATRICE_TOWER_VOLLEY_OUTSIDE_BIAS;
+      const scatterDirection = scatterOutward ? laneOutside : -laneOutside;
+      const scatterAmount = BEATRICE_TOWER_VOLLEY_LANE_SCATTER * (scatterOutward ? 0.28 + Math.random() * 0.72 : Math.random() * 0.65);
+      const screenScatter = (Math.random() - 0.5) * BEATRICE_TOWER_VOLLEY_SCREEN_SCATTER * 2;
+      const timingScatter = (Math.random() - 0.5) * BEATRICE_TOWER_VOLLEY_TIMING_SCATTER;
+      const worldX = clamp(startWorldX + (endWorldX - startWorldX) * t + screenScatter, 18, STAGE_W - 18);
+      beatriceTowerVolley.points.push({
+        screenX: startScreenX + (endScreenX - startScreenX) * t + screenScatter,
+        x: worldX,
+        y: clamp(y + scatterDirection * scatterAmount + (Math.random() - 0.5) * 12, FLOOR_Y - 104, FLOOR_Y + 84),
+        wave: waveIndex,
+        delay: Math.max(0.25, BEATRICE_TOWER_VOLLEY_TELEGRAPH_TIME + t * BEATRICE_TOWER_VOLLEY_SWEEP_TIME + timingScatter),
+        struck: false
+      });
+    }
+  }
+}
+
+function applyBeatriceTowerVolleyHit(point) {
+  if (beatriceTowerVolley.hitWaves.includes(point.wave)) return;
+  if (state !== "playing" || isPlayerInvulnerable() || player.airborne || player.knockedDown) return;
+  const worldX = point.x;
+  const dx = player.x - worldX;
+  const dy = (player.y - point.y) / 0.45;
+  if (Math.hypot(dx, dy) > BEATRICE_TOWER_VOLLEY_RADIUS) return;
+  beatriceTowerVolley.hitWaves.push(point.wave);
+  const direction = Math.sign(player.x - (beatriceTowerVolley.side < 0 ? cameraX : cameraX + W)) || -beatriceTowerVolley.side || player.facing || 1;
+  damagePlayer(BEATRICE_TOWER_VOLLEY_DAMAGE);
+  player.invuln = 0.35;
+  player.attackLock = 0;
+  player.attackLungeRemaining = 0;
+  player.attackHasHit = false;
+  player.currentAttack = "";
+  player.runState = "none";
+  player.runTimer = 0;
+  player.runCharge = 0;
+  player.brakeDrift = 0;
+  player.brakeBurstTimer = 0;
+  resetPlayerCombo();
+  launchActor(player, direction, BEATRICE_TOWER_VOLLEY_LIFT, BEATRICE_TOWER_VOLLEY_DRIFT);
+  burst(player.x, player.y - 94, "enemy");
+  screenShakeTimer = Math.max(screenShakeTimer, 0.26);
+  if (player.hp <= 0) defeatPlayer();
+}
+
+function updateBeatriceTowerVolley(dt) {
+  if (beatriceBoss.mechanic !== "towerVolley" || !beatriceTowerVolley.active) return;
+  beatriceTowerVolley.timer += dt;
+  const volley = beatriceTowerVolley;
+  if (volley.phase === "emerge") {
+    const t = clamp(volley.timer / BEATRICE_TOWER_VOLLEY_EMERGE_TIME, 0, 1);
+    for (const tower of volley.towers) {
+      if (tower.wave === volley.wave) tower.emerge = t;
+    }
+    if (volley.timer >= BEATRICE_TOWER_VOLLEY_EMERGE_TIME) {
+      volley.phase = "fire";
+      volley.timer = 0;
+      for (const tower of volley.towers) {
+        if (tower.wave === volley.wave) tower.emerge = 1;
+      }
+    }
+    return;
+  }
+
+  if (volley.phase === "fire") {
+    for (const point of volley.points) {
+      if (point.struck || volley.timer < point.delay) continue;
+      point.struck = true;
+      const tower = volley.towers.find((entry) => entry.wave === point.wave) || volley.towers[0];
+      const pointX = point.x;
+      const fallbackScreenX = volley.side < 0 ? -BEATRICE_TOWER_VOLLEY_EDGE_OVERHANG : W + BEATRICE_TOWER_VOLLEY_EDGE_OVERHANG;
+      const towerX = cameraX + (tower?.screenX ?? fallbackScreenX);
+      const launchHeight = 390 + Math.random() * 230;
+      volley.missiles.push({
+        x1: towerX,
+        y1: (tower?.y ?? FLOOR_Y) - launchHeight,
+        x2: pointX,
+        y2: point.y,
+        curve: (volley.side < 0 ? -1 : 1) * (120 + Math.random() * 120),
+        life: BEATRICE_TOWER_VOLLEY_MISSILE_TIME,
+        max: BEATRICE_TOWER_VOLLEY_MISSILE_TIME,
+        trail: []
+      });
+      beatriceStakeShockwaves.push({
+        x: pointX,
+        y: point.y,
+        radius: BEATRICE_TOWER_VOLLEY_RADIUS,
+        life: 0.24,
+        max: 0.24,
+        color: "red"
+      });
+      applyBeatriceTowerVolleyHit(point);
+    }
+    if (volley.points.every((point) => point.struck) && volley.timer >= BEATRICE_TOWER_VOLLEY_TELEGRAPH_TIME + BEATRICE_TOWER_VOLLEY_SWEEP_TIME + BEATRICE_TOWER_VOLLEY_WAVE_GAP) {
+      if (volley.wave === 0) {
+        setupBeatriceTowerVolleyWave(1, -volley.side);
+      } else {
+        volley.phase = "retreat";
+        volley.timer = 0;
+      }
+    }
+  } else if (volley.phase === "retreat") {
+    const t = clamp(volley.timer / BEATRICE_TOWER_VOLLEY_RETREAT_TIME, 0, 1);
+    for (const tower of volley.towers) tower.retreat = t;
+    if (volley.timer >= BEATRICE_TOWER_VOLLEY_RETREAT_TIME) {
+      resetBeatriceTowerVolley();
+      completeBeatriceMechanic();
+    }
+  }
+
+  for (let i = volley.missiles.length - 1; i >= 0; i--) {
+    const missile = volley.missiles[i];
+    const progress = 1 - clamp(missile.life / missile.max, 0, 1);
+    const cx = (missile.x1 + missile.x2) * 0.5 + (missile.curve || 0);
+    const cy = Math.min(missile.y1, missile.y2) - 150 - Math.abs(missile.curve || 0) * 0.2;
+    const x = (1 - progress) * (1 - progress) * missile.x1 + 2 * (1 - progress) * progress * cx + progress * progress * missile.x2;
+    const y = (1 - progress) * (1 - progress) * missile.y1 + 2 * (1 - progress) * progress * cy + progress * progress * missile.y2;
+    missile.trail.push({ x, y });
+    if (missile.trail.length > BEATRICE_TOWER_VOLLEY_TRAIL_POINTS) missile.trail.shift();
+    missile.life -= dt;
+    if (missile.life <= 0) volley.missiles.splice(i, 1);
   }
 }
 
@@ -3882,6 +4714,15 @@ function startBeatriceStakeCast() {
   beatriceBoss.flavor = "stakeCast";
   beatriceBoss.anim = 0;
   beatriceBoss.stakeCastFired = false;
+}
+
+function beatriceIdleHoverPoint() {
+  const playerScreenX = player.x - cameraX;
+  const desiredScreenX = playerScreenX < W * 0.5 ? W * 0.78 : W * 0.22;
+  return {
+    x: clamp(cameraX + desiredScreenX, 90, STAGE_W - 90),
+    y: clamp(player.y - 54, FLOOR_Y - 132, FLOOR_Y - 16)
+  };
 }
 
 function randomVisibleBeatricePoint() {
@@ -3905,8 +4746,8 @@ function beatriceFinalTeleportSidePoint(side) {
   };
 }
 
-function spawnBeatriceAfterimage(targetX, targetY, life = BEATRICE_TELEPORT_PREP_AFTERIMAGE_TIME) {
-  const frame = beatriceFrames.teleportPrep[Math.floor(beatriceBoss.anim) % beatriceFrames.teleportPrep.length];
+function spawnBeatriceAfterimage(targetX, targetY, life = BEATRICE_TELEPORT_PREP_AFTERIMAGE_TIME, frameOverride = null) {
+  const frame = frameOverride ?? beatriceFrames.teleportPrep[Math.floor(beatriceBoss.anim) % beatriceFrames.teleportPrep.length];
   beatriceAfterimages.push({
     x: beatriceBoss.x,
     y: beatriceBoss.y,
@@ -3949,6 +4790,11 @@ function advanceBeatriceTeleportPrep() {
     beatriceBoss.materializeTimer = 0.32;
     beatriceBoss.meleeKickHit = false;
     beatriceBoss.meleeKickParried = false;
+    beatriceBoss.meleeKickParryFailed = false;
+    beatriceBoss.meleeKickParryFailFade = 0;
+    beatriceBoss.asmoDropKickPending = false;
+    beatriceBoss.asmoDropKickTimer = 0;
+    beatriceBoss.asmoDropKickHit = false;
     spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 62, 42);
     return;
   }
@@ -3970,7 +4816,7 @@ function spawnWave() {
   messageBottles.length = 0;
   waveMode = currentWaveMode();
   if (waveMode === "boss") {
-    activateBeatriceBoss();
+    beginBossWave();
     message = currentWaveLabel();
     messageTimer = 1.25;
     return;
@@ -4002,7 +4848,10 @@ function startGame() {
   player.anim = 0;
   player.attackLock = 0;
   player.attackHasHit = false;
+  player.superChargeShockwaveDone = false;
   player.currentAttack = "";
+  player.attackConsumesResolve = false;
+  player.pendingResolveAttack = false;
   player.attackLungeRemaining = 0;
   player.stage3KickAir = false;
   player.stage3KickTimer = 0;
@@ -4013,6 +4862,14 @@ function startGame() {
   player.airVx = 0;
   player.knockedDown = false;
   player.downTime = 0;
+  player.beatriceDropKickBouncePending = false;
+  player.beatriceDropKickBounceTimer = 0;
+  player.beatriceDropKickBounceDirection = 1;
+  player.wallSlamTimer = 0;
+  player.wallSlamTargetX = 0;
+  player.wallSlamStartX = 0;
+  player.wallSlamHit = false;
+  player.meleeParryRecoilVx = 0;
   player.runState = "none";
   player.runTimer = 0;
   player.runCharge = 0;
@@ -4033,6 +4890,13 @@ function startGame() {
   player.plumTeaBurned = false;
   player.oneWingedEagleActive = false;
   player.oneWingedEagleLevel = 0;
+  player.blessings.launchExtension = 0;
+  player.blessings.superCharge = false;
+  player.blessings.paperArmor = false;
+  player.blessings.miracleRevival = 0;
+  player.blessings.miracleShardFollowup = false;
+  player.blessings.miracleRisk = false;
+  player.poise = 0;
   player.bernHazardTimer = BERN_REVIVE_HAZARD_TEST_MODE ? 0 : bernHazardInterval();
   player.bernHazardAmuseKills = 0;
   player.itemOrder = [];
@@ -4045,6 +4909,10 @@ function startGame() {
   lambdaKonpeitoQuestion.selection = 0;
   lambdaRetaliation.active = false;
   lambdaRetaliation.timer = 0;
+  bossBlessingChoice.active = false;
+  bossBlessingChoice.choices = [];
+  bossBlessingChoice.pendingBoss = false;
+  bossBlessingChoice.selected = 0;
   beatriceBoss.active = false;
   beatriceBoss.x = 0;
   beatriceBoss.y = FLOOR_Y - 28;
@@ -4062,6 +4930,10 @@ function startGame() {
   beatriceBoss.nextMechanicTimer = 0;
   beatriceBoss.rings = [];
   beatriceBoss.ringAttackStarted = false;
+  beatriceBoss.goatRushTelegraphs = [];
+  beatriceBoss.goatRushTimer = 0;
+  beatriceBoss.goatRushSpawned = false;
+  beatriceBoss.towerVolleyStarted = false;
   beatriceBoss.flavor = "idle";
   beatriceBoss.flavorTimer = 0;
   beatriceBoss.stakeCastFired = false;
@@ -4072,10 +4944,23 @@ function startGame() {
   beatriceBoss.materializeTimer = 0;
   beatriceBoss.meleeKickHit = false;
   beatriceBoss.meleeKickParried = false;
+  beatriceBoss.meleeKickParryFailed = false;
+  beatriceBoss.meleeKickParryFailFade = 0;
+  beatriceBoss.asmoDropKickPending = false;
+  beatriceBoss.asmoDropKickTimer = 0;
+  beatriceBoss.asmoDropKickHit = false;
+  beatriceBoss.asmoDropKickSide = 1;
   beatriceBoss.hp = 1;
   beatriceBoss.maxHp = 1;
   beatriceBoss.stunDamageTaken = 0;
   beatriceBoss.defeatTimer = 0;
+  beatriceBoss.defeatPhase = "";
+  beatriceBoss.defeatMoveTimer = 0;
+  beatriceBoss.defeatTrailTimer = 0;
+  beatriceBoss.defeatStartX = 0;
+  beatriceBoss.defeatStartY = 0;
+  beatriceBoss.defeatTargetX = 0;
+  beatriceBoss.defeatTargetY = 0;
   beatriceBoss.barrierActive = true;
   beatriceBoss.vulnerable = false;
   beatriceBoss.breakVx = 0;
@@ -4091,11 +4976,16 @@ function startGame() {
   beatriceStakeTrails.length = 0;
   beatriceStakeShockwaves.length = 0;
   beatriceStakeSparkles.length = 0;
+  resetBeatriceTowerVolley();
   beatriceDefeatWisps.length = 0;
   beatriceDefeatTrails.length = 0;
   beatriceStakeParryLine.life = 0;
   beatriceStakeParryPendingHit.active = false;
   asmodeusAttacks.length = 0;
+  beelzebubAttacks.length = 0;
+  leviathanAttacks.length = 0;
+  satanAttacks.length = 0;
+  belphegorAttacks.length = 0;
   beatriceAfterimages.length = 0;
   duoAttack.active = false;
   duoAttack.timer = 0;
@@ -4106,6 +4996,7 @@ function startGame() {
   lambdaCompanion.state = "idle";
   lambdaCompanion.moveSettle = 0;
   lambdaCompanion.konpeitoTimer = LAMBDA_KONPEITO_INTERVAL;
+  lambdaCompanion.konpeitoCharge = 100;
   lambdaCompanion.castHasFired = false;
   lambdaCompanion.queuedKonpeito = false;
   bernCompanion.active = false;
@@ -4114,6 +5005,7 @@ function startGame() {
   bernCompanion.state = "idle";
   bernCompanion.moveSettle = 0;
   bernCompanion.crystalTimer = BERN_CRYSTAL_INTERVAL;
+  bernCompanion.crystalChargeGauge = 100;
   bernCompanion.crystalCharge = 0;
   bernCompanion.crystalHasFired = false;
   bernCompanion.queuedCrystal = false;
@@ -4162,12 +5054,43 @@ function setAction(name, lock = 0) {
     player.crestAttackHasHit = false;
     if (!isPlayerComboAttack(name)) {
       player.currentAttack = "";
+      player.attackConsumesResolve = false;
+      player.pendingResolveAttack = false;
+      player.poise = 0;
     }
   }
   if (lock) player.attackLock = lock;
 }
 
 function triggerBernRevive() {
+  if ((player.blessings.miracleRevival || 0) > 0 && player.plumTeaActive && !player.plumTeaBurned) {
+    player.blessings.miracleRevival -= 1;
+    runStats.revivedByBernkastel += 1;
+    player.hp = 100;
+    player.resolve = 100;
+    player.attackLock = 0;
+    player.attackLungeRemaining = 0;
+    player.stage3KickAir = false;
+    player.stage3KickTimer = 0;
+    player.stage3KickVz = 0;
+    player.airborne = false;
+    player.z = 0;
+    player.vz = 0;
+    player.airVx = 0;
+    player.knockedDown = false;
+    player.downTime = 0;
+    player.runState = "none";
+    player.runTimer = 0;
+    player.runCharge = 0;
+    player.brakeDrift = 0;
+    player.brakeBurstTimer = 0;
+    player.invuln = 1.2;
+    resetPlayerCombo();
+    setAction("idle");
+    message = "A miracle rewrites defeat";
+    messageTimer = 1.6;
+    return true;
+  }
   if (!bernCompanion.summoned || !player.plumTeaActive || player.plumTeaBurned) return false;
   runStats.revivedByBernkastel += 1;
   player.hp = 100;
@@ -4200,6 +5123,7 @@ function triggerBernRevive() {
   bernCompanion.state = "sacrifice";
   bernCompanion.anim = 0;
   bernCompanion.moveSettle = 0;
+  bernCompanion.crystalChargeGauge = 0;
   bernCompanion.crystalTimer = BERN_CRYSTAL_INTERVAL;
   bernCompanion.crystalCharge = 0;
   bernCompanion.crystalHasFired = false;
@@ -4244,8 +5168,72 @@ function defeatPlayer() {
   messageTimer = 99;
 }
 
+function isSuperChargedAttack(kind, data) {
+  return player.blessings.superCharge
+    && player.attackConsumesResolve
+    && data?.stage === 3
+    && (kind === "punch3" || kind === "kick3");
+}
+
+function superChargeShockwaveDistance(x, y, centerX, centerY) {
+  return Math.hypot(x - centerX, (y - centerY) * 1.35);
+}
+
+function triggerSuperChargeShockwave(kind, data, skippedEnemies = new Set(), skipBeatrice = false) {
+  if (!isSuperChargedAttack(kind, data) || player.superChargeShockwaveDone) return { hit: false, defeated: false };
+  player.superChargeShockwaveDone = true;
+  const x = player.x + player.facing * 54;
+  const y = player.y;
+  const source = `battler:${kind}:superCharge`;
+  const damage = Math.round(data.damage * SUPER_CHARGE_DAMAGE_MULTIPLIER);
+  let hit = false;
+  let defeated = false;
+
+  spawnKonpeitoDomeBurst(x, y);
+  screenShakeTimer = Math.max(screenShakeTimer, 0.18);
+
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0 || skippedEnemies.has(enemy)) continue;
+    if (superChargeShockwaveDistance(enemy.x, enemy.y, x, y) > SUPER_CHARGE_SHOCKWAVE_RADIUS) continue;
+    const direction = Math.sign(enemy.x - player.x) || player.facing;
+    damageEnemy(enemy, damage);
+    launchEnemyByBattlerRules(
+      enemy,
+      direction,
+      source,
+      data.launchLift || SUPER_CHARGE_SHOCKWAVE_LIFT,
+      data.launchDrift || SUPER_CHARGE_SHOCKWAVE_DRIFT
+    );
+    if (enemy.hp <= 0) {
+      defeatEnemy(enemy);
+      defeated = true;
+    }
+    hit = true;
+  }
+
+  if (!skipBeatrice && beatriceCanBeDamaged() && superChargeShockwaveDistance(beatriceBoss.x, beatriceBoss.y, x, y) <= SUPER_CHARGE_SHOCKWAVE_RADIUS) {
+    const direction = Math.sign(beatriceBoss.x - player.x) || player.facing;
+    const dealt = damageBeatrice(damage, direction);
+    if (dealt > 0) {
+      launchBeatriceByBattlerRules(direction, source, data.launchLift || BEATRICE_LAUNCH_LIFT, data.launchDrift || BEATRICE_LAUNCH_DRIFT);
+      if (beatriceBoss.hp <= 0) {
+        defeatBeatriceBoss();
+        defeated = true;
+      }
+      hit = true;
+    }
+  }
+
+  return { hit, defeated };
+}
+
 function applyAttackHit(kind, data) {
   let hit = false;
+  let defeatedTarget = false;
+  const superCharged = isSuperChargedAttack(kind, data);
+  const attackDamage = superCharged ? Math.round(data.damage * SUPER_CHARGE_DAMAGE_MULTIPLIER) : data.damage;
+  const directEnemyHits = new Set();
+  let beatriceDirectHit = false;
   const hitbox = {
     x: player.x + (player.facing === 1 ? 34 : -data.range - 34),
     y: player.y - data.depth,
@@ -4258,8 +5246,9 @@ function applyAttackHit(kind, data) {
     const source = `battler:${kind}`;
     const hurtbox = enemyHurtbox(enemy);
     if (rectsTouch(hitbox, hurtbox)) {
+      directEnemyHits.add(enemy);
       const groundBounceReady = data.groundBounce && canGroundBounceTarget(enemy);
-      damageEnemy(enemy, data.damage);
+      damageEnemy(enemy, attackDamage);
       const forceLaunch = player.goatParryCounter && (kind === "punch3" || kind === "kick3");
       const goatArmoredHit = enemy.type === "goat" && !enemy.airborne && enemy.goatArmorHits < 1 && (data.stage || 1) < 2;
       if (goatArmoredHit) {
@@ -4283,6 +5272,7 @@ function applyAttackHit(kind, data) {
       score += 50 + player.combo * 8;
       hit = true;
       if (enemy.hp <= 0) {
+        defeatedTarget = true;
         if (groundBounceReady && !forceLaunch) {
           groundBounceEnemyByBattlerRules(enemy, player.facing, source, data.launchLift, data.launchDrift);
         } else if (data.launch || forceLaunch) {
@@ -4304,17 +5294,20 @@ function applyAttackHit(kind, data) {
         enemy.downTime = 1.1;
         enemy.hurt = 0;
         enemy.attack = 0;
+        enemy.attackTelegraph = 0;
         enemy.anim = 0;
       } else {
         enemy.hurt = enemy.type === "goat" ? GOAT_HIT_STUN_DURATION : 0.34;
         enemy.attack = 0;
         enemy.attackHasHit = false;
+        enemy.attackTelegraph = 0;
       }
     }
   }
   if (beatriceCanBeDamaged() && rectsTouch(hitbox, beatriceHurtbox())) {
     const source = `battler:${kind}`;
-    const dealt = damageBeatrice(data.damage, player.facing);
+    beatriceDirectHit = true;
+    const dealt = damageBeatrice(attackDamage, player.facing);
     if (dealt > 0) {
       const groundBounceReady = data.groundBounce && canGroundBounceBeatrice();
       if (groundBounceReady) {
@@ -4330,12 +5323,25 @@ function applyAttackHit(kind, data) {
       score += 90 + player.combo * 10;
       hit = true;
       if (beatriceBoss.hp <= 0) {
+        defeatedTarget = true;
         defeatBeatriceBoss();
       }
     }
   }
+  if (superCharged) {
+    const shockwaveResult = triggerSuperChargeShockwave(kind, data, directEnemyHits, beatriceDirectHit);
+    hit = hit || shockwaveResult.hit;
+    defeatedTarget = defeatedTarget || shockwaveResult.defeated;
+  }
+  if (hit && data.stage === 3) {
+    const followupTarget = [...directEnemyHits].find((enemy) => !enemy.dead && enemy.hp > 0);
+    spawnMiracleCrystalFollowup(followupTarget);
+  }
   if (hit && data.gain) {
-    player.resolve = clamp(player.resolve + data.gain, 0, 100);
+    const canGainResolve = !player.attackConsumesResolve || defeatedTarget;
+    if (canGainResolve) {
+      player.resolve = clamp(player.resolve + data.gain * RESOLVE_GAIN_MULTIPLIER, 0, 100);
+    }
   }
   if (hit && data.stage) {
     player.comboStep = data.stage;
@@ -4427,18 +5433,38 @@ function applyCrestEchoHit(kind, data) {
 function applyEnemyAttackHit(enemy) {
   const data = enemyAttackData[enemy.attackKind];
   if (!data || enemy.spawnGrace > 0 || isPlayerInvulnerable() || player.airborne || player.knockedDown) return false;
-  const hitbox = {
-    x: enemy.x + (enemy.facing === 1 ? 26 : -data.range - 26),
-    y: enemy.y - data.depth,
-    w: data.range,
-    h: data.depth * 2
-  };
   const hurtbox = { x: player.x - 34, y: player.y - 72, w: 68, h: 106 };
-  if (!rectsTouch(hitbox, hurtbox)) return false;
-  const contactX = (Math.max(hitbox.x, hurtbox.x) + Math.min(hitbox.x + hitbox.w, hurtbox.x + hurtbox.w)) * 0.5;
+  const hitOriginX = enemy.x + enemy.facing * 38;
+  let contactX = player.x;
+  let hit = false;
+  if (enemy.attackKind === "kick") {
+    const closestX = clamp(player.x, hurtbox.x, hurtbox.x + hurtbox.w);
+    const closestY = clamp(player.y, hurtbox.y, hurtbox.y + hurtbox.h);
+    const forward = (closestX - hitOriginX) * enemy.facing;
+    const scaledY = (closestY - enemy.y) / ENEMY_KICK_TELEGRAPH_Y_SCALE;
+    hit = forward >= 0 && Math.hypot(forward, scaledY) <= ENEMY_KICK_TELEGRAPH_RADIUS;
+    contactX = hitOriginX + enemy.facing * clamp(forward, 0, ENEMY_KICK_TELEGRAPH_RADIUS);
+  } else {
+    const hitbox = {
+      x: enemy.facing === 1 ? hitOriginX : hitOriginX - ENEMY_PUNCH_TELEGRAPH_RANGE,
+      y: enemy.y - ENEMY_PUNCH_TELEGRAPH_DEPTH,
+      w: ENEMY_PUNCH_TELEGRAPH_RANGE,
+      h: ENEMY_PUNCH_TELEGRAPH_DEPTH * 2
+    };
+    hit = rectsTouch(hitbox, hurtbox);
+    contactX = (Math.max(hitbox.x, hurtbox.x) + Math.min(hitbox.x + hitbox.w, hurtbox.x + hurtbox.w)) * 0.5;
+  }
+  if (!hit) return false;
   const contactY = player.y - 148;
 
-  damagePlayer(data.damage + Math.floor(wave / 2));
+  const damage = data.damage + Math.floor(wave / 2);
+  damagePlayer(damage);
+  if (absorbPlayerPoise(damage, false)) {
+    player.invuln = Math.max(player.invuln, 0.12);
+    burst(contactX, contactY, "enemy");
+    if (player.hp <= 0) defeatPlayer();
+    return true;
+  }
   player.invuln = 0.5;
   player.x = clamp(player.x + enemy.facing * 28, 80, STAGE_W - 120);
   player.attackLungeRemaining = 0;
@@ -4586,7 +5612,11 @@ function attack(kind) {
   player.comboQueuedKind = "";
   player.goatParryCounter = false;
   player.currentAttack = action;
+  player.attackConsumesResolve = !!player.pendingResolveAttack || kind === "special";
+  player.pendingResolveAttack = false;
   player.crestAttackHasHit = false;
+  player.superChargeShockwaveDone = false;
+  player.poise = player.blessings.paperArmor && data.stage ? 25 : 0;
   player.attackLungeRemaining = data.lunge || 0;
   if (action === "kick3") {
     player.stage3KickAir = true;
@@ -4624,15 +5654,48 @@ function canStartChargedAttack() {
     && !duoAttack.active;
 }
 
+function chargedAttackResolveCost() {
+  return player.blessings.superCharge ? 50 : CHARGED_ATTACK_RESOLVE_COST;
+}
+
+function nearestChargeTarget() {
+  const candidates = enemies
+    .filter((enemy) => !enemy.dead && enemy.spawnGrace <= 0)
+    .map((enemy) => ({ x: enemy.x, y: enemy.y, dist: Math.hypot(enemy.x - player.x, enemy.y - player.y) }));
+  if (beatriceCanBeDamaged()) {
+    candidates.push({ x: beatriceBoss.x, y: beatriceBoss.y, dist: Math.hypot(beatriceBoss.x - player.x, beatriceBoss.y - player.y) });
+  }
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => a.dist - b.dist);
+  return candidates[0];
+}
+
+function teleportForSuperCharge() {
+  if (!player.blessings.superCharge) return;
+  const target = nearestChargeTarget();
+  if (!target) return;
+  const side = target.x >= player.x ? 1 : -1;
+  burst(player.x, player.y - 90, "special");
+  player.facing = side;
+  player.x = clamp(target.x - side * 78, cameraX + 38, cameraX + W - 38);
+  player.y = clamp(target.y, FLOOR_Y - 94, FLOOR_Y + 72);
+  burst(player.x, player.y - 90, "special");
+}
+
 function startChargedAttack(kind) {
   if (kind !== "punch" && kind !== "kick") return false;
-  if (player.resolve < CHARGED_ATTACK_RESOLVE_COST || !canStartChargedAttack()) return false;
+  const cost = chargedAttackResolveCost();
+  if (player.resolve < cost || !canStartChargedAttack()) return false;
   const action = `${kind}3`;
-  player.resolve = Math.max(0, player.resolve - CHARGED_ATTACK_RESOLVE_COST);
+  player.resolve = Math.max(0, player.resolve - cost);
   resolveSpendFlashTimer = 0.34;
+  player.pendingResolveAttack = true;
+  teleportForSuperCharge();
   const started = attack(action);
   if (!started) {
-    player.resolve = Math.min(100, player.resolve + CHARGED_ATTACK_RESOLVE_COST);
+    player.pendingResolveAttack = false;
+    player.attackConsumesResolve = false;
+    player.resolve = Math.min(100, player.resolve + cost);
     resolveSpendFlashTimer = 0;
   }
   return started;
@@ -4727,6 +5790,26 @@ function spawnBeatriceDefeatWisps(x, y) {
   }
 }
 
+function spawnAsmodeusGoldenWisps(x, y, count = 14) {
+  for (let i = 0; i < count; i++) {
+    const angle = -Math.PI * 0.92 + Math.random() * Math.PI * 1.84;
+    const speed = 110 + Math.random() * 240;
+    beatriceDefeatWisps.push({
+      x: x + (Math.random() - 0.5) * 64,
+      y: y + (Math.random() - 0.5) * 96,
+      px: x,
+      py: y,
+      vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 160,
+      vy: Math.sin(angle) * speed - 80 - Math.random() * 110,
+      life: 0.62 + Math.random() * 0.34,
+      max: 0.96,
+      size: 5 + Math.random() * 7,
+      angle: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 8
+    });
+  }
+}
+
 function updateBeatriceDefeatWisps(dt) {
   for (let i = beatriceDefeatWisps.length - 1; i >= 0; i--) {
     const wisp = beatriceDefeatWisps[i];
@@ -4758,15 +5841,101 @@ function updateBeatriceDefeatWisps(dt) {
 
 function spawnAsmodeusUppercut(worldX, worldY, facing) {
   const side = facing || player.facing || 1;
+  const x = clamp(worldX + side * 58, 80, STAGE_W - 90);
+  const y = worldY;
   asmodeusAttacks.push({
-    x: clamp(worldX + side * 58, 80, STAGE_W - 90),
-    y: worldY,
+    x,
+    y,
     facing: side,
+    age: 0,
     anim: 0,
     hit: false,
-    life: 0.72
+    life: 0.72,
+    maxLife: 0.72,
+    exitSpawned: false
   });
-  spawnGoldenButterflies(worldX + side * 42, worldY - 96, 36);
+  spawnGoldenButterflies(x - side * 16, y - 96, 40);
+  spawnAsmodeusGoldenWisps(x, y - 100, 16);
+}
+
+function armBeatriceAsmodeusDropKick(side) {
+  if (!beatriceBoss.active || beatriceBoss.vulnerable || beatriceBoss.flavor === "defeated") return;
+  beatriceBoss.asmoDropKickPending = true;
+  beatriceBoss.asmoDropKickTimer = 0.04;
+  beatriceBoss.asmoDropKickHit = false;
+  beatriceBoss.asmoDropKickSide = side || player.facing || 1;
+}
+
+function startBeatriceAsmodeusDropKick() {
+  if (!beatriceBoss.active || !beatriceBoss.asmoDropKickPending || state !== "playing") return false;
+  if (beatriceBoss.vulnerable || ["barrierBreak", "dizzy", "hurt", "launched", "downed", "stunRecover", "defeated"].includes(beatriceBoss.flavor)) {
+    beatriceBoss.asmoDropKickPending = false;
+    beatriceBoss.asmoDropKickTimer = 0;
+    return false;
+  }
+  const side = beatriceBoss.asmoDropKickSide || Math.sign(player.airVx) || player.facing || 1;
+  beatriceBoss.asmoDropKickPending = false;
+  beatriceBoss.asmoDropKickTimer = 0;
+  beatriceBoss.asmoDropKickHit = false;
+  spawnBeelzebubDropSlash(side);
+  return true;
+}
+
+function spawnBeelzebubDropSlash(side) {
+  const facing = side || Math.sign(player.airVx) || player.facing || 1;
+  const x = clamp(player.x - facing * BEATRICE_ASMO_DROP_KICK_SIDE_OFFSET, cameraX + 70, cameraX + W - 70);
+  const y = clamp(player.y, FLOOR_Y - 94, FLOOR_Y + 72);
+  const z = BEELZEBUB_DROP_SLASH_HOVER;
+  beelzebubAttacks.push({
+    x,
+    y,
+    z,
+    facing,
+    age: 0,
+    anim: 0,
+    hit: false,
+    life: 0.96,
+    maxLife: 0.96,
+    exitSpawned: false
+  });
+  spawnGoldenButterflies(x - facing * 12, y - z - 46, 54);
+  spawnAsmodeusGoldenWisps(x, y - z - 48, 18);
+}
+
+function applyBeelzebubDropSlashHit(attack) {
+  if (state !== "playing" || !player.airborne || player.knockedDown) return false;
+  const side = attack.facing || Math.sign(player.x - attack.x) || player.facing || 1;
+  player.x = clamp(attack.x + side * BEATRICE_ASMO_DROP_KICK_CATCH_OFFSET, cameraX + 24, cameraX + W - 24);
+  player.y = clamp(attack.y, FLOOR_Y - 94, FLOOR_Y + 72);
+  player.z = Math.max(player.z || 0, attack.z || 104);
+  damagePlayer(BEATRICE_ASMO_DROP_KICK_DAMAGE);
+  player.invuln = Math.max(player.invuln, 0.28);
+  player.attackLungeRemaining = 0;
+  player.currentAttack = "";
+  player.attackHasHit = false;
+  player.crestAttackHasHit = false;
+  player.action = "down";
+  player.vz = -BEATRICE_ASMO_DROP_KICK_DOWN_SPEED;
+  player.airVx = side * BEATRICE_ASMO_DROP_KICK_DRIFT;
+  player.z = Math.max(player.z || 0, attack.z || 72);
+  player.beatriceDropKickBouncePending = true;
+  player.beatriceDropKickBounceTimer = BEATRICE_ASMO_DROP_KICK_BOUNCE_DELAY;
+  player.beatriceDropKickBounceDirection = side;
+  player.attackLock = 0.45;
+  resetPlayerCombo();
+  burst(player.x, player.y - Math.max(84, player.z * 0.45), "enemy");
+  screenShakeTimer = Math.max(screenShakeTimer, 0.22);
+  if (player.hp <= 0) defeatPlayer();
+  return true;
+}
+
+function applyBeatriceAsmodeusDropKickHit() {
+  return applyBeelzebubDropSlashHit({
+    x: beatriceBoss.x,
+    y: beatriceBoss.y,
+    z: beatriceBoss.hoverOffset || BEATRICE_ASMO_DROP_KICK_HOVER,
+    facing: beatriceBoss.facing || beatriceBoss.asmoDropKickSide || player.facing || 1
+  });
 }
 
 function applyAsmodeusUppercutHit(attack) {
@@ -4779,14 +5948,31 @@ function applyAsmodeusUppercutHit(attack) {
   player.attackHasHit = false;
   player.crestAttackHasHit = false;
   player.action = "down";
-  launchActor(player, side, 560, 210);
+  launchActor(player, side, BEATRICE_ASMO_UPPERCUT_LIFT, BEATRICE_ASMO_UPPERCUT_DRIFT);
   resetPlayerCombo();
+  if (player.hp > 0) armBeatriceAsmodeusDropKick(side);
   if (player.hp <= 0) defeatPlayer();
+}
+
+function startPlayerWallSlam(direction) {
+  const side = direction || player.facing || 1;
+  player.airborne = false;
+  player.knockedDown = false;
+  player.z = 0;
+  player.vz = 0;
+  player.airVx = 0;
+  player.wallSlamTimer = BEATRICE_MELEE_KICK_WALL_SLAM_TIME;
+  player.wallSlamStartX = player.x;
+  player.wallSlamTargetX = clamp(side > 0 ? cameraX + W - 84 : cameraX + 84, 80, STAGE_W - 120);
+  player.wallSlamHit = false;
+  player.action = "hurt";
+  player.anim = 0;
+  player.attackLock = BEATRICE_MELEE_KICK_WALL_SLAM_TIME + 0.55;
 }
 
 function applyBeatriceMeleeKickHit() {
   if (state !== "playing" || player.airborne || player.knockedDown || isPlayerInvulnerable()) return false;
-  if (!playerInBeatriceMeleeKickRange()) return false;
+  if (!playerInBeatriceMeleeKickTelegraph()) return false;
   const side = beatriceBoss.facing || Math.sign(player.x - beatriceBoss.x) || 1;
   damagePlayer(BEATRICE_MELEE_KICK_DAMAGE);
   player.attackLock = 0;
@@ -4800,7 +5986,7 @@ function applyBeatriceMeleeKickHit() {
   player.brakeDrift = 0;
   player.brakeBurstTimer = 0;
   resetPlayerCombo();
-  launchActor(player, side, BEATRICE_MELEE_KICK_LIFT, BEATRICE_MELEE_KICK_DRIFT);
+  startPlayerWallSlam(side);
   burst(player.x, player.y - 118, "enemy");
   screenShakeTimer = Math.max(screenShakeTimer, 0.22);
   if (player.hp <= 0) defeatPlayer();
@@ -4870,9 +6056,12 @@ function proratedBeatriceJuggle(direction, source, lift = 260, drift = 90) {
 
 function launchBeatriceByBattlerRules(direction, source, lift = BEATRICE_LAUNCH_LIFT, drift = BEATRICE_LAUNCH_DRIFT) {
   if (isBattlerOwnedSource(source) && beatriceBoss.battlerLaunchSpent) {
-    return proratedBeatriceJuggle(direction, source, lift, drift);
+    if (!spendBattlerExtraLaunchExtension(beatriceBoss)) {
+      return proratedBeatriceJuggle(direction, source, lift, drift);
+    }
+  } else if (isBattlerOwnedSource(source)) {
+    beatriceBoss.battlerLaunchSpent = true;
   }
-  if (isBattlerOwnedSource(source)) beatriceBoss.battlerLaunchSpent = true;
   return launchBeatrice(direction, lift, drift, source);
 }
 
@@ -4901,9 +6090,12 @@ function groundBounceBeatrice(direction, source, lift = STAGE3_KICK_BOUNCE_LIFT,
 
 function groundBounceBeatriceByBattlerRules(direction, source, lift = STAGE3_KICK_BOUNCE_LIFT, drift = STAGE3_KICK_BOUNCE_DRIFT) {
   if (isBattlerOwnedSource(source) && beatriceBoss.battlerGroundBounceSpent) {
-    return proratedBeatriceJuggle(direction, source, lift, drift);
+    if (!spendBattlerExtraLaunchExtension(beatriceBoss)) {
+      return proratedBeatriceJuggle(direction, source, lift, drift);
+    }
+  } else if (isBattlerOwnedSource(source)) {
+    beatriceBoss.battlerGroundBounceSpent = true;
   }
-  if (isBattlerOwnedSource(source)) beatriceBoss.battlerGroundBounceSpent = true;
   return groundBounceBeatrice(direction, source, lift, drift);
 }
 
@@ -4988,6 +6180,11 @@ function startBeatriceBarrierBreak(direction = 1) {
   beatriceBoss.materializeTimer = 0;
   beatriceBoss.meleeKickHit = false;
   beatriceBoss.meleeKickParried = false;
+  beatriceBoss.meleeKickParryFailed = false;
+  beatriceBoss.meleeKickParryFailFade = 0;
+  beatriceBoss.asmoDropKickPending = false;
+  beatriceBoss.asmoDropKickTimer = 0;
+  beatriceBoss.asmoDropKickHit = false;
   beatriceBoss.wallsActive = false;
   beatriceBoss.rewardStakePending = false;
   beatriceBoss.nextMechanicTimer = BEATRICE_RING_ATTACK_DELAY;
@@ -5033,6 +6230,10 @@ function clearBeatriceBossMechanics() {
   beatriceStakeShockwaves.length = 0;
   beatriceStakeParryLine.life = 0;
   beatriceStakeParryPendingHit.active = false;
+  beelzebubAttacks.length = 0;
+  leviathanAttacks.length = 0;
+  satanAttacks.length = 0;
+  belphegorAttacks.length = 0;
   for (const enemy of enemies) {
     if (enemy.bossMechanic === "beatriceGoatTrial" || enemy.bossMechanic === "beatriceGoatRush") {
       enemy.hp = 0;
@@ -5043,19 +6244,42 @@ function clearBeatriceBossMechanics() {
 
 function defeatBeatriceBoss() {
   if (!beatriceBoss.active || beatriceBoss.flavor === "defeated") return;
+  const startY = beatriceBoss.y;
   clearBeatriceBossMechanics();
   beatriceBoss.hp = 0;
   beatriceBoss.barrierActive = false;
   beatriceBoss.vulnerable = false;
   beatriceBoss.flavor = "defeated";
+  beatriceBoss.defeatPhase = "move";
   beatriceBoss.anim = 0;
+  beatriceBoss.defeatMoveTimer = 0;
+  beatriceBoss.defeatTrailTimer = 0;
+  beatriceBoss.defeatStartX = beatriceBoss.x;
+  beatriceBoss.defeatStartY = startY;
+  const playerScreenX = player.x - cameraX;
+  const targetScreenX = playerScreenX < W * 0.5 ? W * 0.82 : W * 0.18;
+  beatriceBoss.defeatTargetX = clamp(cameraX + targetScreenX, 100, STAGE_W - 100);
+  beatriceBoss.defeatTargetY = clamp(player.y + 24, FLOOR_Y - 24, FLOOR_Y + 52);
+  beatriceBoss.x = beatriceBoss.defeatStartX;
+  beatriceBoss.y = beatriceBoss.defeatStartY;
+  beatriceBoss.hoverOffset = 0;
+  beatriceBoss.facing = player.x >= beatriceBoss.defeatTargetX ? 1 : -1;
   beatriceBoss.z = 0;
   beatriceBoss.vz = 0;
   beatriceBoss.airVx = 0;
   beatriceBoss.defeatTimer = BEATRICE_DEFEAT_DISSIPATE_TIME;
+  beatriceBoss.breakFade = 1;
+  beatriceBoss.materializeTimer = 0;
+  beatriceBoss.asmoDropKickPending = false;
+  beatriceBoss.asmoDropKickTimer = 0;
+  beatriceBoss.asmoDropKickHit = false;
+  beatriceBoss.meleeKickHit = false;
+  beatriceBoss.meleeKickParried = false;
+  beatriceBoss.meleeKickParryFailed = false;
+  beatriceBoss.meleeKickParryFailFade = 0;
   runStats.bossesDefeated += 1;
-  const y = beatriceBoss.y - (beatriceBoss.hoverOffset || 0) - 58;
-  spawnBeatriceDefeatWisps(beatriceBoss.x, y);
+  const y = beatriceBoss.y - 58;
+  spawnBeatriceAfterimage(beatriceBoss.defeatTargetX, beatriceBoss.defeatTargetY, 0.7, beatriceFrames.defeatMove[0]);
   spawnGoldenButterflies(beatriceBoss.x, y, 48);
   screenShakeTimer = Math.max(screenShakeTimer, 0.28);
   screenFlashTimer = Math.max(screenFlashTimer, 0.12);
@@ -5068,6 +6292,9 @@ function finishBeatriceBossDefeat() {
   beatriceBoss.flavor = "idle";
   beatriceBoss.anim = 0;
   beatriceBoss.defeatTimer = 0;
+  beatriceBoss.defeatPhase = "";
+  beatriceBoss.defeatMoveTimer = 0;
+  beatriceBoss.defeatTrailTimer = 0;
   beatriceBoss.mechanic = "idle";
   beatriceBoss.breakFade = 0;
   waveMode = currentWaveMode();
@@ -5133,6 +6360,7 @@ function applySpecialBeam(dt) {
     enemy.hurt = 0.12;
     enemy.attack = 0;
     enemy.attackHasHit = false;
+    enemy.attackTelegraph = 0;
     enemy.facing = -player.facing;
     if (enemy.airborne) {
       extendEnemyLaunch(enemy, player.facing, "battler:specialBeam", 230, 75);
@@ -5170,6 +6398,33 @@ function updatePlayer(dt) {
   if (!player.konpeitoGlowPending) {
     player.konpeitoGlowTimer = Math.max(0, player.konpeitoGlowTimer - dt);
   }
+  if (player.wallSlamTimer > 0) {
+    const previous = player.wallSlamTimer;
+    player.wallSlamTimer = Math.max(0, player.wallSlamTimer - dt);
+    const t = 1 - player.wallSlamTimer / BEATRICE_MELEE_KICK_WALL_SLAM_TIME;
+    const ease = 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+    player.x = player.wallSlamStartX + (player.wallSlamTargetX - player.wallSlamStartX) * ease;
+    player.y = clamp(player.y, FLOOR_Y - 94, FLOOR_Y + 72);
+    player.vx = (player.wallSlamTargetX - player.wallSlamStartX) / BEATRICE_MELEE_KICK_WALL_SLAM_TIME;
+    player.vy = 0;
+    player.anim = Math.min(frames.hurt.length - 0.01, player.anim + dt * 16);
+    if (!player.wallSlamHit && previous > BEATRICE_MELEE_KICK_WALL_SLAM_TIME * 0.18 && player.wallSlamTimer <= BEATRICE_MELEE_KICK_WALL_SLAM_TIME * 0.18) {
+      player.wallSlamHit = true;
+      screenShakeTimer = Math.max(screenShakeTimer, 0.42);
+      burst(player.x, player.y - 94, "enemy");
+    }
+    if (player.wallSlamTimer <= 0) {
+      player.wallSlamHit = false;
+      player.wallSlamTargetX = 0;
+      player.wallSlamStartX = 0;
+      landLaunchedActor(player, 0.65);
+      player.action = "down";
+      player.attackLock = player.downTime;
+      player.anim = 0;
+    }
+    cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+    return;
+  }
   if (player.airborne) {
     player.vx = player.airVx;
     player.vy = 0;
@@ -5181,6 +6436,14 @@ function updatePlayer(dt) {
       landLaunchedActor(player, player.konpeitoGlowPending ? 0.35 : 0.55);
       player.action = "down";
       player.attackLock = player.downTime;
+      if (player.beatriceDropKickBouncePending) {
+        player.beatriceDropKickBounceTimer = BEATRICE_ASMO_DROP_KICK_BOUNCE_DELAY;
+        player.downTime = Math.max(player.downTime, BEATRICE_ASMO_DROP_KICK_BOUNCE_DELAY + 0.12);
+        player.attackLock = player.downTime;
+        player.anim = 0;
+        screenShakeTimer = Math.max(screenShakeTimer, 0.34);
+        burst(player.x, player.y - 38, "enemy");
+      }
     }
     cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
     return;
@@ -5188,6 +6451,19 @@ function updatePlayer(dt) {
   if (player.knockedDown) {
     player.vx = 0;
     player.vy = 0;
+    if (player.beatriceDropKickBouncePending) {
+      player.beatriceDropKickBounceTimer = Math.max(0, player.beatriceDropKickBounceTimer - dt);
+      if (player.beatriceDropKickBounceTimer <= 0) {
+        const bounceDirection = player.beatriceDropKickBounceDirection || player.facing || 1;
+        player.beatriceDropKickBouncePending = false;
+        player.beatriceDropKickBounceTimer = 0;
+        launchActor(player, bounceDirection, BEATRICE_ASMO_DROP_KICK_BOUNCE_LIFT, BEATRICE_ASMO_DROP_KICK_BOUNCE_DRIFT);
+        player.action = "down";
+        player.attackLock = 0.32;
+        cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+        return;
+      }
+    }
     player.downTime -= dt;
     player.anim = Math.min(frames.down.length - 0.01, player.anim + dt * 8);
     if (player.downTime <= 0) {
@@ -5223,6 +6499,21 @@ function updatePlayer(dt) {
     player.anim += dt * 14;
     player.attackLock = Math.max(0, player.attackLock - dt);
     if (player.attackLock <= 0) {
+      player.currentAttack = "";
+      setAction("idle");
+    }
+    cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+    return;
+  }
+  if (player.action === "beatriceMeleeParry") {
+    player.anim += dt * 12;
+    player.attackLock = Math.max(0, player.attackLock - dt);
+    const recoil = player.meleeParryRecoilVx || 0;
+    player.x = clamp(player.x + recoil * dt, 80, STAGE_W - 120);
+    player.vx = recoil;
+    player.meleeParryRecoilVx = recoil * Math.max(0, 1 - BEATRICE_MELEE_PARRY_RECOIL_DRAG * dt);
+    if (player.attackLock <= 0 || player.anim >= frames.beatriceMeleeParry.length) {
+      player.meleeParryRecoilVx = 0;
       player.currentAttack = "";
       setAction("idle");
     }
@@ -5267,6 +6558,8 @@ function updatePlayer(dt) {
   }
   if (player.attackLock <= 0) {
     player.goatParryCounter = false;
+    player.attackConsumesResolve = false;
+    player.pendingResolveAttack = false;
   }
   if (player.attackLock <= 0 && player.comboQueuedKind && player.comboTimer > 0) {
     const queuedKind = player.comboQueuedKind;
@@ -5312,7 +6605,7 @@ function updatePlayer(dt) {
       }
       if (player.runState === "running") {
         action = "run";
-        player.runCharge = clamp(player.runCharge + dt / 1.25, 0, 1);
+        player.runCharge = clamp(player.runCharge + dt / DASH_RUN_ACCEL_TIME, 0, 1);
         const easedCharge = player.runCharge * player.runCharge * (3 - 2 * player.runCharge);
         player.runTimer += dt;
         player.brakeBurstTimer = 0;
@@ -5561,15 +6854,21 @@ function updateEnemies(dt) {
     if (enemy.hurt > 0) {
       enemy.attack = 0;
       enemy.attackHasHit = false;
+      enemy.attackTelegraph = 0;
     }
-    enemy.attack = Math.max(0, enemy.attack - dt);
+    enemy.attackTelegraph = Math.max(0, (enemy.attackTelegraph || 0) - dt);
+    enemy.attack = Math.max(0, enemy.attack - (enemy.attackTelegraph > 0 ? 0 : dt));
     if (enemy.attack > 0) {
-      enemy.anim += dt * 10;
-      const attackFrames = frames[enemy.attackKind];
-      const frame = attackFrames?.[Math.floor(enemy.anim) % attackFrames.length];
-      const activeFrames = enemyAttackData[enemy.attackKind]?.activeFrames || [];
-      if (activeFrames.includes(frame) && !enemy.attackHasHit) {
-        enemy.attackHasHit = applyEnemyAttackHit(enemy);
+      if (enemy.attackTelegraph > 0) {
+        enemy.anim = 0;
+      } else {
+        enemy.anim += dt * 10;
+        const attackFrames = frames[enemy.attackKind];
+        const frame = attackFrames?.[Math.floor(enemy.anim) % attackFrames.length];
+        const activeFrames = enemyAttackData[enemy.attackKind]?.activeFrames || [];
+        if (activeFrames.includes(frame) && !enemy.attackHasHit) {
+          enemy.attackHasHit = applyEnemyAttackHit(enemy);
+        }
       }
     } else if (enemy.hurt > 0) {
       enemy.anim += dt * 14;
@@ -5591,6 +6890,7 @@ function updateEnemies(dt) {
       enemy.attackKind = Math.random() < 0.5 ? "punch" : "kick";
       enemy.attack = enemyAttackData[enemy.attackKind].lock;
       enemy.attackHasHit = false;
+      enemy.attackTelegraph = ENEMY_ATTACK_TELEGRAPH_TIME;
       enemy.anim = 0;
       enemy.cooldown = 0.92 + Math.random() * 0.5;
     }
@@ -5599,7 +6899,7 @@ function updateEnemies(dt) {
     wave += 1;
     runStats.wavesCompleted = Math.max(runStats.wavesCompleted, wave - 1);
     player.hp = clamp(player.hp + 16, 0, 100);
-    player.resolve = clamp(player.resolve + 34, 0, 100);
+    player.resolve = clamp(player.resolve + 34 * RESOLVE_GAIN_MULTIPLIER, 0, 100);
     spawnWave();
   }
 }
@@ -5819,24 +7119,75 @@ function updateKonpeito(dt) {
 function updateBeatrice(dt) {
   if (!beatriceBoss.active) return;
   if (beatriceBoss.flavor === "defeated") {
-    beatriceBoss.anim += dt * 5;
-    beatriceBoss.defeatTimer = Math.max(0, beatriceBoss.defeatTimer - dt);
-    if (beatriceBoss.defeatTimer <= 0) finishBeatriceBossDefeat();
+    if (beatriceBoss.defeatPhase === "move") {
+      beatriceBoss.anim += dt * 7.5;
+      beatriceBoss.defeatMoveTimer = Math.min(BEATRICE_DEFEAT_MOVE_TIME, beatriceBoss.defeatMoveTimer + dt);
+      const rawT = clamp(beatriceBoss.defeatMoveTimer / BEATRICE_DEFEAT_MOVE_TIME, 0, 1);
+      const t = rawT * rawT * (3 - 2 * rawT);
+      beatriceBoss.x = beatriceBoss.defeatStartX + (beatriceBoss.defeatTargetX - beatriceBoss.defeatStartX) * t;
+      beatriceBoss.y = beatriceBoss.defeatStartY + (beatriceBoss.defeatTargetY - beatriceBoss.defeatStartY) * t;
+      beatriceBoss.defeatTrailTimer -= dt;
+      if (beatriceBoss.defeatTrailTimer <= 0) {
+        beatriceBoss.defeatTrailTimer = 0.08;
+        const frame = beatriceFrames.defeatMove[Math.floor(beatriceBoss.anim) % beatriceFrames.defeatMove.length];
+        spawnBeatriceAfterimage(beatriceBoss.defeatTargetX, beatriceBoss.defeatTargetY, 0.48, frame);
+        spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - 64, 8);
+      }
+      if (rawT >= 1) {
+        beatriceBoss.x = beatriceBoss.defeatTargetX;
+        beatriceBoss.y = beatriceBoss.defeatTargetY;
+        beatriceBoss.facing = player.x >= beatriceBoss.x ? 1 : -1;
+        beatriceBoss.defeatPhase = "final";
+        beatriceBoss.anim = 0;
+        spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - 58, 38);
+      }
+    } else if (beatriceBoss.defeatPhase === "final") {
+      beatriceBoss.anim += dt * BEATRICE_DEFEAT_FINAL_SPEED;
+      if (beatriceBoss.anim >= beatriceFrames.defeatFinal.length - beatriceFrames.defeatLoop.length) {
+        beatriceBoss.defeatPhase = "fade";
+        beatriceBoss.anim = 0;
+        beatriceBoss.defeatTimer = BEATRICE_DEFEAT_DISSIPATE_TIME;
+        spawnBeatriceDefeatWisps(beatriceBoss.x, beatriceBoss.y - 66);
+        spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - 66, 56);
+      }
+    } else {
+      beatriceBoss.anim += dt * 7;
+      beatriceBoss.defeatTimer = Math.max(0, beatriceBoss.defeatTimer - dt);
+      beatriceBoss.defeatTrailTimer -= dt;
+      if (beatriceBoss.defeatTrailTimer <= 0) {
+        beatriceBoss.defeatTrailTimer = 0.12;
+        spawnGoldenButterflies(beatriceBoss.x + (Math.random() - 0.5) * 88, beatriceBoss.y - 70 + (Math.random() - 0.5) * 95, 10);
+      }
+      if (beatriceBoss.defeatTimer <= 0) finishBeatriceBossDefeat();
+    }
     return;
+  }
+  if (beatriceBoss.asmoDropKickPending) {
+    if (!player.airborne || player.knockedDown || state !== "playing") {
+      beatriceBoss.asmoDropKickPending = false;
+      beatriceBoss.asmoDropKickTimer = 0;
+    } else {
+      beatriceBoss.asmoDropKickTimer = Math.max(0, (beatriceBoss.asmoDropKickTimer || 0) - dt);
+      if (beatriceBoss.asmoDropKickTimer <= 0) {
+        startBeatriceAsmodeusDropKick();
+      }
+    }
   }
   if (beatriceBoss.flavor !== "teleportPrep"
     && beatriceBoss.flavor !== "teleportReady"
     && beatriceBoss.flavor !== "meleeKick"
+    && beatriceBoss.flavor !== "meleeParryHurt"
+    && beatriceBoss.flavor !== "meleeParryReturn"
+    && beatriceBoss.flavor !== "asmoDropKick"
     && beatriceBoss.flavor !== "barrierBreak"
     && beatriceBoss.flavor !== "dizzy"
     && beatriceBoss.flavor !== "hurt"
     && beatriceBoss.flavor !== "launched"
     && beatriceBoss.flavor !== "downed"
     && beatriceBoss.flavor !== "stunRecover") {
-    const playerScreenX = player.x - cameraX;
-    const desiredScreenX = playerScreenX < W * 0.5 ? W * 0.78 : W * 0.22;
-    const desiredX = clamp(cameraX + desiredScreenX, 90, STAGE_W - 90);
-    const desiredY = clamp(player.y - 54, FLOOR_Y - 132, FLOOR_Y - 16);
+    const target = beatriceIdleHoverPoint();
+    const desiredX = target.x;
+    const desiredY = target.y;
     const followSpeed = 360;
     const dx = desiredX - beatriceBoss.x;
     const dy = desiredY - beatriceBoss.y;
@@ -5871,6 +7222,7 @@ function updateBeatrice(dt) {
     if (beatriceBoss.materializeTimer > 0) {
       beatriceBoss.materializeTimer = Math.max(0, beatriceBoss.materializeTimer - dt);
     } else {
+      beatriceBoss.meleeKickParryFailFade = Math.max(0, (beatriceBoss.meleeKickParryFailFade || 0) - dt);
       beatriceBoss.anim += dt * 10;
       if (!beatriceBoss.meleeKickHit && beatriceMeleeKickFrame() >= 273) {
         beatriceBoss.meleeKickHit = true;
@@ -5882,7 +7234,71 @@ function updateBeatrice(dt) {
         beatriceBoss.materializeTimer = 0;
         beatriceBoss.meleeKickHit = false;
         beatriceBoss.meleeKickParried = false;
+        beatriceBoss.meleeKickParryFailed = false;
+        beatriceBoss.meleeKickParryFailFade = 0;
+        beatriceBoss.asmoDropKickHit = false;
         if (beatriceBoss.mechanic === "teleportAttack") completeBeatriceMechanic();
+      }
+    }
+  } else if (beatriceBoss.flavor === "meleeParryHurt") {
+    beatriceBoss.anim += dt * 12;
+    beatriceBoss.x = clamp(beatriceBoss.x + beatriceBoss.meleeParryRecoilVx * dt, 90, STAGE_W - 90);
+    beatriceBoss.meleeParryRecoilVx *= Math.max(0, 1 - BEATRICE_MELEE_PARRY_RECOIL_DRAG * dt);
+    if (beatriceBoss.anim >= Math.min(beatriceFrames.hurt.length, 5)) {
+      const target = beatriceIdleHoverPoint();
+      const frame = beatriceFrames.hurt[Math.min(beatriceFrames.hurt.length - 1, Math.floor(beatriceBoss.anim))] || beatriceFrames.hurt[0];
+      spawnBeatriceAfterimage(target.x, target.y, 0.52, frame);
+      spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 46);
+      spawnAsmodeusGoldenWisps(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 18);
+      beatriceBoss.x = target.x;
+      beatriceBoss.y = target.y;
+      beatriceBoss.hoverOffset = 76;
+      beatriceBoss.z = 0;
+      beatriceBoss.facing = player.x >= beatriceBoss.x ? 1 : -1;
+      beatriceBoss.flavor = "meleeParryReturn";
+      beatriceBoss.anim = 0;
+      beatriceBoss.materializeTimer = 0.38;
+      beatriceBoss.meleeParryRecoilVx = 0;
+      spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 48);
+      spawnAsmodeusGoldenWisps(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 18);
+    }
+  } else if (beatriceBoss.flavor === "meleeParryReturn") {
+    beatriceBoss.anim += dt * 6;
+    beatriceBoss.materializeTimer = Math.max(0, beatriceBoss.materializeTimer - dt);
+    if (beatriceBoss.materializeTimer <= 0) {
+      beatriceBoss.flavor = "idle";
+      beatriceBoss.anim = 0;
+      beatriceBoss.materializeTimer = 0;
+      beatriceBoss.meleeKickHit = false;
+      beatriceBoss.meleeKickParried = false;
+      beatriceBoss.meleeKickParryFailed = false;
+      beatriceBoss.meleeKickParryFailFade = 0;
+      if (beatriceBoss.mechanic === "teleportAttack") completeBeatriceMechanic();
+    }
+  } else if (beatriceBoss.flavor === "asmoDropKick") {
+    if (beatriceBoss.materializeTimer > 0) {
+      beatriceBoss.materializeTimer = Math.max(0, beatriceBoss.materializeTimer - dt);
+    } else {
+      beatriceBoss.anim += dt * 13;
+      const frame = beatriceFrames.asmoDropKick[Math.min(beatriceFrames.asmoDropKick.length - 1, Math.floor(beatriceBoss.anim))];
+      if (!beatriceBoss.asmoDropKickHit && frame >= BEATRICE_ASMO_DROP_KICK_ACTIVE_FRAME) {
+        beatriceBoss.asmoDropKickHit = true;
+        applyBeatriceAsmodeusDropKickHit();
+      }
+      if (beatriceBoss.anim >= beatriceFrames.asmoDropKick.length) {
+        spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 54, 36);
+        const playerScreenX = player.x - cameraX;
+        const desiredScreenX = playerScreenX < W * 0.5 ? W * 0.78 : W * 0.22;
+        beatriceBoss.x = clamp(cameraX + desiredScreenX, 90, STAGE_W - 90);
+        beatriceBoss.y = clamp(player.y - 54, FLOOR_Y - 132, FLOOR_Y - 16);
+        beatriceBoss.hoverOffset = 76;
+        beatriceBoss.z = 0;
+        beatriceBoss.flavor = "idle";
+        beatriceBoss.anim = 0;
+        beatriceBoss.materializeTimer = 0;
+        beatriceBoss.asmoDropKickHit = false;
+        beatriceBoss.facing = player.x >= beatriceBoss.x ? 1 : -1;
+        spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 54, 36);
       }
     }
   } else if (beatriceBoss.flavor === "barrierBreak") {
@@ -5940,6 +7356,7 @@ function updateBeatrice(dt) {
   if (state !== "playing") return;
   updateBeatriceRingAttack(dt);
   updateBeatriceGoatRush(dt);
+  updateBeatriceTowerVolley(dt);
   if (beatriceBoss.rewardStakePending && beatriceBoss.flavor === "idle") {
     beatriceBoss.rewardStakePending = false;
     startBeatriceStakeCast();
@@ -5957,24 +7374,10 @@ function updateBeatriceRingAttack(dt) {
     ring.timer += dt;
     if (!ring.detonated && ring.timer >= ring.detonateAt) {
       ring.detonated = true;
-      const dx = player.x - ring.x;
-      const dy = (player.y - ring.y) / 0.42;
-      const inRing = Math.hypot(dx, dy) <= ring.radius;
-      if (inRing && !isPlayerInvulnerable() && !player.airborne && !player.knockedDown) {
-        const direction = Math.sign(player.x - ring.x) || player.facing || 1;
-        damagePlayer(BEATRICE_RING_ATTACK_DAMAGE);
-        player.invuln = 0.45;
-        player.action = "down";
-        player.attackLock = 0;
-        player.attackLungeRemaining = 0;
-        launchActor(player, direction, BEATRICE_RING_ATTACK_LIFT, BEATRICE_RING_ATTACK_DRIFT);
-        resetPlayerCombo();
-        if (player.hp <= 0) defeatPlayer();
-      }
-      screenShakeTimer = Math.max(screenShakeTimer, 0.16);
-      beatriceStakeShockwaves.push({ x: ring.x, y: ring.y, radius: ring.radius, life: 0.42, max: 0.42, color: "red" });
+      ring.leviathanSpawned = true;
+      spawnLeviathanSlash(ring.x, ring.y, ring.radius);
     }
-    if (!ring.detonated) allDone = false;
+    if (!ring.detonated || leviathanAttacks.length > 0) allDone = false;
   }
   if (allDone) finishBeatriceRingAttack();
 }
@@ -5994,7 +7397,8 @@ function spawnBeatriceStake() {
     targetY: player.y,
     angle: 0,
     parryWindow: 0,
-    parried: false
+    parried: false,
+    playerGroundedAtThrow: !player.airborne && !player.knockedDown
   });
 }
 
@@ -6022,7 +7426,9 @@ function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
 }
 
 function beatriceStakeRicochetSpeed(stake) {
-  return stake.bounces < 4 ? BEATRICE_STAKE_FAST_RICOCHET_SPEED : BEATRICE_STAKE_RICOCHET_SPEED;
+  if (stake.bounces <= 4) return BEATRICE_STAKE_FAST_RICOCHET_SPEED;
+  if (stake.bounces === BEATRICE_STAKE_BOUNCES - 1) return BEATRICE_STAKE_PENULTIMATE_RICOCHET_SPEED;
+  return BEATRICE_STAKE_RICOCHET_SPEED;
 }
 
 function forceStakeTowardCeiling(stake) {
@@ -6063,6 +7469,13 @@ function beatriceStakeDistanceToImpact(stake) {
 
 function playerInBeatriceStakeReticle(stake) {
   return Math.hypot(player.x - stake.targetX, player.y - stake.targetY) <= BEATRICE_STAKE_PARRY_RADIUS;
+}
+
+function beatriceStakeGroundShockwaveHitsPlayer(stake) {
+  if (!stake.playerGroundedAtThrow || player.airborne || player.knockedDown || isPlayerInvulnerable()) return false;
+  const dx = player.x - stake.targetX;
+  const dy = (player.y - stake.targetY) / 0.34;
+  return Math.hypot(dx, dy) <= BEATRICE_STAKE_RETICLE_RADIUS;
 }
 
 function beatriceStakeParryReady(stake) {
@@ -6119,7 +7532,7 @@ function updateBeatriceStakes(dt) {
       stake.y += stake.vy * dt;
       stake.parryWindow = beatriceStakeParryReady(stake) ? BEATRICE_STAKE_PARRY_WINDOW : 0;
       if (beatriceStakeDistanceToImpact(stake) <= 34) {
-        const threatenedPlayer = playerInBeatriceStakeReticle(stake);
+        const threatenedPlayer = playerInBeatriceStakeReticle(stake) || beatriceStakeGroundShockwaveHitsPlayer(stake);
         beatriceStakeShockwaves.push({ x: stake.targetX, y: stake.targetY, life: BEATRICE_STAKE_SHOCKWAVE_TIME, max: BEATRICE_STAKE_SHOCKWAVE_TIME });
         spawnGoldenSparkles(stake.targetX, stake.targetY - 42, 22);
         if (threatenedPlayer) triggerAsmodeusStakeHit(stake);
@@ -6185,6 +7598,7 @@ function updateBeatriceStakes(dt) {
   }
   for (let i = asmodeusAttacks.length - 1; i >= 0; i--) {
     const attack = asmodeusAttacks[i];
+    attack.age = (attack.age || 0) + dt;
     attack.anim += dt * 9.5;
     attack.life -= dt;
     if (!attack.hit && attack.anim >= 1.6) {
@@ -6192,7 +7606,89 @@ function updateBeatriceStakes(dt) {
       applyAsmodeusUppercutHit(attack);
       screenShakeTimer = Math.max(screenShakeTimer, 0.12);
     }
+    if (!attack.exitSpawned && (attack.life <= 0.18 || attack.anim >= 3.35)) {
+      attack.exitSpawned = true;
+      spawnGoldenButterflies(attack.x, attack.y - 122, 28);
+      spawnAsmodeusGoldenWisps(attack.x, attack.y - 104, 12);
+    }
     if (attack.life <= 0 || attack.anim >= 4) asmodeusAttacks.splice(i, 1);
+  }
+  for (let i = beelzebubAttacks.length - 1; i >= 0; i--) {
+    const attack = beelzebubAttacks[i];
+    attack.age = (attack.age || 0) + dt;
+    attack.anim += dt * BEELZEBUB_DROP_SLASH_ANIM_SPEED;
+    attack.life -= dt;
+    const frame = beelzebubFrames[Math.min(beelzebubFrames.length - 1, Math.floor(attack.anim))];
+    if (!attack.hit && frame >= BEELZEBUB_DROP_SLASH_ACTIVE_FRAME) {
+      attack.hit = true;
+      applyBeelzebubDropSlashHit(attack);
+    }
+    if (!attack.exitSpawned && (attack.life <= 0.18 || attack.anim >= beelzebubFrames.length - 1.2)) {
+      attack.exitSpawned = true;
+      spawnGoldenButterflies(attack.x, attack.y - (attack.z || BEATRICE_ASMO_DROP_KICK_HOVER) - 44, 34);
+      spawnAsmodeusGoldenWisps(attack.x, attack.y - (attack.z || BEATRICE_ASMO_DROP_KICK_HOVER) - 44, 14);
+    }
+    if (attack.life <= 0 || attack.anim >= beelzebubFrames.length) beelzebubAttacks.splice(i, 1);
+  }
+  for (let i = leviathanAttacks.length - 1; i >= 0; i--) {
+    const attack = leviathanAttacks[i];
+    attack.age += dt;
+    attack.anim += dt * LEVIATHAN_SLASH_ANIM_SPEED;
+    attack.life -= dt;
+    const frame = leviathanFrames[Math.min(leviathanFrames.length - 1, Math.floor(attack.anim))];
+    if (!attack.hit && frame >= LEVIATHAN_SLASH_ACTIVE_FRAME) {
+      attack.hit = true;
+      applyLeviathanSlashHit(attack);
+    }
+    if (!attack.exitSpawned && (attack.life <= 0.18 || attack.anim >= leviathanFrames.length - 1.1)) {
+      attack.exitSpawned = true;
+      spawnGoldenButterflies(attack.x, attack.y - 70, 24);
+      spawnAsmodeusGoldenWisps(attack.x, attack.y - 54, 10);
+    }
+    if (attack.life <= 0 || attack.anim >= leviathanFrames.length) leviathanAttacks.splice(i, 1);
+  }
+  for (let i = satanAttacks.length - 1; i >= 0; i--) {
+    const attack = satanAttacks[i];
+    attack.age += dt;
+    attack.anim += dt * SATAN_AERIAL_ANIM_SPEED;
+    attack.life -= dt;
+    const frame = satanFrames[Math.min(satanFrames.length - 1, Math.floor(attack.anim))];
+    if (!attack.hit && frame >= SATAN_AERIAL_ACTIVE_FRAME) {
+      attack.hit = true;
+      applySatanAerialLaunchHit(attack);
+    }
+    if (!attack.exitSpawned && (attack.life <= 0.18 || attack.anim >= satanFrames.length - 1.1)) {
+      attack.exitSpawned = true;
+      spawnGoldenButterflies(attack.x, attack.y - (attack.z || SATAN_AERIAL_HOVER) - 28, 24);
+      spawnAsmodeusGoldenWisps(attack.x, attack.y - (attack.z || SATAN_AERIAL_HOVER) - 24, 10);
+    }
+    if (attack.life <= 0 || attack.anim >= satanFrames.length) satanAttacks.splice(i, 1);
+  }
+  for (let i = belphegorAttacks.length - 1; i >= 0; i--) {
+    const attack = belphegorAttacks[i];
+    if (attack.delay > 0) {
+      attack.delay = Math.max(0, attack.delay - dt);
+      if (attack.delay > 0) continue;
+    }
+    if (!attack.appeared) {
+      attack.appeared = true;
+      spawnGoldenButterflies(attack.x, attack.y - (attack.z || BELPHEGOR_SLAM_HOVER) - 28, 28);
+      spawnAsmodeusGoldenWisps(attack.x, attack.y - (attack.z || BELPHEGOR_SLAM_HOVER) - 24, 12);
+    }
+    attack.age += dt;
+    attack.anim += dt * BELPHEGOR_SLAM_ANIM_SPEED;
+    attack.life -= dt;
+    const frame = belphegorFrames[Math.min(belphegorFrames.length - 1, Math.floor(attack.anim))];
+    if (!attack.hit && frame >= BELPHEGOR_SLAM_ACTIVE_FRAME) {
+      attack.hit = true;
+      applyBelphegorGroundBounceSlamHit(attack);
+    }
+    if (!attack.exitSpawned && (attack.life <= 0.18 || attack.anim >= belphegorFrames.length - 1.1)) {
+      attack.exitSpawned = true;
+      spawnGoldenButterflies(attack.x, attack.y - (attack.z || BELPHEGOR_SLAM_HOVER) - 24, 24);
+      spawnAsmodeusGoldenWisps(attack.x, attack.y - (attack.z || BELPHEGOR_SLAM_HOVER) - 20, 10);
+    }
+    if (attack.life <= 0 || attack.anim >= belphegorFrames.length) belphegorAttacks.splice(i, 1);
   }
 }
 
@@ -6272,6 +7768,7 @@ function updateLambda(dt) {
     } else {
       lambdaCompanion.state = "idle";
       lambdaCompanion.anim = 0;
+      lambdaCompanion.konpeitoCharge = 0;
       lambdaCompanion.konpeitoTimer = LAMBDA_KONPEITO_INTERVAL;
     }
   } else if (lambdaCompanion.state === "konpeitoKnockdown") {
@@ -6286,24 +7783,21 @@ function updateLambda(dt) {
       fireLambdaKonpeito();
     }
     if (lambdaCompanion.anim >= lambdaFrames.konpeitoCast.length) {
-      if (lambdaCompanion.queuedKonpeito && nearestEnemyTo(lambdaCompanion.x, lambdaCompanion.y)) {
-        lambdaCompanion.queuedKonpeito = false;
+      if ((lambdaCompanion.konpeitoCharge || 0) >= 100 && nearestEnemyTo(lambdaCompanion.x, lambdaCompanion.y)) {
+        lambdaCompanion.konpeitoCharge = Math.max(0, (lambdaCompanion.konpeitoCharge || 0) - 100);
+        lambdaCompanion.konpeitoTimer = companionChargeCooldown(lambdaCompanion.konpeitoCharge, LAMBDA_KONPEITO_INTERVAL);
         lambdaCompanion.anim = 0;
         lambdaCompanion.castHasFired = false;
-        lambdaCompanion.konpeitoTimer = LAMBDA_KONPEITO_INTERVAL;
         return;
       }
       lambdaCompanion.queuedKonpeito = false;
       lambdaCompanion.state = "idle";
       lambdaCompanion.anim = 0;
-      lambdaCompanion.konpeitoTimer = LAMBDA_KONPEITO_INTERVAL;
       lambdaCompanion.castHasFired = false;
     }
   } else {
-    if (state === "playing" && player.konpeitoActive) {
-      lambdaCompanion.konpeitoTimer = Math.max(0, lambdaCompanion.konpeitoTimer - dt);
-      if (lambdaCompanion.konpeitoTimer <= 0 && startLambdaKonpeitoCast()) return;
-    }
+    updateLambdaKonpeitoCharge(dt);
+    if ((lambdaCompanion.konpeitoCharge || 0) >= 100 && startLambdaKonpeitoCast()) return;
     const followX = clamp(player.x - player.facing * 104, 90, STAGE_W - 130);
     const followY = clamp(player.y + 22, FLOOR_Y - 94, FLOOR_Y + 72);
     const nearest = nearestEnemyTo(lambdaCompanion.x, lambdaCompanion.y);
@@ -6432,6 +7926,7 @@ function updateBernkastel(dt) {
       if (!target) {
         bernCompanion.state = "idle";
         bernCompanion.anim = 0;
+        bernCompanion.crystalChargeGauge = Math.max(100, bernCompanion.crystalChargeGauge || 100);
         bernCompanion.crystalTimer = 0;
         return;
       }
@@ -6472,13 +7967,13 @@ function updateBernkastel(dt) {
     }
     if (bernCompanion.anim >= bernFrames.crystalCharge.length) {
       if (!bernCompanion.crystalHasFired) fireBernColumnCrystals();
-      if (bernCompanion.queuedCrystal && beginQueuedBernCrystalBarrage()) return;
+      if ((bernCompanion.crystalChargeGauge || 0) >= 100 && beginQueuedBernCrystalBarrage()) return;
       bernCompanion.state = "teleportBackOut";
       bernCompanion.anim = 0;
       bernCompanion.crystalHasFired = false;
     }
   } else if (bernCompanion.state === "teleportBackOut") {
-    if (bernCompanion.queuedCrystal && beginQueuedBernCrystalBarrage()) return;
+    if ((bernCompanion.crystalChargeGauge || 0) >= 100 && beginQueuedBernCrystalBarrage()) return;
     const strongest = strongestEnemyTo(bernCompanion.x, bernCompanion.y);
     if (strongest) bernCompanion.facing = strongest.x >= bernCompanion.x ? 1 : -1;
     bernCompanion.anim += dt * BERN_TELEPORT_FRAME_SPEED;
@@ -6493,33 +7988,27 @@ function updateBernkastel(dt) {
     if (strongest) bernCompanion.facing = strongest.x >= bernCompanion.x ? 1 : -1;
     bernCompanion.anim += dt * BERN_TELEPORT_FRAME_SPEED;
     if (bernCompanion.anim >= bernFrames.teleportBackIn.length) {
-      if (bernCompanion.queuedCrystal) {
-        bernCompanion.queuedCrystal = false;
+      if ((bernCompanion.crystalChargeGauge || 0) >= 100) {
         startBernCrystalAttack(true);
         return;
       }
       bernCompanion.state = "idle";
       bernCompanion.anim = 0;
-      bernCompanion.crystalTimer = BERN_CRYSTAL_INTERVAL;
     }
   } else if (bernCompanion.state === "catFadeIn") {
     bernCompanion.facing = player.x >= bernCompanion.x ? 1 : -1;
     bernCompanion.anim += dt / BERN_CAT_FADE_TIME;
     if (bernCompanion.anim >= 1) {
-      if (bernCompanion.queuedCrystal) {
-        bernCompanion.queuedCrystal = false;
+      if ((bernCompanion.crystalChargeGauge || 0) >= 100) {
         startBernCrystalAttack(true);
         return;
       }
       bernCompanion.state = "idle";
       bernCompanion.anim = 0;
-      bernCompanion.crystalTimer = BERN_CRYSTAL_INTERVAL;
     }
   } else {
-    if (state === "playing" && player.plumTeaActive) {
-      bernCompanion.crystalTimer = Math.max(0, bernCompanion.crystalTimer - dt);
-      if (bernCompanion.crystalTimer <= 0 && startBernCrystalAttack()) return;
-    }
+    updateBernCrystalGauge(dt);
+    if ((bernCompanion.crystalChargeGauge || 0) >= 100 && startBernCrystalAttack()) return;
     const followX = clamp(player.x - player.facing * 132, 90, STAGE_W - 130);
     const followY = clamp(player.y - 56, FLOOR_Y - 116, FLOOR_Y + 10);
     const dx = followX - bernCompanion.x;
@@ -6599,6 +8088,8 @@ function update(dt) {
     updateKonpeitoDomeBursts(dt);
     updateSummonPillars(dt);
     updateLambdaGameOverDialogue(dt);
+    screenShakeTimer = Math.max(0, screenShakeTimer - dt);
+    screenFlashTimer = Math.max(0, screenFlashTimer - dt);
     healthBar.style.width = `${player.hp}%`;
     updateResolveHud(dt);
     scoreLabel.textContent = `Score ${score}`;
@@ -6633,6 +8124,21 @@ function update(dt) {
     waveLabel.textContent = currentWaveLabel();
     scoreLabel.textContent = `Score ${score}`;
     if (lambdaRetaliation.timer <= 0) startGame();
+    return;
+  }
+  if (state === "bossBlessing") {
+    resetAttackHolds();
+    updateParticles(dt);
+    updateKonpeitoGeysers(dt);
+    updateSummonPillars(dt);
+    screenFlashTimer = Math.max(0, screenFlashTimer - dt);
+    screenShakeTimer = Math.max(0, screenShakeTimer - dt);
+    messageTimer = Math.max(0, messageTimer - dt);
+    healthBar.style.width = `${player.hp}%`;
+    updateResolveHud(dt);
+    waveLabel.textContent = currentWaveLabel();
+    scoreLabel.textContent = `Score ${score}`;
+    updateResolveDuoOutline();
     return;
   }
   if (state === "paused") {
@@ -6687,7 +8193,10 @@ function update(dt) {
     drawBeatriceStakeReticles();
     drawBeatriceBossWalls();
     drawBeatriceRingTelegraphs();
+    drawBeatriceMeleeKickTelegraph();
     drawBeatriceGoatRushTelegraphs();
+    drawBeatriceTowerVolleyTelegraphs();
+    drawBeatriceTowerVolleys();
     drawActors({ skipPlayer: true, skipBeatrice: true });
     drawKonpeitoGeysers(true);
     drawDuoAttackEffects();
@@ -6699,6 +8208,7 @@ function update(dt) {
     drawKonpeitoDomeBursts(true);
     drawBeatriceStakeShockwaves();
     drawKonpeitoShots();
+    drawBeatriceTowerVolleyMissiles();
     drawBeatriceStakeSparkles();
     drawBeatriceDefeatWisps();
     drawParticles();
@@ -6858,15 +8368,19 @@ function drawSprite(actor, frameId, scale, enemy = false, action = "") {
   ctx.scale(-actor.facing, 1);
   if (enemy) {
     const spawning = actor.spawnGrace > 0;
+    const telegraphing = (actor.attackTelegraph || 0) > 0;
+    const tellPulse = Math.sin(performance.now() / 48) > 0;
     const alpha = spawning
       ? (Math.sin(performance.now() / 62) > 0 ? 0.28 : 0.76)
-      : actor.hurt > 0 ? 0.78 : 0.92;
+      : actor.hurt > 0 ? 0.78 : telegraphing && tellPulse ? 0.7 : 0.92;
     ctx.globalAlpha *= alpha;
     ctx.filter = actor.hurt > 0
       ? "sepia(1) saturate(4) hue-rotate(320deg) brightness(1.35)"
       : spawning
         ? "brightness(1.45) saturate(0.55) hue-rotate(135deg)"
-        : "grayscale(1) brightness(0.74) contrast(1.06)";
+        : telegraphing
+          ? `grayscale(1) brightness(${tellPulse ? 1.05 : 0.78}) contrast(1.12) sepia(0.35) saturate(1.8) hue-rotate(310deg)`
+          : "grayscale(1) brightness(0.74) contrast(1.06)";
   } else if (actor.invuln > 0) {
     ctx.globalAlpha = Math.sin(performance.now() / 45) > 0 ? 0.58 : 1;
   }
@@ -6986,29 +8500,88 @@ function drawBernHazardParryRings(x, y) {
 }
 
 function drawBeatriceMeleeKickParryRings(x, y) {
-  if (!beatriceMeleeKickParryIndicatorActive()) return;
+  const failed = Boolean(beatriceBoss.meleeKickParryFailed);
+  const failFade = failed ? clamp((beatriceBoss.meleeKickParryFailFade || 0) / BEATRICE_MELEE_KICK_PARRY_FAIL_FADE, 0, 1) : 1;
+  if (!failed && !beatriceMeleeKickParryIndicatorActive()) return;
+  if (failed && failFade <= 0) return;
   const timingRadius = beatriceMeleeKickParryRingRadius();
-  const ready = beatriceMeleeKickParryReady();
+  const ready = !failed && beatriceMeleeKickParryReady();
   const alpha = beatriceBoss.materializeTimer > 0 ? 0.35 : 1;
   ctx.save();
-  ctx.globalAlpha = alpha;
+  ctx.globalAlpha = alpha * failFade;
+  ctx.globalCompositeOperation = "lighter";
   ctx.lineWidth = 3;
-  ctx.strokeStyle = ready ? "rgba(255, 235, 92, 0.95)" : "rgba(255, 255, 255, 0.76)";
+  ctx.strokeStyle = failed ? "rgba(176, 176, 176, 0.64)" : ready ? "rgba(255, 235, 92, 0.95)" : "rgba(255, 255, 255, 0.76)";
   ctx.beginPath();
   ctx.arc(x, y - 74, BEATRICE_MELEE_KICK_PARRY_RING_RADIUS, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.strokeStyle = ready ? "rgba(255, 219, 65, 0.95)" : "rgba(255, 40, 58, 0.82)";
+  ctx.strokeStyle = failed ? "rgba(92, 92, 92, 0.72)" : ready ? "rgba(255, 219, 65, 0.95)" : "rgba(255, 40, 58, 0.82)";
   ctx.lineWidth = ready ? 5 : 4;
   ctx.beginPath();
   ctx.arc(x, y - 74, timingRadius, 0, Math.PI * 2);
   ctx.stroke();
-  if (ready) {
+  if (failed) {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = "rgba(218, 218, 218, 0.72)";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(x - 36, y - 110);
+    ctx.lineTo(x + 36, y - 38);
+    ctx.moveTo(x + 36, y - 110);
+    ctx.lineTo(x - 36, y - 38);
+    ctx.stroke();
+  } else if (ready) {
     ctx.globalCompositeOperation = "lighter";
     ctx.strokeStyle = "rgba(255, 244, 154, 0.72)";
     ctx.lineWidth = 8;
     ctx.beginPath();
     ctx.arc(x, y - 74, BEATRICE_MELEE_KICK_PARRY_RING_RADIUS + 4, 0, Math.PI * 2);
     ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawBeatriceMeleeKickTelegraph() {
+  if (!beatriceBoss.active || beatriceBoss.flavor !== "meleeKick" || beatriceBoss.meleeKickParried) return;
+  const frame = beatriceMeleeKickFrame();
+  const failFade = beatriceBoss.meleeKickParryFailed
+    ? clamp((beatriceBoss.meleeKickParryFailFade || 0) / BEATRICE_MELEE_KICK_PARRY_FAIL_FADE, 0, 1)
+    : 1;
+  if (beatriceBoss.meleeKickParryFailed && failFade <= 0) return;
+  if (!beatriceBoss.meleeKickParryFailed && frame > 273) return;
+  const zone = beatriceMeleeKickTelegraph();
+  const x = zone.x - cameraX;
+  const y = zone.y;
+  const activeT = beatriceBoss.meleeKickParryFailed
+    ? 1
+    : clamp(beatriceBoss.anim / Math.max(1, beatriceFrames.meleeKick.indexOf(273)), 0, 1);
+  const facing = beatriceBoss.facing || 1;
+  const playerInside = playerInBeatriceMeleeKickTelegraph();
+  const pulse = pulseValue(12);
+  ctx.save();
+  ctx.globalAlpha = failFade;
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = beatriceBoss.meleeKickParryFailed ? "rgba(84, 84, 84, 0.24)" : "rgba(78, 0, 14, 0.28)";
+  ctx.strokeStyle = beatriceBoss.meleeKickParryFailed
+    ? "rgba(174, 174, 174, 0.54)"
+    : playerInside
+      ? `rgba(255, 222, 83, ${0.58 + pulse * 0.24})`
+      : `rgba(255, 48, 68, ${0.5 + pulse * 0.18})`;
+  ctx.lineWidth = playerInside ? 4 : 2.5;
+  ctx.fillRect(x, y, zone.w, zone.h);
+  ctx.strokeRect(x, y, zone.w, zone.h);
+  ctx.fillStyle = beatriceBoss.meleeKickParryFailed
+    ? "rgba(150, 150, 150, 0.16)"
+    : `rgba(255, 70, 74, ${0.1 + activeT * 0.38})`;
+  if (facing < 0) {
+    ctx.fillRect(x + zone.w * (1 - activeT), y, zone.w * activeT, zone.h);
+  } else {
+    ctx.fillRect(x, y, zone.w * activeT, zone.h);
+  }
+  if (playerInside && !beatriceBoss.meleeKickParryFailed) {
+    ctx.strokeStyle = "rgba(255, 244, 155, 0.42)";
+    ctx.lineWidth = 8;
+    ctx.strokeRect(x - 3, y - 3, zone.w + 6, zone.h + 6);
   }
   ctx.restore();
 }
@@ -7120,6 +8693,48 @@ function drawGoatChargeTelegraph(enemy, fade = 1) {
   ctx.restore();
 }
 
+function drawBattlerEnemyAttackTelegraph(enemy, fade = 1) {
+  if (!enemy || enemy.type === "goat" || enemy.dead || enemy.spawnGrace > 0 || enemy.attack <= 0 || (enemy.attackTelegraph || 0) <= 0) return;
+  const t = 1 - clamp(enemy.attackTelegraph / ENEMY_ATTACK_TELEGRAPH_TIME, 0, 1);
+  const pulse = 0.5 + Math.sin(performance.now() / 62) * 0.5;
+  const alpha = fade * (0.28 + t * 0.24 + pulse * 0.1);
+  const baseX = enemy.x - cameraX + enemy.facing * 38;
+  const baseY = enemy.y;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = "rgba(82, 6, 12, 0.42)";
+  ctx.strokeStyle = `rgba(255, 78, 70, ${0.56 + pulse * 0.22})`;
+  ctx.lineWidth = 2;
+  ctx.translate(baseX, baseY);
+  ctx.scale(enemy.facing, 1);
+
+  if (enemy.attackKind === "kick") {
+    const r = ENEMY_KICK_TELEGRAPH_RADIUS;
+    ctx.beginPath();
+    ctx.moveTo(0, -r * ENEMY_KICK_TELEGRAPH_Y_SCALE);
+    ctx.ellipse(0, 0, r, r * ENEMY_KICK_TELEGRAPH_Y_SCALE, 0, -Math.PI / 2, Math.PI / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = `rgba(255, 88, 72, ${0.12 + t * 0.28})`;
+    ctx.beginPath();
+    ctx.moveTo(0, -r * ENEMY_KICK_TELEGRAPH_Y_SCALE * t);
+    ctx.ellipse(0, 0, r * t, r * ENEMY_KICK_TELEGRAPH_Y_SCALE * t, 0, -Math.PI / 2, Math.PI / 2);
+    ctx.closePath();
+    ctx.fill();
+  } else {
+    const range = ENEMY_PUNCH_TELEGRAPH_RANGE;
+    const depth = ENEMY_PUNCH_TELEGRAPH_DEPTH;
+    ctx.fillRect(0, -depth, range, depth * 2);
+    ctx.strokeRect(0, -depth, range, depth * 2);
+    ctx.fillStyle = `rgba(255, 88, 72, ${0.1 + t * 0.26})`;
+    ctx.fillRect(0, -depth, range * t, depth * 2);
+  }
+  ctx.restore();
+}
+
 function drawEnemy(enemy) {
   if (enemy.type === "goat") {
     drawGoatEnemy(enemy);
@@ -7139,6 +8754,7 @@ function drawEnemy(enemy) {
   const fade = enemy.dead ? clamp(enemy.fall / ENEMY_DEFEAT_FADE_DURATION, 0, 1) : 1;
   ctx.save();
   ctx.globalAlpha = fade;
+  drawBattlerEnemyAttackTelegraph(enemy, fade);
   drawActorShadow(enemy, 66);
   drawSprite(enemy, frame, 1.24, true, action);
   ctx.restore();
@@ -7351,29 +8967,147 @@ function drawBeatriceRingTelegraphs() {
 }
 
 function drawBeatriceGoatRushTelegraphs() {
-  if (!beatriceBoss.active || beatriceBoss.mechanic !== "goatRush" || beatriceBoss.goatRushSpawned) return;
-  const chargeT = clamp(beatriceBoss.goatRushTimer / BEATRICE_GOAT_RUSH_TELEGRAPH_TIME, 0, 1);
+  if (!beatriceBoss.active || beatriceBoss.mechanic !== "goatRush") return;
   const pulse = pulseValue(13);
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
   for (const lane of beatriceBoss.goatRushTelegraphs) {
-    const y = lane.y1;
-    const h = lane.y2 - lane.y1;
+    if (lane.spawned) continue;
+    const chargeT = clamp((beatriceBoss.goatRushTimer - lane.startAt) / BEATRICE_GOAT_RUSH_TELEGRAPH_TIME, 0, 1);
+    if (chargeT <= 0) continue;
+    const y = lane.y - GOAT_CHARGE_WIDTH * 0.5;
+    const h = GOAT_CHARGE_WIDTH;
+    const fullX = -20;
+    const fullW = W + 40;
+    const fillW = fullW * chargeT;
+    const fillX = lane.direction === 1 ? fullX : fullX + fullW - fillW;
     ctx.fillStyle = "rgba(74, 5, 12, 0.48)";
     ctx.strokeStyle = `rgba(255, 58, 54, ${0.52 + pulse * 0.24})`;
     ctx.lineWidth = 2;
-    ctx.fillRect(-20, y, W + 40, h);
-    ctx.strokeRect(-20, y, W + 40, h);
+    ctx.fillRect(fullX, y, fullW, h);
+    ctx.strokeRect(fullX, y, fullW, h);
     ctx.fillStyle = `rgba(255, 84, 76, ${0.16 + chargeT * 0.46})`;
-    ctx.fillRect(-20, y, (W + 40) * chargeT, h);
+    ctx.fillRect(fillX, y, fillW, h);
     ctx.strokeStyle = `rgba(255, 228, 214, ${0.22 + chargeT * 0.48})`;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(-20, y + h * 0.5);
-    ctx.lineTo(W + 20, y + h * 0.5);
+    ctx.moveTo(fillX, y + h * 0.5);
+    ctx.lineTo(fillX + fillW, y + h * 0.5);
     ctx.stroke();
+    ctx.fillStyle = `rgba(255, 225, 205, ${0.22 + chargeT * 0.38})`;
+    const arrowX = lane.direction === 1 ? fullX + 18 : fullX + fullW - 18;
+    const arrowDir = lane.direction;
+    ctx.beginPath();
+    ctx.moveTo(arrowX + arrowDir * 18, y + h * 0.5);
+    ctx.lineTo(arrowX - arrowDir * 10, y + h * 0.22);
+    ctx.lineTo(arrowX - arrowDir * 10, y + h * 0.78);
+    ctx.closePath();
+    ctx.fill();
   }
   ctx.restore();
+}
+
+function drawBeatriceTowerVolleyTelegraphs() {
+  if (!beatriceBoss.active || beatriceBoss.mechanic !== "towerVolley" || !beatriceTowerVolley.active) return;
+  const volley = beatriceTowerVolley;
+  const pulse = pulseValue(14);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const point of volley.points) {
+    if (point.struck) continue;
+    const pointT = clamp((volley.timer - point.delay + BEATRICE_TOWER_VOLLEY_TELEGRAPH_TIME) / BEATRICE_TOWER_VOLLEY_TELEGRAPH_TIME, 0, 1);
+    if (pointT <= 0) continue;
+    const x = point.x - cameraX;
+    const y = point.y;
+    const radius = BEATRICE_TOWER_VOLLEY_RADIUS;
+    ctx.fillStyle = "rgba(70, 0, 14, 0.24)";
+    ctx.strokeStyle = `rgba(255, 40, 58, ${0.42 + pulse * 0.16})`;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radius, radius * 0.45, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = `rgba(255, 70, 70, ${0.1 + pointT * 0.28})`;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radius * pointT, radius * 0.45 * pointT, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawBeatriceTowerVolleyMissiles() {
+  if (!beatriceTowerVolley.active) return;
+  const volley = beatriceTowerVolley;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  for (const missile of volley.missiles) {
+    const t = clamp(missile.life / missile.max, 0, 1);
+    const opacity = clamp(t * 3.2, 0, 1);
+    const trail = missile.trail || [];
+    for (let i = 1; i < trail.length; i++) {
+      const a = trail[i - 1];
+      const b = trail[i];
+      const ageT = i / Math.max(1, trail.length - 1);
+      ctx.strokeStyle = `rgba(255, 20, 42, ${(0.14 + ageT * 0.68) * opacity})`;
+      ctx.lineWidth = (2.2 + ageT * 7.4) * opacity;
+      ctx.beginPath();
+      ctx.moveTo(a.x - cameraX, a.y);
+      ctx.lineTo(b.x - cameraX, b.y);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255, 226, 205, ${(0.08 + ageT * 0.44) * opacity})`;
+      ctx.lineWidth = (0.9 + ageT * 2.1) * opacity;
+      ctx.beginPath();
+      ctx.moveTo(a.x - cameraX, a.y);
+      ctx.lineTo(b.x - cameraX, b.y);
+      ctx.stroke();
+    }
+    const head = trail[trail.length - 1];
+    if (head) {
+      ctx.fillStyle = `rgba(255, 232, 205, ${0.24 + opacity * 0.72})`;
+      ctx.beginPath();
+      ctx.ellipse(head.x - cameraX, head.y, 5.8 * opacity, 5.8 * opacity, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  ctx.restore();
+}
+
+function drawBeatriceTowerVolleys() {
+  if (!beatriceTowerVolley.active) return;
+  const img = effectImages.beatriceTowers;
+  const volley = beatriceTowerVolley;
+  if (!img) return;
+  const sw = img.width / 2;
+  const sh = img.height;
+  const sx = sw;
+  const drawH = sh * BEATRICE_TOWER_VOLLEY_TOWER_SCALE;
+  const drawW = sw * BEATRICE_TOWER_VOLLEY_TOWER_SCALE;
+  const firing = volley.phase === "fire";
+  const pulse = pulseValue(18);
+  for (const tower of volley.towers) {
+    const rise = clamp((tower.emerge || 0) * (1 - (tower.retreat || 0)), 0, 1);
+    if (rise <= 0) continue;
+    const shakePower = (volley.phase === "emerge" || volley.phase === "retreat") ? 5 : 1.8;
+    const shake = Math.sin(performance.now() / 30 + tower.seed) * shakePower;
+    const x = tower.screenX - drawW / 2 + shake;
+    const baseY = tower.y + Math.cos(performance.now() / 38 + tower.seed) * (shakePower * 0.35);
+    const y = baseY - drawH * rise;
+    ctx.save();
+    if (firing && tower.wave === volley.wave) {
+      ctx.globalCompositeOperation = "lighter";
+      ctx.shadowBlur = 24 + pulse * 18;
+      ctx.shadowColor = "rgba(255, 18, 42, 0.92)";
+      ctx.globalAlpha = 0.45 + pulse * 0.25;
+      ctx.fillStyle = "rgba(255, 0, 34, 0.34)";
+      ctx.beginPath();
+      ctx.ellipse(tower.screenX, baseY - drawH * 0.48 * rise, drawW * 0.62, drawH * 0.42 * rise, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.drawImage(img, sx, 0, sw, sh, x, y, drawW, drawH);
+    ctx.restore();
+  }
 }
 
 function drawPlayer() {
@@ -7620,12 +9354,19 @@ function beatriceFrameListForFlavor(flavor) {
   if (flavor === "puff") return beatriceFrames.puff;
   if (flavor === "teleportPrep" || flavor === "teleportReady") return beatriceFrames.teleportPrep;
   if (flavor === "meleeKick") return beatriceFrames.meleeKick;
+  if (flavor === "meleeParryHurt") return beatriceFrames.hurt;
+  if (flavor === "meleeParryReturn") return beatriceFrames.idle;
+  if (flavor === "asmoDropKick") return beatriceFrames.asmoDropKick;
   if (flavor === "barrierBreak") return beatriceFrames.barrierBreak;
   if (flavor === "dizzy") return beatriceFrames.dizzy;
   if (flavor === "hurt") return beatriceFrames.hurt;
   if (flavor === "launched") return beatriceBoss.vz > 0 ? beatriceFrames.launchedUp : beatriceFrames.launchedFall;
   if (flavor === "downed" || flavor === "stunRecover") return beatriceFrames.downed;
-  if (flavor === "defeated") return beatriceFrames.idle;
+  if (flavor === "defeated") {
+    if (beatriceBoss.defeatPhase === "move") return beatriceFrames.defeatMove;
+    if (beatriceBoss.defeatPhase === "fade") return beatriceFrames.defeatLoop;
+    return beatriceFrames.defeatFinal;
+  }
   return beatriceFrames.idle;
 }
 
@@ -7648,13 +9389,19 @@ function drawBeatriceFrame(frame, x, y, facing, alpha = 1, gold = false) {
   }
   ctx.translate(x, y);
   ctx.scale(-facing, 1);
+  const anchorX = beatriceBoss.flavor === "defeated" && beatriceBoss.defeatPhase === "fade"
+    ? beatriceDefeatLoopAnchors[frame]
+    : null;
+  const drawX = anchorX !== null && anchorX !== undefined
+    ? -(anchorX - bounds[0]) * scale
+    : -drawW * 0.5;
   ctx.drawImage(
     img,
     bounds[0],
     bounds[1],
     sourceW,
     sourceH,
-    -drawW * 0.5,
+    drawX,
     -drawH + 18 * scale,
     drawW,
     drawH
@@ -7684,7 +9431,7 @@ function drawBeatrice() {
   const list = beatriceFrameListForFlavor(beatriceBoss.flavor);
   const frame = list[Math.min(list.length - 1, Math.floor(beatriceBoss.anim) % list.length)];
   const x = Math.round(beatriceBoss.x - cameraX);
-  const grounded = ["dizzy", "hurt", "launched", "downed", "stunRecover"].includes(beatriceBoss.flavor);
+  const grounded = ["dizzy", "hurt", "launched", "downed", "stunRecover", "defeated"].includes(beatriceBoss.flavor);
   const hover = beatriceBoss.hoverOffset + (grounded ? 0 : Math.sin(performance.now() / 430) * 4);
   const y = Math.round(beatriceBoss.y - hover - (beatriceBoss.z || 0));
 
@@ -7692,15 +9439,16 @@ function drawBeatrice() {
   const recoveryAlpha = beatriceBoss.flavor === "stunRecover"
     ? clamp(beatriceBoss.recoveryTimer / BEATRICE_STUN_RECOVERY_TIME, 0, 1)
     : 1;
-  const defeatedAlpha = beatriceBoss.flavor === "defeated"
+  const defeatedAlpha = beatriceBoss.flavor === "defeated" && beatriceBoss.defeatPhase === "fade"
     ? clamp(beatriceBoss.defeatTimer / BEATRICE_DEFEAT_DISSIPATE_TIME, 0, 1)
     : 1;
   const baseAlpha = beatriceBoss.flavor === "barrierBreak"
     ? clamp(beatriceBoss.breakFade, 0, 1)
     : recoveryAlpha * defeatedAlpha;
   drawBeatriceFrame(frame, x, y, beatriceBoss.facing, baseAlpha);
-  if (beatriceBoss.flavor === "meleeKick" && beatriceBoss.materializeTimer > 0) {
-    const alpha = clamp(beatriceBoss.materializeTimer / 0.32, 0, 1);
+  if ((beatriceBoss.flavor === "meleeKick" || beatriceBoss.flavor === "meleeParryReturn" || beatriceBoss.flavor === "asmoDropKick") && beatriceBoss.materializeTimer > 0) {
+    const maxAppear = beatriceBoss.flavor === "asmoDropKick" ? BEATRICE_ASMO_DROP_KICK_APPEAR_TIME : beatriceBoss.flavor === "meleeParryReturn" ? 0.38 : 0.32;
+    const alpha = clamp(beatriceBoss.materializeTimer / maxAppear, 0, 1);
     drawBeatriceFrame(frame, x, y, beatriceBoss.facing, alpha, true);
   } else if (beatriceBoss.flavor === "barrierBreak") {
     const fadeT = 1 - clamp(beatriceBoss.breakFade, 0, 1);
@@ -7713,7 +9461,9 @@ function drawBeatrice() {
     const goldAlpha = (1 - recoveryAlpha) * 0.7;
     if (goldAlpha > 0) drawBeatriceFrame(frame, x, y, beatriceBoss.facing, goldAlpha, true);
   } else if (beatriceBoss.flavor === "defeated") {
-    const goldAlpha = Math.sin((1 - defeatedAlpha) * Math.PI) * 0.82;
+    const moveAlpha = beatriceBoss.defeatPhase === "move" ? 0.45 + pulseValue(12) * 0.28 : 0;
+    const fadePulse = beatriceBoss.defeatPhase === "fade" ? Math.sin((1 - defeatedAlpha) * Math.PI) * 0.82 : 0;
+    const goldAlpha = Math.max(moveAlpha, fadePulse);
     if (goldAlpha > 0) drawBeatriceFrame(frame, x, y, beatriceBoss.facing, goldAlpha, true);
   }
   drawBeatriceMeleeKickParryRings(x, y);
@@ -7744,9 +9494,7 @@ function drawBernBarrageArcCrystals() {
 function drawBernCooldownCrystals(x, y, frontLayer = true) {
   if (!player.plumTeaActive || player.plumTeaBurned || !bernCompanion.summoned) return;
   if (bernCompanion.state !== "idle" && bernCompanion.state !== "move" && bernCompanion.state !== "moveBack") return;
-  const progress = bernCompanion.state === "teleportOut"
-    ? 1
-    : 1 - clamp(bernCompanion.crystalTimer / BERN_CRYSTAL_INTERVAL, 0, 1);
+  const progress = clamp((bernCompanion.crystalChargeGauge || 0) / 100, 0, 1);
   const count = Math.min(5, Math.floor(progress * 5.02));
   if (count <= 0) return;
   const pulse = pulseValue(9);
@@ -7775,6 +9523,10 @@ function drawActors(options = {}) {
   const actors = [
     { type: "player", y: player.y },
     ...asmodeusAttacks.map((attack) => ({ type: "asmo", y: attack.y + 0.5, attack })),
+    ...beelzebubAttacks.map((attack) => ({ type: "beelzebub", y: attack.y + 0.6, attack })),
+    ...leviathanAttacks.map((attack) => ({ type: "leviathan", y: attack.y + 0.55, attack })),
+    ...satanAttacks.map((attack) => ({ type: "satan", y: attack.y + 0.58, attack })),
+    ...belphegorAttacks.map((attack) => ({ type: "belphegor", y: attack.y + 0.59, attack })),
     ...(beatriceBoss.active ? [{ type: "beatrice", y: beatriceBoss.y }] : []),
     ...(lambdaCompanion.active ? [{ type: "lambda", y: lambdaCompanion.y }] : []),
     ...(bernCompanion.active ? [{ type: "bern", y: bernCompanion.y }] : []),
@@ -7800,6 +9552,14 @@ function drawActors(options = {}) {
       drawBeatrice();
     } else if (actor.type === "asmo") {
       drawAsmodeusUppercut(actor.attack);
+    } else if (actor.type === "beelzebub") {
+      drawBeelzebubDropSlash(actor.attack);
+    } else if (actor.type === "leviathan") {
+      drawLeviathanSlash(actor.attack);
+    } else if (actor.type === "satan") {
+      drawSatanAerialLaunch(actor.attack);
+    } else if (actor.type === "belphegor") {
+      drawBelphegorGroundBounceSlam(actor.attack);
     } else {
       drawEnemy(actor.enemy);
     }
@@ -7815,11 +9575,170 @@ function drawAsmodeusUppercut(attack) {
   const drawW = img.width * scale;
   const drawH = img.height * scale;
   const lift = Math.max(0, attack.anim - 1) * 18;
+  const appearAlpha = 1 - clamp((attack.age || 0) / 0.18, 0, 1);
+  const exitAlpha = 1 - clamp((attack.life || 0) / 0.2, 0, 1);
+  const goldAlpha = Math.max(appearAlpha, exitAlpha);
+  const alpha = Math.min(
+    clamp((attack.age || 0) / 0.12, 0, 1),
+    clamp(attack.life / 0.16, 0, 1)
+  );
   ctx.save();
   ctx.translate(attack.x - cameraX, attack.y - lift);
-  ctx.scale(attack.facing || 1, 1);
-  ctx.globalAlpha = clamp(attack.life / 0.16, 0, 1);
+  ctx.scale(-(attack.facing || 1), 1);
+  if (goldAlpha > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.44 * goldAlpha;
+    ctx.shadowColor = "rgba(255, 203, 55, 0.95)";
+    ctx.shadowBlur = 28;
+    ctx.filter = "sepia(1) saturate(5) hue-rotate(340deg) brightness(1.65)";
+    ctx.drawImage(img, -drawW * 0.5, -drawH, drawW, drawH);
+    ctx.restore();
+  }
+  ctx.globalAlpha = alpha;
+  ctx.shadowColor = `rgba(255, 210, 72, ${0.55 * goldAlpha})`;
+  ctx.shadowBlur = 18 * goldAlpha;
   ctx.drawImage(img, -drawW * 0.5, -drawH, drawW, drawH);
+  ctx.restore();
+}
+
+function drawBeelzebubDropSlash(attack) {
+  const frame = beelzebubFrames[Math.min(beelzebubFrames.length - 1, Math.floor(attack.anim))];
+  const img = effectImages[`beelzebub${frame}`];
+  if (!img) return;
+  const scale = 1.18;
+  const drawW = img.width * scale;
+  const drawH = img.height * scale;
+  const appearAlpha = 1 - clamp((attack.age || 0) / BEATRICE_ASMO_DROP_KICK_APPEAR_TIME, 0, 1);
+  const exitAlpha = 1 - clamp((attack.life || 0) / 0.18, 0, 1);
+  const goldAlpha = Math.max(appearAlpha, exitAlpha);
+  const alpha = Math.min(
+    clamp((attack.age || 0) / 0.12, 0, 1),
+    clamp((attack.life || 0) / 0.16, 0, 1)
+  );
+  const lift = attack.z || BEATRICE_ASMO_DROP_KICK_HOVER;
+  ctx.save();
+  ctx.translate(attack.x - cameraX, attack.y - lift);
+  ctx.scale(-(attack.facing || 1), 1);
+  if (goldAlpha > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.48 * goldAlpha;
+    ctx.shadowColor = "rgba(255, 203, 55, 0.95)";
+    ctx.shadowBlur = 30;
+    ctx.filter = "sepia(1) saturate(5) hue-rotate(340deg) brightness(1.7)";
+    ctx.drawImage(img, -drawW * 0.5, -drawH * 0.52, drawW, drawH);
+    ctx.restore();
+  }
+  ctx.globalAlpha = alpha;
+  ctx.shadowColor = `rgba(255, 210, 72, ${0.42 * goldAlpha})`;
+  ctx.shadowBlur = 18 * goldAlpha;
+  ctx.drawImage(img, -drawW * 0.5, -drawH * 0.52, drawW, drawH);
+  ctx.restore();
+}
+
+function drawLeviathanSlash(attack) {
+  const frame = leviathanFrames[Math.min(leviathanFrames.length - 1, Math.floor(attack.anim))];
+  const img = effectImages[`leviathan${frame}`];
+  if (!img) return;
+  const scale = 1.22;
+  const drawW = img.width * scale;
+  const drawH = img.height * scale;
+  const appearAlpha = 1 - clamp((attack.age || 0) / 0.16, 0, 1);
+  const exitAlpha = 1 - clamp((attack.life || 0) / 0.18, 0, 1);
+  const goldAlpha = Math.max(appearAlpha, exitAlpha);
+  const alpha = Math.min(
+    clamp((attack.age || 0) / 0.1, 0, 1),
+    clamp((attack.life || 0) / 0.14, 0, 1)
+  );
+  ctx.save();
+  ctx.translate(attack.x - cameraX, attack.y);
+  ctx.scale(attack.facing || 1, 1);
+  if (goldAlpha > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.38 * goldAlpha;
+    ctx.shadowColor = "rgba(255, 203, 55, 0.9)";
+    ctx.shadowBlur = 26;
+    ctx.filter = "sepia(1) saturate(5) hue-rotate(340deg) brightness(1.55)";
+    ctx.drawImage(img, -drawW * 0.5, -drawH, drawW, drawH);
+    ctx.restore();
+  }
+  ctx.globalAlpha = alpha;
+  ctx.shadowColor = `rgba(255, 210, 72, ${0.35 * goldAlpha})`;
+  ctx.shadowBlur = 16 * goldAlpha;
+  ctx.drawImage(img, -drawW * 0.5, -drawH, drawW, drawH);
+  ctx.restore();
+}
+
+function drawSatanAerialLaunch(attack) {
+  const frame = satanFrames[Math.min(satanFrames.length - 1, Math.floor(attack.anim))];
+  const img = effectImages[`satan${frame}`];
+  if (!img) return;
+  const scale = 1.18;
+  const drawW = img.width * scale;
+  const drawH = img.height * scale;
+  const appearAlpha = 1 - clamp((attack.age || 0) / 0.16, 0, 1);
+  const exitAlpha = 1 - clamp((attack.life || 0) / 0.18, 0, 1);
+  const goldAlpha = Math.max(appearAlpha, exitAlpha);
+  const alpha = Math.min(
+    clamp((attack.age || 0) / 0.1, 0, 1),
+    clamp((attack.life || 0) / 0.14, 0, 1)
+  );
+  const lift = attack.z || SATAN_AERIAL_HOVER;
+  ctx.save();
+  ctx.translate(attack.x - cameraX, attack.y - lift);
+  ctx.scale(-(attack.facing || 1), 1);
+  if (goldAlpha > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.4 * goldAlpha;
+    ctx.shadowColor = "rgba(255, 203, 55, 0.92)";
+    ctx.shadowBlur = 28;
+    ctx.filter = "sepia(1) saturate(5) hue-rotate(340deg) brightness(1.6)";
+    ctx.drawImage(img, -drawW * 0.5, -drawH * 0.62, drawW, drawH);
+    ctx.restore();
+  }
+  ctx.globalAlpha = alpha;
+  ctx.shadowColor = `rgba(255, 210, 72, ${0.38 * goldAlpha})`;
+  ctx.shadowBlur = 16 * goldAlpha;
+  ctx.drawImage(img, -drawW * 0.5, -drawH * 0.62, drawW, drawH);
+  ctx.restore();
+}
+
+function drawBelphegorGroundBounceSlam(attack) {
+  if (attack.delay > 0 || !attack.appeared) return;
+  const frame = belphegorFrames[Math.min(belphegorFrames.length - 1, Math.floor(attack.anim))];
+  const img = effectImages[`belphegor${frame}`];
+  if (!img) return;
+  const scale = 1.18;
+  const drawW = img.width * scale;
+  const drawH = img.height * scale;
+  const appearAlpha = 1 - clamp((attack.age || 0) / 0.16, 0, 1);
+  const exitAlpha = 1 - clamp((attack.life || 0) / 0.18, 0, 1);
+  const goldAlpha = Math.max(appearAlpha, exitAlpha);
+  const alpha = Math.min(
+    clamp((attack.age || 0) / 0.1, 0, 1),
+    clamp((attack.life || 0) / 0.14, 0, 1)
+  );
+  const lift = attack.z || BELPHEGOR_SLAM_HOVER;
+  ctx.save();
+  ctx.translate(attack.x - cameraX, attack.y - lift);
+  ctx.scale(-(attack.facing || 1), 1);
+  if (goldAlpha > 0) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.4 * goldAlpha;
+    ctx.shadowColor = "rgba(255, 203, 55, 0.92)";
+    ctx.shadowBlur = 28;
+    ctx.filter = "sepia(1) saturate(5) hue-rotate(340deg) brightness(1.6)";
+    ctx.drawImage(img, -drawW * 0.5, -drawH * 0.62, drawW, drawH);
+    ctx.restore();
+  }
+  ctx.globalAlpha = alpha;
+  ctx.shadowColor = `rgba(255, 210, 72, ${0.38 * goldAlpha})`;
+  ctx.shadowBlur = 16 * goldAlpha;
+  ctx.drawImage(img, -drawW * 0.5, -drawH * 0.62, drawW, drawH);
   ctx.restore();
 }
 
@@ -8912,6 +10831,30 @@ function drawCrystalShardStackIcon(x, y) {
   ctx.restore();
 }
 
+function drawMiracleRevivalBadge(x, y) {
+  const charges = player.blessings.miracleRevival || 0;
+  if (!player.plumTeaActive || player.plumTeaBurned || charges <= 0) return;
+  const pulse = pulseValue(4);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = `rgba(156, 88, 255, ${0.76 + pulse * 0.16})`;
+  ctx.strokeStyle = `rgba(236, 212, 255, ${0.82 + pulse * 0.16})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x + 27, y + 60, 8 + pulse * 1.4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.globalCompositeOperation = "source-over";
+  if (charges > 1) {
+    ctx.fillStyle = "#f7eaff";
+    ctx.font = "800 10px Segoe UI, Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(charges), x + 27, y + 60);
+  }
+  ctx.restore();
+}
+
 function itemHudDrawers() {
   return {
     crystalShard: {
@@ -8925,7 +10868,7 @@ function itemHudDrawers() {
     konpeito: {
       label: ITEM_TUTORIALS.konpeito.label,
       active: player.konpeitoActive,
-      cooldown: lambdaCompanion.summoned ? lambdaCompanion.konpeitoTimer : 0,
+      cooldown: lambdaCompanion.summoned ? companionChargeCooldown(lambdaCompanion.konpeitoCharge || 0, LAMBDA_KONPEITO_INTERVAL) : 0,
       cooldownMax: LAMBDA_KONPEITO_INTERVAL,
       showCooldown: true,
       icon: (x, y) => drawKonpeitoCandy(x, y, 20, Math.floor(performance.now() / 120) % KONPEITO_FRAME_COUNT, performance.now() / 800, 0.95)
@@ -8933,7 +10876,7 @@ function itemHudDrawers() {
     plumTea: {
       label: ITEM_TUTORIALS.plumTea.label,
       active: player.plumTeaActive,
-      cooldown: bernCompanion.summoned ? bernCompanion.crystalTimer : 0,
+      cooldown: bernCompanion.summoned ? companionChargeCooldown(bernCompanion.crystalChargeGauge || 0, BERN_CRYSTAL_INTERVAL) : 0,
       cooldownMax: BERN_CRYSTAL_INTERVAL,
       showCooldown: true,
       icon: (x, y) => drawPlumTeaIcon(x, y, 19, 0.95)
@@ -9068,6 +11011,7 @@ function drawItemHud() {
     const x = 20 + index * 66;
     const y = 18;
     drawItemBox(x, y, item.active, item.label, item.icon, item.cooldown, item.cooldownMax, item.count || 0, item.showCooldown);
+    if (type === "plumTea") drawMiracleRevivalBadge(x, y);
     if (mouse.inside && mouse.x >= x && mouse.x <= x + 54 && mouse.y >= y && mouse.y <= y + 76) {
       hoverType = type;
       hoverX = x;
@@ -9265,13 +11209,17 @@ function drawLambdaRetaliationOverlay() {
 
 function drawOverlay() {
   runDetailsButton.visible = false;
-  if (state === "playing" || state === "paused" || state === "lost" || state === "itemTutorial") {
+  if (state === "playing" || state === "paused" || state === "lost" || state === "itemTutorial" || state === "bossBlessing") {
     drawBeatriceBossHud();
     drawItemHud();
   }
   drawBernHazardWarning();
   if (itemTutorial.active) {
     drawItemTutorialOverlay();
+    return;
+  }
+  if (state === "bossBlessing") {
+    drawBossBlessingOverlay();
     return;
   }
   if (state === "paused") {
@@ -9306,13 +11254,78 @@ function drawOverlay() {
   drawLambdaKonpeitoQuestion();
   drawLambdaRetaliationOverlay();
   if (messageTimer > 0 && state === "playing") {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
-    ctx.fillRect(W / 2 - 96, 86, 192, 44);
-    ctx.fillStyle = "#fff2c7";
     ctx.font = "700 24px Segoe UI, Arial";
     ctx.textAlign = "center";
+    const messagePaddingX = 28;
+    const messageBoxW = clamp(ctx.measureText(message).width + messagePaddingX * 2, 120, W - 120);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.32)";
+    ctx.fillRect(W / 2 - messageBoxW / 2, 86, messageBoxW, 44);
+    ctx.fillStyle = "#fff2c7";
     ctx.fillText(message, W / 2, 116);
   }
+}
+
+function bossBlessingCardRects() {
+  const count = bossBlessingChoice.choices.length;
+  const cardW = count > 1 ? 430 : 560;
+  const cardH = 188;
+  const gap = 30;
+  const totalW = count * cardW + Math.max(0, count - 1) * gap;
+  const startX = (W - totalW) / 2;
+  const y = H / 2 - 48;
+  return bossBlessingChoice.choices.map((choice, index) => ({
+    choice,
+    x: startX + index * (cardW + gap),
+    y,
+    w: cardW,
+    h: cardH
+  }));
+}
+
+function drawBossBlessingOverlay() {
+  const rects = bossBlessingCardRects();
+  ctx.save();
+  ctx.fillStyle = "rgba(5, 6, 12, 0.72)";
+  ctx.fillRect(0, 0, W, H);
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#fff2c7";
+  ctx.font = "900 42px Segoe UI, Arial";
+  ctx.fillText("A Witch Offers Certainty", W / 2, 132);
+  ctx.font = "600 19px Segoe UI, Arial";
+  ctx.fillStyle = "#d8d0ba";
+  ctx.fillText("Choose one blessing before the boss battle begins.", W / 2, 166);
+  for (const [index, rect] of rects.entries()) {
+    const isSelected = index === bossBlessingChoice.selected;
+    const pink = rect.choice.color === "pink";
+    const fill = pink ? "rgba(96, 16, 64, 0.92)" : "rgba(42, 24, 96, 0.92)";
+    const stroke = pink ? "rgba(255, 139, 218, 0.92)" : "rgba(188, 147, 255, 0.92)";
+    ctx.fillStyle = fill;
+    ctx.strokeStyle = isSelected ? "#fff2c7" : stroke;
+    ctx.lineWidth = isSelected ? 4 : 2;
+    ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+    ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
+    ctx.textAlign = "left";
+    ctx.fillStyle = pink ? "#ffd6f1" : "#e1d2ff";
+    ctx.font = "800 15px Segoe UI, Arial";
+    ctx.fillText(rect.choice.source, rect.x + 22, rect.y + 34);
+    ctx.fillStyle = "#fff7d6";
+    ctx.font = "900 22px Segoe UI, Arial";
+    const titleLines = wrappedTextLines(rect.choice.title, rect.w - 44, "900 22px Segoe UI, Arial");
+    titleLines.slice(0, 2).forEach((line, lineIndex) => ctx.fillText(line, rect.x + 22, rect.y + 68 + lineIndex * 26));
+    ctx.fillStyle = "#f2edf7";
+    ctx.font = "600 16px Segoe UI, Arial";
+    const bodyLines = wrappedTextLines(rect.choice.text, rect.w - 44, "600 16px Segoe UI, Arial");
+    bodyLines.slice(0, 4).forEach((line, lineIndex) => ctx.fillText(line, rect.x + 22, rect.y + 122 + lineIndex * 21));
+    ctx.textAlign = "right";
+    ctx.fillStyle = isSelected ? "#fff2c7" : "rgba(255, 242, 199, 0.68)";
+    ctx.font = "800 14px Segoe UI, Arial";
+    ctx.fillText(`Press ${index + 1}`, rect.x + rect.w - 18, rect.y + rect.h - 16);
+  }
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#d8d0ba";
+  ctx.font = "700 18px Segoe UI, Arial";
+  ctx.fillText("Click a blessing, press its number, or press Enter to confirm.", W / 2, H - 104);
+  ctx.restore();
 }
 
 function drawItemTutorialOverlay() {
@@ -9420,7 +11433,10 @@ function draw() {
     drawBeatriceStakeReticles();
     drawBeatriceBossWalls();
     drawBeatriceRingTelegraphs();
+    drawBeatriceMeleeKickTelegraph();
     drawBeatriceGoatRushTelegraphs();
+    drawBeatriceTowerVolleyTelegraphs();
+    drawBeatriceTowerVolleys();
     drawActors({ skipCompanions: true });
     drawKonpeitoGeysers(true);
     drawSpecialBeam();
@@ -9431,6 +11447,7 @@ function draw() {
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
     drawBeatriceStakeTrails();
+    drawBeatriceTowerVolleyMissiles();
     drawKonpeitoShots();
     drawBeatriceStakes();
     drawBeatriceStakeSparkles();
@@ -9452,7 +11469,10 @@ function draw() {
     drawBeatriceStakeReticles();
     drawBeatriceBossWalls();
     drawBeatriceRingTelegraphs();
+    drawBeatriceMeleeKickTelegraph();
     drawBeatriceGoatRushTelegraphs();
+    drawBeatriceTowerVolleyTelegraphs();
+    drawBeatriceTowerVolleys();
     drawActors();
     drawKonpeitoGeysers(true);
     drawDuoAttackEffects();
@@ -9465,6 +11485,7 @@ function draw() {
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
     drawBeatriceStakeTrails();
+    drawBeatriceTowerVolleyMissiles();
     drawKonpeitoShots();
     drawBeatriceStakes();
     drawBeatriceStakeSparkles();
@@ -9504,7 +11525,7 @@ function beginAttackHold(kind) {
   if (tryBeatriceMeleeKickParry()) return;
   if (tryBernHazardParry()) return;
   if (tryGoatPoundParry(kind)) return;
-  if (player.resolve < CHARGED_ATTACK_RESOLVE_COST) {
+  if (player.resolve < chargedAttackResolveCost()) {
     attack(kind);
     return;
   }
@@ -9525,6 +11546,20 @@ function releaseAttackHold(kind) {
 
 window.addEventListener("keydown", (event) => {
   const key = event.key.toLowerCase();
+  if (state === "bossBlessing") {
+    event.preventDefault();
+    if (key === "arrowleft" || key === "a") {
+      bossBlessingChoice.selected = Math.max(0, bossBlessingChoice.selected - 1);
+    } else if (key === "arrowright" || key === "d") {
+      bossBlessingChoice.selected = Math.min(bossBlessingChoice.choices.length - 1, bossBlessingChoice.selected + 1);
+    } else if (key === "enter" || key === " ") {
+      chooseBossBlessing();
+    } else if (/^[1-9]$/.test(key)) {
+      const index = Number(key) - 1;
+      if (bossBlessingChoice.choices[index]) chooseBossBlessing(index);
+    }
+    return;
+  }
   if (lambdaKonpeitoQuestion.active) {
     event.preventDefault();
     handleLambdaKonpeitoChoiceKey(key);
@@ -9589,6 +11624,18 @@ canvas.addEventListener("mouseleave", () => {
   mouse.inside = false;
 });
 canvas.addEventListener("click", (event) => {
+  if (state === "bossBlessing") {
+    const point = canvasPointFromEvent(event);
+    const rects = bossBlessingCardRects();
+    for (let i = 0; i < rects.length; i++) {
+      const rect = rects[i];
+      if (point.x >= rect.x && point.x <= rect.x + rect.w && point.y >= rect.y && point.y <= rect.y + rect.h) {
+        chooseBossBlessing(i);
+        return;
+      }
+    }
+    return;
+  }
   if (lambdaKonpeitoQuestion.active) {
     const point = canvasPointFromEvent(event);
     const buttons = lambdaChoiceButtonRects();
