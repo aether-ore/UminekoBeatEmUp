@@ -249,6 +249,8 @@ const BEATRICE_TOWER_VOLLEY_OUTSIDE_BIAS = 0.74;
 const BEATRICE_TOWER_VOLLEY_TIMING_SCATTER = 0.2;
 const BEATRICE_TOWER_VOLLEY_MISSILE_TIME = 0.28;
 const BEATRICE_TOWER_VOLLEY_TRAIL_POINTS = 10;
+const BEATRICE_TOWER_VOLLEY_SAFE_CLEAR_X = 170;
+const BEATRICE_TOWER_VOLLEY_SAFE_CLEAR_Y = 86;
 const BEATRICE_TOWER_VOLLEY_DAMAGE = 18;
 const BEATRICE_TOWER_VOLLEY_LIFT = 470;
 const BEATRICE_TOWER_VOLLEY_DRIFT = 155;
@@ -316,19 +318,20 @@ const BEATRICE_DEFEAT_FINAL_SPEED = 8.2;
 const BEATRICE_DEFEAT_WISP_COUNT = 64;
 const BEATRICE_TUTORIAL_TRIGGER_RANGE = 360;
 const BEATRICE_TUTORIAL_TRIGGER_DEPTH = 128;
-const BEATRICE_TUTORIAL_SKIP_DELAY = 0.18;
+const BEATRICE_TUTORIAL_SKIP_DELAY = 0.5;
+const BEATRICE_STAKE_TUTORIAL_PARRY_LOCKOUT = 2;
 const BEATRICE_TUTORIAL_DIALOGUE = [
   { speaker: "Battler", portrait: "BattlerPointAngry", text: "Get back here and let me hit you, Beatrice!" },
   { speaker: "Beatrice", portrait: "BeatoPipeSmug", text: "Why would I let you do that?" },
   { speaker: "Beatrice", portrait: "BeatoPipeMocking", text: "Don't tell me you can't even muster the strength to have a bit of back of forth with me like old times?" },
   { speaker: "Battler", portrait: "BattlerPensive", text: "Like old times? Then...", thought: true },
-  { speaker: "Battler", portrait: "BattlerPensive", thought: true, parryHint: true },
   { speaker: "Battler", portrait: "BattlerMuster", text: "So what you're saying..." },
   { speaker: "Battler", portrait: "BattlerHappy", text: "Is that if I grab those busty onee-chans and stab them right back into you... you'll come crawling back to me for a beating?" },
   { speaker: "Beatrice", portrait: "BeatriceChallenge", text: "Kuhiyahahahyiahaha! Says the troglodyte who comes rushing in at a witch with a glowing golden health bar!" },
-  { speaker: "Beatrice", portrait: "BeatriceDarkChallenge", text: "I welcome you to try, you incompetent button masher. If you do, I promise I'll welcome every inch! Kuhiayahahahaiyahaiyaihayhahaha!" }
+  { speaker: "Beatrice", portrait: "BeatriceDarkChallenge", text: "I welcome you to try, you incompetent button masher. If you do, I promise I'll welcome every inch! Kuhiayahahahaiyahaiyaihayhahaha!" },
+  { speaker: "Battler", portrait: "BattlerPensive", thought: true, parryHint: true }
 ];
-const BEATRICE_STAKE_TUTORIAL_SKIP_DELAY = 0.18;
+const BEATRICE_STAKE_TUTORIAL_SKIP_DELAY = 0.5;
 const BEATRICE_STAKE_TUTORIAL_DIALOGUE = {
   hint: {
     speaker: "Battler",
@@ -373,7 +376,7 @@ const BERN_HAZARD_PARRY_LAUNCH_DURATION = 1.18;
 const BERN_HAZARD_PARRY_SUCCESS_RESPAWN = 10;
 const BERN_HAZARD_PARRY_FAIL_RESPAWN = 20;
 const BERN_HAZARD_PARRY_FAIL_FADE = 0.46;
-const BERN_CAT_FORM_ENABLED = true;
+const BERN_CAT_FORM_ENABLED = false;
 const BERN_CAT_FORM_CHANCE = 0.18;
 const DEBUG_FORCE_BERN_CAT_FORM = false;
 const DEBUG_START_WITH_PLUM_TEA = false;
@@ -1065,6 +1068,7 @@ const beatriceTowerVolley = {
   side: -1,
   towers: [],
   points: [],
+  safeZones: [],
   missiles: [],
   hitWaves: []
 };
@@ -3224,9 +3228,24 @@ function hasParryIndicatorActive() {
     || enemies.some(goatPoundParryIndicatorActive);
 }
 
+function hasParryTimingReady() {
+  return bernHazardParryReady()
+    || beatriceStakes.some((stake) => {
+      if (!beatriceStakeParryReady(stake)) return false;
+      if (beatriceStakeTutorial.active && beatriceStakeTutorial.stage === "parryNow") {
+        return beatriceStakeTutorial.skipCooldown <= 0;
+      }
+      return true;
+    })
+    || beatriceMeleeKickParryReady()
+    || enemies.some(goatPoundParryReady);
+}
+
 function updateParryTipAlert() {
   if (!parryTip) return;
-  parryTip.classList.toggle("parry-alert", state === "playing" && hasParryIndicatorActive());
+  const canShow = state === "playing" || state === "beatriceStakeTutorial";
+  parryTip.classList.toggle("parry-alert", canShow && hasParryIndicatorActive());
+  parryTip.classList.toggle("parry-ready", canShow && hasParryTimingReady());
 }
 
 function goatPoundParryReady(enemy) {
@@ -4584,6 +4603,7 @@ function resetBeatriceTowerVolley() {
   beatriceTowerVolley.side = -1;
   beatriceTowerVolley.towers = [];
   beatriceTowerVolley.points = [];
+  beatriceTowerVolley.safeZones = [];
   beatriceTowerVolley.missiles = [];
   beatriceTowerVolley.hitWaves = [];
 }
@@ -4612,6 +4632,7 @@ function setupBeatriceTowerVolleyWave(waveIndex, side, fresh = false) {
   if (fresh) {
     beatriceTowerVolley.towers = [];
     beatriceTowerVolley.hitWaves = [];
+    beatriceTowerVolley.safeZones = [];
   }
   beatriceTowerVolley.active = true;
   beatriceTowerVolley.phase = "emerge";
@@ -4638,6 +4659,15 @@ function setupBeatriceTowerVolleyWave(waveIndex, side, fresh = false) {
   }
   const laneYs = beatriceTowerLaneYs();
   const chosen = shuffledIndices(laneYs.length).slice(0, 2);
+  const safeLaneIndex = chosen[Math.floor(Math.random() * chosen.length)] ?? chosen[0];
+  const safeZone = {
+    wave: waveIndex,
+    x: 150 + Math.random() * Math.max(1, STAGE_W - 300),
+    y: clamp(laneYs[safeLaneIndex] + (Math.random() - 0.5) * 32, FLOOR_Y - 104, FLOOR_Y + 84),
+    rx: BEATRICE_TOWER_VOLLEY_SAFE_CLEAR_X,
+    ry: BEATRICE_TOWER_VOLLEY_SAFE_CLEAR_Y
+  };
+  beatriceTowerVolley.safeZones.push(safeZone);
   const startWorldX = side < 0 ? 18 : STAGE_W - 18;
   const endWorldX = side < 0 ? STAGE_W - 18 : 18;
   const startScreenX = startWorldX - cameraX;
@@ -4655,16 +4685,25 @@ function setupBeatriceTowerVolleyWave(waveIndex, side, fresh = false) {
       const screenScatter = (Math.random() - 0.5) * BEATRICE_TOWER_VOLLEY_SCREEN_SCATTER * 2;
       const timingScatter = (Math.random() - 0.5) * BEATRICE_TOWER_VOLLEY_TIMING_SCATTER;
       const worldX = clamp(startWorldX + (endWorldX - startWorldX) * t + screenScatter, 18, STAGE_W - 18);
+      const pointY = clamp(y + scatterDirection * scatterAmount + (Math.random() - 0.5) * 12, FLOOR_Y - 104, FLOOR_Y + 84);
+      if (beatriceTowerPointInSafeZone(worldX, pointY, safeZone)) continue;
       beatriceTowerVolley.points.push({
         screenX: startScreenX + (endScreenX - startScreenX) * t + screenScatter,
         x: worldX,
-        y: clamp(y + scatterDirection * scatterAmount + (Math.random() - 0.5) * 12, FLOOR_Y - 104, FLOOR_Y + 84),
+        y: pointY,
         wave: waveIndex,
         delay: Math.max(0.25, BEATRICE_TOWER_VOLLEY_TELEGRAPH_TIME + t * BEATRICE_TOWER_VOLLEY_SWEEP_TIME + timingScatter),
         struck: false
       });
     }
   }
+}
+
+function beatriceTowerPointInSafeZone(x, y, zone) {
+  if (!zone) return false;
+  const dx = (x - zone.x) / Math.max(1, zone.rx);
+  const dy = (y - zone.y) / Math.max(1, zone.ry);
+  return dx * dx + dy * dy <= 1;
 }
 
 function applyBeatriceTowerVolleyHit(point) {
@@ -4896,7 +4935,7 @@ function maybeStartBeatriceStakeParryPrompt() {
   beatriceStakeTutorial.active = true;
   beatriceStakeTutorial.stage = "parryNow";
   beatriceStakeTutorial.stake = stake;
-  beatriceStakeTutorial.skipCooldown = 0;
+  beatriceStakeTutorial.skipCooldown = BEATRICE_STAKE_TUTORIAL_PARRY_LOCKOUT;
   beatriceStakeTutorial.scroll = 0;
   resetAttackHolds();
   keys.clear();
@@ -4906,6 +4945,7 @@ function maybeStartBeatriceStakeParryPrompt() {
 
 function completeBeatriceStakeTutorialParry() {
   if (!beatriceStakeTutorial.active || beatriceStakeTutorial.stage !== "parryNow") return;
+  if (beatriceStakeTutorial.skipCooldown > 0) return;
   const stake = findBeatriceStakeTutorialTarget();
   if (!stake || !beatriceStakeParryReady(stake)) return;
   beatriceStakeTutorial.active = false;
@@ -7938,7 +7978,7 @@ function updateBeatriceStakeParryLine(dt) {
 }
 
 function beatriceStakeParryIndicatorActive() {
-  return beatriceStakes.some((stake) => stake.mode === "launch" && beatriceStakeParryReady(stake));
+  return beatriceStakes.some((stake) => stake.mode === "launch" && playerInBeatriceStakeReticle(stake));
 }
 
 function tryBeatriceStakeParry() {

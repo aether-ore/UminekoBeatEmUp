@@ -322,17 +322,44 @@ canvas {
 }
 
 .controls {
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(11, minmax(0, 1fr));
+  gap: 8px;
   border-top: 0;
   border-radius: 0 0 8px 8px;
 }
 
-.controls span {
+.controls__group {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  grid-column: span 5;
+}
+
+.controls__group--left {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.controls__group--right {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.controls span,
+.controls__group span {
   border: 1px solid transparent;
   border-radius: 4px;
   padding: 3px 6px;
   text-align: center;
   white-space: nowrap;
+}
+
+#parryTip {
+  grid-column: 6;
+  justify-self: center;
+  align-self: center;
+  width: max-content;
+  padding: 5px 12px;
+  font-size: 1rem;
+  font-weight: 800;
 }
 
 .controls span.parry-alert {
@@ -342,6 +369,14 @@ canvas {
     0 0 0 1px rgba(255, 248, 176, 0.28) inset,
     0 0 13px rgba(255, 216, 48, 0.72);
   color: #fff4a8;
+}
+
+.controls span.parry-alert.parry-ready {
+  animation:
+    parry-tip-pulse 620ms ease-in-out infinite alternate,
+    parry-ready-pulse 360ms ease-out infinite;
+  border-color: rgba(255, 252, 230, 0.98);
+  color: #ffffff;
 }
 
 @keyframes parry-tip-pulse {
@@ -357,6 +392,24 @@ canvas {
     box-shadow:
       0 0 0 1px rgba(255, 248, 176, 0.46) inset,
       0 0 18px rgba(255, 216, 48, 0.9);
+  }
+}
+
+@keyframes parry-ready-pulse {
+  from {
+    outline: 0 solid rgba(255, 255, 255, 0.72);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.58) inset,
+      0 0 12px rgba(255, 255, 255, 0.72),
+      0 0 24px rgba(105, 244, 255, 0.34);
+  }
+
+  to {
+    outline: 8px solid rgba(255, 255, 255, 0);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.8) inset,
+      0 0 22px rgba(255, 255, 255, 0.95),
+      0 0 34px rgba(105, 244, 255, 0.58);
   }
 }
 
@@ -377,7 +430,20 @@ canvas {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .controls span {
+  .controls__group,
+  .controls__group--left,
+  .controls__group--right {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .controls span,
+  .controls__group span {
     white-space: normal;
+  }
+
+  #parryTip {
+    grid-column: 1 / -1;
+    justify-self: center;
   }
 }
