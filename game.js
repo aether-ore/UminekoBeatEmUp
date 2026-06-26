@@ -15,6 +15,8 @@ const runDetailsClose = document.getElementById("runDetailsClose");
 const W = canvas.width;
 const H = canvas.height;
 const FLOOR_Y = 562;
+const PLAY_AREA_TOP = FLOOR_Y - 94;
+const PLAY_AREA_BOTTOM = H - 46;
 const STAGE_W = 3600;
 const PLAYER_SCALE = 1.45;
 const SPECIAL_BEAM_DRAIN = 42;
@@ -76,6 +78,14 @@ const ITEM_TUTORIALS = {
     tip: "Mirrors Battler's attacks from behind him, dealing half damage and copying launch effects. Pick up more Crests to extend its range up to level 5."
   }
 };
+
+function clampPlayY(y) {
+  return clamp(y, PLAY_AREA_TOP, PLAY_AREA_BOTTOM);
+}
+
+function clampBackgroundCompanionY(y) {
+  return clamp(y, PLAY_AREA_TOP - 22, PLAY_AREA_BOTTOM - 62);
+}
 const LAMBDA_BLESSINGS = [
   {
     id: "launchExtension",
@@ -87,7 +97,13 @@ const LAMBDA_BLESSINGS = [
     id: "superCharge",
     source: "Lambdadelta",
     title: "Blessing of Certainty: Super Charge",
-    text: "Charged attacks consume 50% Resolve and teleport Battler to the nearest enemy before the stage 3 attack."
+    text: "Charged attacks teleport Battler to the nearest enemy, deal more damage, and release a candy shockwave."
+  },
+  {
+    id: "lambdaKonpeitoSpecial",
+    source: "Lambdadelta",
+    title: "Blessing of Certainty: Candy Cataclysm",
+    text: "Special summons a hovering konpeito that pulses three times before bursting into candy shrapnel."
   },
   {
     id: "paperArmor",
@@ -108,7 +124,13 @@ BERN_BLESSINGS.push(
     id: "miracleShardFollowup",
     source: "Bernkastel",
     title: "Blessing of Miracles: Crystal Follow-Up",
-    text: "Stage 3 attacks have a 50% chance to call down a crystal shard follow-up."
+    text: "Stage 3 attacks call down a delayed crystal shard follow-up."
+  },
+  {
+    id: "miracleCrystalShardPlus",
+    source: "Bernkastel",
+    title: "Blessing of Miracles: Crystal Shard+",
+    text: "Crystal shards erupt upward after impact, catching enemies in a second strike."
   },
   {
     id: "miracleRisk",
@@ -133,6 +155,14 @@ const CRYSTAL_SHARD_FALL_SPEED = 1180;
 const CRYSTAL_SHARD_DAMAGE = 34;
 const CRYSTAL_SHARD_RADIUS = 86;
 const BERN_CRYSTAL_SHOCKWAVE_DAMAGE = 14;
+const MIRACLE_CRYSTAL_FOLLOWUP_DELAY = 0.3;
+const CRYSTAL_SHARD_PLUS_DELAY = 0.3;
+const CRYSTAL_SHARD_PLUS_LIFE = 0.58;
+const CRYSTAL_SHARD_PLUS_DAMAGE = 18;
+const CRYSTAL_SHARD_PLUS_RADIUS = 96;
+const CRYSTAL_SHARD_PLUS_LIFT = 330;
+const CRYSTAL_SHARD_PLUS_DRIFT = 78;
+const CRYSTAL_SHARD_PLUS_EXIT_MARGIN = 170;
 const GOAT_POUND_DAMAGE = 32;
 const GOAT_POUND_DETECTION_RANGE = 210;
 const GOAT_POUND_RANGE = 203;
@@ -174,6 +204,29 @@ const KONPEITO_DAMAGE = 30;
 const KONPEITO_RADIUS = 118;
 const KONPEITO_SHOCKWAVE_MAX_RADIUS = 230;
 const KONPEITO_DOME_BURST_DURATION = 0.82;
+const LAMBDA_SPECIAL_KONPEITO_PULSE_DAMAGE = 18;
+const LAMBDA_SPECIAL_KONPEITO_PULSE_RADIUS = 154;
+const LAMBDA_SPECIAL_KONPEITO_PULSE_INTERVAL = 0.42;
+const LAMBDA_SPECIAL_KONPEITO_PULSE_COUNT = 3;
+const LAMBDA_SPECIAL_KONPEITO_CAST_LAUNCH_LIFT = 420;
+const LAMBDA_SPECIAL_KONPEITO_CAST_LAUNCH_DRIFT = 126;
+const LAMBDA_SPECIAL_KONPEITO_PULSE_LAUNCH_LIFT = 355;
+const LAMBDA_SPECIAL_KONPEITO_PULSE_LAUNCH_DRIFT = 88;
+const LAMBDA_SPECIAL_KONPEITO_GROUND_BOUNCE_RADIUS = 174;
+const LAMBDA_SPECIAL_KONPEITO_GROUND_BOUNCE_LIFT = 300;
+const LAMBDA_SPECIAL_KONPEITO_GROUND_BOUNCE_DRIFT = 128;
+const LAMBDA_SPECIAL_KONPEITO_SUCTION_RADIUS = 245;
+const LAMBDA_SPECIAL_KONPEITO_SUCTION_STRENGTH = 520;
+const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_COUNT = 16;
+const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE = 8;
+const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_RADIUS = 46;
+const LAMBDA_SPECIAL_KONPEITO_DURATION = 1.62;
+const LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS = 52;
+const LAMBDA_SPECIAL_KONPEITO_LAUNCH_SPEED = 760;
+const LAMBDA_SPECIAL_KONPEITO_LAUNCH_LANE_SPEED = 150;
+const LAMBDA_SPECIAL_KONPEITO_LAUNCH_UP_SPEED = -250;
+const LAMBDA_SPECIAL_KONPEITO_LAUNCH_GRAVITY = 620;
+const LAMBDA_SPECIAL_KONPEITO_LAUNCH_LIFE = 1.55;
 const LAMBDA_KONPEITO_INTERVAL = 8;
 const KONPEITO_SHEET_CELL = 146;
 const KONPEITO_SHEET_COLS = 7;
@@ -190,6 +243,9 @@ const LAMBDA_MOVE_ANIM_RATE = 9;
 const EXPERIMENTAL_LAMBDA_KONPEITO_RETALIATION = true;
 const LAMBDA_KONPEITO_RETALIATION_RADIUS = KONPEITO_RADIUS;
 const LAMBDA_RETALIATION_RED_DURATION = 2.2;
+const LAMBDA_RETALIATION_LAUGH_START_DELAY = 0.12;
+const LAMBDA_RETALIATION_LAUGH_INITIAL_DELAY = 0.28;
+const LAMBDA_RETALIATION_LAUGH_MIN_DELAY = 0.012;
 const BEATRICE_STAKE_INTERVAL = 5;
 const BEATRICE_STAKE_BOUNCES = 6;
 const BEATRICE_STAKE_RICOCHET_SPEED = 860;
@@ -319,7 +375,7 @@ const BEATRICE_DEFEAT_WISP_COUNT = 64;
 const BEATRICE_TUTORIAL_TRIGGER_RANGE = 360;
 const BEATRICE_TUTORIAL_TRIGGER_DEPTH = 128;
 const BEATRICE_TUTORIAL_SKIP_DELAY = 0.5;
-const BEATRICE_STAKE_TUTORIAL_PARRY_LOCKOUT = 2;
+const BEATRICE_STAKE_TUTORIAL_PARRY_LOCKOUT = 1;
 const BEATRICE_TUTORIAL_DIALOGUE = [
   { speaker: "Battler", portrait: "BattlerPointAngry", text: "Get back here and let me hit you, Beatrice!" },
   { speaker: "Beatrice", portrait: "BeatoPipeSmug", text: "Why would I let you do that?" },
@@ -381,6 +437,9 @@ const BERN_CAT_FORM_CHANCE = 0.18;
 const DEBUG_FORCE_BERN_CAT_FORM = false;
 const DEBUG_START_WITH_PLUM_TEA = false;
 const DEBUG_START_WITH_KONPEITO = false;
+const DEBUG_START_WITH_CANDY_CATACLYSM = false;
+const DEBUG_START_WITH_CRYSTAL_FOLLOWUP = false;
+const DEBUG_START_WITH_CRYSTAL_SHARD_PLUS = false;
 const BERN_CAT_FADE_TIME = 0.34;
 const BERN_CAT_SHEET_CELL = 209;
 const BERN_CAT_SHEET_COLS = 6;
@@ -1050,12 +1109,16 @@ const beatriceStakeTutorial = {
 };
 const pickups = [];
 const crystalShards = [];
+const pendingMiracleCrystalFollowups = [];
+const upwardCrystalShards = [];
 const crystalTrails = [];
 const crystalShockwaves = [];
 const konpeitoShots = [];
 const konpeitoShockwaves = [];
 const konpeitoGeysers = [];
 const konpeitoDomeBursts = [];
+const lambdaSpecialKonpeitos = [];
+const lambdaSpecialShrapnel = [];
 const beatriceStakes = [];
 const beatriceStakeTrails = [];
 const beatriceStakeShockwaves = [];
@@ -1132,7 +1195,10 @@ const lambdaKonpeitoQuestion = {
 };
 const lambdaRetaliation = {
   active: false,
-  timer: 0
+  timer: 0,
+  laughTimer: 0,
+  laughDelay: LAMBDA_RETALIATION_LAUGH_INITIAL_DELAY,
+  laughCount: 0
 };
 const beatriceBoss = {
   active: false,
@@ -1669,9 +1735,11 @@ const player = {
   blessings: {
     launchExtension: 0,
     superCharge: false,
+    lambdaKonpeitoSpecial: false,
     paperArmor: false,
     miracleRevival: 0,
     miracleShardFollowup: false,
+    miracleCrystalShardPlus: false,
     miracleRisk: false
   },
   poise: 0,
@@ -2382,7 +2450,7 @@ function summonLambda() {
   lambdaCompanion.active = true;
   lambdaCompanion.summoned = true;
   lambdaCompanion.x = clamp(player.x - player.facing * 92, 90, STAGE_W - 130);
-  lambdaCompanion.y = clamp(player.y + 18, FLOOR_Y - 94, FLOOR_Y + 72);
+  lambdaCompanion.y = clampPlayY(player.y + 18);
   lambdaCompanion.facing = player.facing;
   lambdaCompanion.anim = 0;
   lambdaCompanion.state = "summon";
@@ -2412,7 +2480,7 @@ function summonBernkastel() {
   bernCompanion.active = true;
   bernCompanion.summoned = true;
   bernCompanion.x = clamp(player.x - player.facing * 132, 90, STAGE_W - 130);
-  bernCompanion.y = clamp(player.y - 56, FLOOR_Y - 116, FLOOR_Y + 10);
+  bernCompanion.y = clampBackgroundCompanionY(player.y - 56);
   bernCompanion.facing = player.facing;
   bernCompanion.anim = 0;
   bernCompanion.state = "summon";
@@ -2425,10 +2493,20 @@ function summonBernkastel() {
   bernCompanion.catForm = false;
 }
 
+function restoreOwnedCompanionsForNormalWave() {
+  if (waveMode !== "normal" || state !== "playing") return;
+  if (player.konpeitoActive && !lambdaCompanion.summoned) {
+    summonLambda();
+  }
+  if (player.plumTeaActive && !player.plumTeaBurned && !bernCompanion.summoned) {
+    summonBernkastel();
+  }
+}
+
 function placeBernAboveTarget(target) {
   const targetDir = target.x >= player.x ? 1 : -1;
   bernCompanion.x = clamp(player.x + targetDir * 132, 90, STAGE_W - 130);
-  bernCompanion.y = clamp(player.y, FLOOR_Y - 94, FLOOR_Y + 72);
+  bernCompanion.y = clampPlayY(player.y);
   bernCompanion.facing = target.x >= bernCompanion.x ? 1 : -1;
   bernCompanion.attackTargetX = target.x;
   bernCompanion.attackTargetY = target.y;
@@ -2436,7 +2514,7 @@ function placeBernAboveTarget(target) {
 
 function placeBernAtFollowPosition() {
   bernCompanion.x = clamp(player.x - player.facing * 132, 90, STAGE_W - 130);
-  bernCompanion.y = clamp(player.y - 56, FLOOR_Y - 116, FLOOR_Y + 10);
+  bernCompanion.y = clampBackgroundCompanionY(player.y - 56);
   const strongest = strongestEnemyTo(bernCompanion.x, bernCompanion.y);
   bernCompanion.facing = strongest ? (strongest.x >= bernCompanion.x ? 1 : -1) : player.facing;
 }
@@ -2557,7 +2635,7 @@ function fireBernColumnCrystals() {
 function bernBarrageShardLayout() {
   const side = bernCompanion.facing || 1;
   const lineStartX = bernCompanion.x + side * 54;
-  const lineStartY = clamp(bernCompanion.y - 24, FLOOR_Y - 94, FLOOR_Y + 72);
+  const lineStartY = clampPlayY(bernCompanion.y - 24);
   const targetX = bernCompanion.attackTargetX || lineStartX + side * 220;
   const targetY = bernCompanion.attackTargetY || bernCompanion.y;
   const placements = [0.12, 0.34, 0.56, 0.78, 1];
@@ -2569,7 +2647,7 @@ function bernBarrageShardLayout() {
       startX,
       startY,
       targetX: clamp(lineStartX + (targetX - lineStartX) * t, 80, STAGE_W - 120),
-      targetY: clamp(lineStartY + (targetY - lineStartY) * t, FLOOR_Y - 94, FLOOR_Y + 72)
+      targetY: clampPlayY(lineStartY + (targetY - lineStartY) * t)
     };
   });
 }
@@ -2587,7 +2665,7 @@ function spawnBernShardStackRain(primaryTarget) {
     const spawnOffsetX = (Math.random() < 0.5 ? -1 : 1) * (120 + Math.random() * 220);
     const spawnOffsetY = -34 + Math.random() * 68;
     const targetX = clamp(target.x + spread, 80, STAGE_W - 120);
-    const targetY = clamp(target.y + (Math.random() - 0.5) * 42, FLOOR_Y - 94, FLOOR_Y + 72);
+    const targetY = clampPlayY(target.y + (Math.random() - 0.5) * 42);
     crystalShards.push({
       x: targetX + spawnOffsetX,
       y: targetY + spawnOffsetY,
@@ -2618,7 +2696,7 @@ function startBernHazardAttack() {
   bernCompanion.active = true;
   bernCompanion.summoned = false;
   bernCompanion.x = clamp(clamp(x, minVisibleX, maxVisibleX), 90, STAGE_W - 130);
-  bernCompanion.y = clamp(player.y, FLOOR_Y - 94, FLOOR_Y + 72);
+  bernCompanion.y = clampPlayY(player.y);
   bernCompanion.facing = player.x >= bernCompanion.x ? 1 : -1;
   bernCompanion.attackTargetX = player.x;
   bernCompanion.attackTargetY = player.y;
@@ -2644,13 +2722,13 @@ function fireBernHazardCrystals() {
   const startX = bernCompanion.x + bernCompanion.facing * 44;
   const startY = bernCompanion.y - 34;
   const predictedX = clamp(player.x + player.vx * 0.55, 80, STAGE_W - 120);
-  const predictedY = clamp(player.y + player.vy * 0.55, FLOOR_Y - 94, FLOOR_Y + 72);
+  const predictedY = clampPlayY(player.y + player.vy * 0.55);
   const lineDx = predictedX - startX;
   const lineDy = predictedY - startY;
   const lineLen = Math.hypot(lineDx, lineDy) || 1;
   const extend = 150;
   const targetX = clamp(predictedX + (lineDx / lineLen) * extend, 80, STAGE_W - 120);
-  const targetY = clamp(predictedY + (lineDy / lineLen) * extend, FLOOR_Y - 94, FLOOR_Y + 72);
+  const targetY = clampPlayY(predictedY + (lineDy / lineLen) * extend);
   const placements = [0.18, 0.42, 0.66, 0.88, 1];
   for (let i = 0; i < placements.length; i++) {
     const t = placements[i];
@@ -2658,7 +2736,7 @@ function fireBernHazardCrystals() {
       x: startX,
       y: startY,
       targetX: startX + (targetX - startX) * t,
-      targetY: clamp(startY + (targetY - startY) * t, FLOOR_Y - 94, FLOOR_Y + 72),
+      targetY: clampPlayY(startY + (targetY - startY) * t),
       z: 260 + i * 18,
       startZ: 260 + i * 18,
       speed: 1080,
@@ -2677,7 +2755,7 @@ function startDuoAttack() {
   duoAttack.angle = 0;
   duoAttack.detonated = false;
   duoAttack.centerX = clamp(cameraX + W * 0.5, 180, STAGE_W - 180);
-  duoAttack.centerY = clamp(player.y - 28, FLOOR_Y - 112, FLOOR_Y + 42);
+  duoAttack.centerY = clamp(player.y - 28, PLAY_AREA_TOP - 18, PLAY_AREA_BOTTOM - 30);
   duoAttack.singularityX = duoAttack.centerX;
   duoAttack.singularityY = duoAttack.centerY - 340;
   duoAttack.side = 1;
@@ -2884,9 +2962,9 @@ function updateDuoAttack(dt) {
     lambdaCompanion.anim += dt * 8.5;
     bernCompanion.anim += dt * 8.5;
     lambdaCompanion.x = clamp(duoAttack.lambdaStartX + (duoAttack.centerX - duoAttack.lambdaStartX) * stageEase, 80, STAGE_W - 80);
-    lambdaCompanion.y = clamp(duoAttack.lambdaStartY + (duoAttack.centerY - duoAttack.lambdaStartY) * stageEase - Math.sin(stageT * Math.PI) * 42, FLOOR_Y - 170, FLOOR_Y + 58);
+    lambdaCompanion.y = clamp(duoAttack.lambdaStartY + (duoAttack.centerY - duoAttack.lambdaStartY) * stageEase - Math.sin(stageT * Math.PI) * 42, PLAY_AREA_TOP - 76, PLAY_AREA_BOTTOM - 14);
     bernCompanion.x = clamp(duoAttack.bernStartX + (duoAttack.bernEndX - duoAttack.bernStartX) * stageEase, 80, STAGE_W - 80);
-    bernCompanion.y = clamp(duoAttack.bernStartY + (duoAttack.centerY - duoAttack.bernStartY) * stageEase - Math.sin(stageT * Math.PI) * 58, FLOOR_Y - 190, FLOOR_Y + 58);
+    bernCompanion.y = clamp(duoAttack.bernStartY + (duoAttack.centerY - duoAttack.bernStartY) * stageEase - Math.sin(stageT * Math.PI) * 58, PLAY_AREA_TOP - 96, PLAY_AREA_BOTTOM - 14);
     lambdaCompanion.facing = bernCompanion.x >= lambdaCompanion.x ? 1 : -1;
     bernCompanion.facing = duoAttack.bernEndX >= bernCompanion.x ? 1 : -1;
     return;
@@ -2921,7 +2999,7 @@ function updateDuoAttack(dt) {
 
   if (isSpiral) {
     lambdaCompanion.x = duoAttack.centerX;
-    lambdaCompanion.y = clamp(duoAttack.centerY - Math.sin(setupT * Math.PI) * 46, FLOOR_Y - 150, FLOOR_Y + 58);
+    lambdaCompanion.y = clamp(duoAttack.centerY - Math.sin(setupT * Math.PI) * 46, PLAY_AREA_TOP - 56, PLAY_AREA_BOTTOM - 14);
     bernCompanion.x = clamp(duoAttack.bernEndX, 80, STAGE_W - 80);
     bernCompanion.y = duoAttack.centerY + (bernHoverY - duoAttack.centerY) * bernAirT;
   } else if (isHold) {
@@ -2997,7 +3075,7 @@ function updateDuoAttack(dt) {
       const absorbing = enemy.duoAbsorb > 0;
       const pull = (absorbing ? 720 : 300) + attackT * (absorbing ? 950 : 720);
       enemy.x = clamp(enemy.x + (dx / dist) * Math.min(pull * dt, dist), 80, STAGE_W - 120);
-      enemy.y = clamp(enemy.y + (dy / dist) * Math.min(pull * dt * (absorbing ? 0.5 : 0.28), dist), FLOOR_Y - 120, FLOOR_Y + 72);
+      enemy.y = clamp(enemy.y + (dy / dist) * Math.min(pull * dt * (absorbing ? 0.5 : 0.28), dist), PLAY_AREA_TOP - 26, PLAY_AREA_BOTTOM);
       enemy.z = Math.max(0, lift + Math.max(0, -dy / dist) * pull * dt * (absorbing ? 0.95 : 0.62));
       if (absorbing) {
         enemy.duoAbsorb = Math.min(1, enemy.duoAbsorb + dt / DUO_ABSORB_DURATION);
@@ -3307,6 +3385,16 @@ function tryGoatPoundParry(kind) {
     const direction = enemy.x >= player.x ? 1 : -1;
     runStats.parriesPerformed += 1;
     startGoatParryCounter(kind, direction);
+    if (enemy.bossMechanic === "beatriceGoatTrial") {
+      enemy.hp = 0;
+      enemyFreezeTimer = Math.max(enemyFreezeTimer, 1);
+      screenShakeTimer = Math.max(screenShakeTimer, 0.48);
+      burst(enemy.x, enemy.y - 150, "special");
+      defeatEnemy(enemy);
+      message = "Parry";
+      messageTimer = 0.75;
+      return true;
+    }
     enemy.goatAction = "idle";
     enemy.goatHasHit = false;
     enemy.goatParryFailed = false;
@@ -3322,10 +3410,6 @@ function tryGoatPoundParry(kind) {
     burst(enemy.x, enemy.y - 150, "special");
     message = "Parry";
     messageTimer = 0.75;
-    if (enemy.bossMechanic === "beatriceGoatTrial") {
-      enemy.bossMechanic = "";
-      resolveBeatriceGoatTrial();
-    }
     return true;
   }
   return false;
@@ -3373,7 +3457,7 @@ function spawnCrystalShardStrike() {
 }
 
 function spawnMiracleCrystalFollowup(preferredTarget) {
-  if (!player.blessings.miracleShardFollowup || Math.random() >= 0.5) return;
+  if (!player.blessings.miracleShardFollowup) return;
   const target = preferredTarget && !preferredTarget.dead && preferredTarget.hp > 0
     ? preferredTarget
     : strongestEnemyTo(player.x, player.y);
@@ -3381,7 +3465,7 @@ function spawnMiracleCrystalFollowup(preferredTarget) {
   const spawnOffsetX = (Math.random() < 0.5 ? -1 : 1) * (120 + Math.random() * 220);
   const spawnOffsetY = -34 + Math.random() * 68;
   const targetX = clamp(target.x + (Math.random() - 0.5) * 34, 80, STAGE_W - 120);
-  const targetY = clamp(target.y + (Math.random() - 0.5) * 36, FLOOR_Y - 94, FLOOR_Y + 72);
+  const targetY = clampPlayY(target.y + (Math.random() - 0.5) * 36);
   crystalShards.push({
     x: targetX + spawnOffsetX,
     y: targetY + spawnOffsetY,
@@ -3394,6 +3478,28 @@ function spawnMiracleCrystalFollowup(preferredTarget) {
     source: "bern",
     shockwaveDamage: BERN_CRYSTAL_SHOCKWAVE_DAMAGE,
     hit: false
+  });
+}
+
+function scheduleMiracleCrystalFollowup(preferredTarget) {
+  if (!player.blessings.miracleShardFollowup) return;
+  pendingMiracleCrystalFollowups.push({
+    delay: MIRACLE_CRYSTAL_FOLLOWUP_DELAY,
+    target: preferredTarget || null
+  });
+}
+
+function scheduleCrystalShardPlus(x, y, source = "crystalShardPlus") {
+  if (!player.blessings.miracleCrystalShardPlus) return;
+  upwardCrystalShards.push({
+    x,
+    y,
+    z: 0,
+    life: CRYSTAL_SHARD_PLUS_LIFE,
+    max: CRYSTAL_SHARD_PLUS_LIFE,
+    delay: CRYSTAL_SHARD_PLUS_DELAY,
+    source,
+    touched: new Set()
   });
 }
 
@@ -3430,7 +3536,7 @@ function updateMouseAim(event) {
   mouse.x = clamp((event.clientX - rect.left) * (W / rect.width), 0, W);
   mouse.y = clamp((event.clientY - rect.top) * (H / rect.height), 0, H);
   mouse.worldX = clamp(cameraX + mouse.x, 80, STAGE_W - 120);
-  mouse.laneY = clamp(mouse.y, FLOOR_Y - 94, FLOOR_Y + 72);
+  mouse.laneY = clampPlayY(mouse.y);
   mouse.inside = true;
 }
 
@@ -3502,7 +3608,7 @@ function lambdaKonpeitoLandingPoint(target) {
   targetY += dirY * neededOffset;
   return {
     x: clamp(targetX, 80, STAGE_W - 120),
-    y: clamp(targetY, FLOOR_Y - 94, FLOOR_Y + 72)
+    y: clampPlayY(targetY)
   };
 }
 
@@ -3565,6 +3671,9 @@ function chooseLambdaKonpeitoAnswer(yes) {
   if (yes) {
     lambdaRetaliation.active = true;
     lambdaRetaliation.timer = LAMBDA_RETALIATION_RED_DURATION;
+    lambdaRetaliation.laughTimer = LAMBDA_RETALIATION_LAUGH_START_DELAY;
+    lambdaRetaliation.laughDelay = LAMBDA_RETALIATION_LAUGH_INITIAL_DELAY;
+    lambdaRetaliation.laughCount = 0;
     state = "lambdaRetaliation";
     screenShakeTimer = LAMBDA_RETALIATION_RED_DURATION;
     keys.clear();
@@ -3755,10 +3864,10 @@ function juggleLambdaKonpeito(shot, hitX, hitY, data) {
   shot.startY = hitY;
   if (DEBUG_JUGGLED_KONPEITO_TARGETS_LAMBDA && lambdaCompanion.active && lambdaCompanion.summoned) {
     shot.targetX = clamp(lambdaCompanion.x, 80, STAGE_W - 120);
-    shot.targetY = clamp(lambdaCompanion.y, FLOOR_Y - 94, FLOOR_Y + 72);
+    shot.targetY = clampPlayY(lambdaCompanion.y);
   } else {
     shot.targetX = clamp(hitX + direction * (LAMBDA_KONPEITO_JUGGLE_PUSH + (data.stage || 1) * 34), 80, STAGE_W - 120);
-    shot.targetY = clamp(player.y + laneNudge, FLOOR_Y - 94, FLOOR_Y + 72);
+    shot.targetY = clampPlayY(player.y + laneNudge);
   }
   shot.t = 0;
   shot.duration = LAMBDA_KONPEITO_JUGGLE_DURATION;
@@ -3882,6 +3991,22 @@ function launchEnemy(enemy, direction, lift = 470, drift = 170, source = "unknow
     launchActor(enemy, direction, lift, drift);
     enemy.juggleCount = 0;
   }
+  enemy.launchSource = source;
+  return true;
+}
+
+function launchEnemyUnprorated(enemy, direction, source, lift = 360, drift = 100) {
+  if (enemy.airborne) {
+    enemy.vz = Math.max(enemy.vz || 0, lift);
+    enemy.airVx = (enemy.airVx || 0) * 0.38 + direction * drift * 0.62;
+    enemy.z = Math.max(enemy.z || 0, 18);
+    enemy.anim = 0;
+    enemy.hurt = 0;
+    enemy.attack = 0;
+  } else {
+    launchActor(enemy, direction, lift, drift);
+  }
+  enemy.juggleCount = 0;
   enemy.launchSource = source;
   return true;
 }
@@ -4087,7 +4212,7 @@ function spawnItemBottle(type, targetX, targetY) {
     kind: "item",
     itemType: type,
     targetX: clamp(targetX + (Math.random() - 0.5) * 56, 80, STAGE_W - 80),
-    targetY: clamp(targetY + (Math.random() - 0.5) * 26, FLOOR_Y - 56, FLOOR_Y + 76),
+    targetY: clamp(targetY + (Math.random() - 0.5) * 26, PLAY_AREA_TOP + 38, PLAY_AREA_BOTTOM + 4),
     startX,
     startY,
     t: 0,
@@ -4194,12 +4319,16 @@ function applyBossBlessing(blessing) {
     player.blessings.launchExtension = (player.blessings.launchExtension || 0) + 1;
   } else if (blessing.id === "superCharge") {
     player.blessings.superCharge = true;
+  } else if (blessing.id === "lambdaKonpeitoSpecial") {
+    player.blessings.lambdaKonpeitoSpecial = true;
   } else if (blessing.id === "paperArmor") {
     player.blessings.paperArmor = true;
   } else if (blessing.id === "miracleRevival") {
     player.blessings.miracleRevival = (player.blessings.miracleRevival || 0) + 1;
   } else if (blessing.id === "miracleShardFollowup") {
     player.blessings.miracleShardFollowup = true;
+  } else if (blessing.id === "miracleCrystalShardPlus") {
+    player.blessings.miracleCrystalShardPlus = true;
   } else if (blessing.id === "miracleRisk") {
     player.blessings.miracleRisk = true;
   }
@@ -4354,13 +4483,13 @@ function startRandomBeatriceMechanic() {
 }
 
 function startBeatriceGoatTrial() {
-  const centerY = clamp(player.y, FLOOR_Y - 48, FLOOR_Y + 26);
+  const centerY = clampPlayY(player.y);
   beatriceBoss.mechanic = "goatTrial";
   beatriceBoss.wallsActive = true;
-  beatriceBoss.wallTop = clamp(centerY - BEATRICE_GOAT_TRIAL_WALL_PADDING, FLOOR_Y - 94, FLOOR_Y + 50);
-  beatriceBoss.wallBottom = clamp(centerY + BEATRICE_GOAT_TRIAL_WALL_PADDING, FLOOR_Y - 72, FLOOR_Y + 72);
+  beatriceBoss.wallTop = clamp(centerY - BEATRICE_GOAT_TRIAL_WALL_PADDING, PLAY_AREA_TOP, PLAY_AREA_BOTTOM - 22);
+  beatriceBoss.wallBottom = clamp(centerY + BEATRICE_GOAT_TRIAL_WALL_PADDING, PLAY_AREA_TOP + 22, PLAY_AREA_BOTTOM);
   if (beatriceBoss.wallBottom - beatriceBoss.wallTop < 78) {
-    beatriceBoss.wallTop = clamp(beatriceBoss.wallBottom - 78, FLOOR_Y - 94, FLOOR_Y + 72);
+    beatriceBoss.wallTop = clamp(beatriceBoss.wallBottom - 78, PLAY_AREA_TOP, PLAY_AREA_BOTTOM);
   }
   const side = player.facing || (beatriceBoss.x >= player.x ? 1 : -1);
   const goatX = clamp(player.x + side * 240, cameraX + 150, cameraX + W - 150);
@@ -4526,8 +4655,8 @@ function applyBelphegorGroundBounceSlamHit(attack) {
 
 function startBeatriceGoatRush() {
   if (!beatriceBoss.active) return;
-  const top = FLOOR_Y - 94;
-  const bottom = FLOOR_Y + 72;
+  const top = PLAY_AREA_TOP;
+  const bottom = PLAY_AREA_BOTTOM;
   const laneHeight = (bottom - top) / BEATRICE_GOAT_RUSH_LANES;
   beatriceBoss.mechanic = "goatRush";
   beatriceBoss.goatRushTimer = 0;
@@ -4609,12 +4738,7 @@ function resetBeatriceTowerVolley() {
 }
 
 function beatriceTowerLaneYs() {
-  return [
-    FLOOR_Y - 82,
-    FLOOR_Y - 34,
-    FLOOR_Y + 14,
-    FLOOR_Y + 62
-  ];
+  return [0.08, 0.34, 0.62, 0.9].map((t) => PLAY_AREA_TOP + (PLAY_AREA_BOTTOM - PLAY_AREA_TOP) * t);
 }
 
 function startBeatriceTowerVolley() {
@@ -4663,7 +4787,7 @@ function setupBeatriceTowerVolleyWave(waveIndex, side, fresh = false) {
   const safeZone = {
     wave: waveIndex,
     x: 150 + Math.random() * Math.max(1, STAGE_W - 300),
-    y: clamp(laneYs[safeLaneIndex] + (Math.random() - 0.5) * 32, FLOOR_Y - 104, FLOOR_Y + 84),
+    y: clamp(laneYs[safeLaneIndex] + (Math.random() - 0.5) * 32, PLAY_AREA_TOP - 10, PLAY_AREA_BOTTOM + 10),
     rx: BEATRICE_TOWER_VOLLEY_SAFE_CLEAR_X,
     ry: BEATRICE_TOWER_VOLLEY_SAFE_CLEAR_Y
   };
@@ -4685,7 +4809,7 @@ function setupBeatriceTowerVolleyWave(waveIndex, side, fresh = false) {
       const screenScatter = (Math.random() - 0.5) * BEATRICE_TOWER_VOLLEY_SCREEN_SCATTER * 2;
       const timingScatter = (Math.random() - 0.5) * BEATRICE_TOWER_VOLLEY_TIMING_SCATTER;
       const worldX = clamp(startWorldX + (endWorldX - startWorldX) * t + screenScatter, 18, STAGE_W - 18);
-      const pointY = clamp(y + scatterDirection * scatterAmount + (Math.random() - 0.5) * 12, FLOOR_Y - 104, FLOOR_Y + 84);
+      const pointY = clamp(y + scatterDirection * scatterAmount + (Math.random() - 0.5) * 12, PLAY_AREA_TOP - 10, PLAY_AREA_BOTTOM + 10);
       if (beatriceTowerPointInSafeZone(worldX, pointY, safeZone)) continue;
       beatriceTowerVolley.points.push({
         screenX: startScreenX + (endScreenX - startScreenX) * t + screenScatter,
@@ -4943,9 +5067,9 @@ function maybeStartBeatriceStakeParryPrompt() {
   return true;
 }
 
-function completeBeatriceStakeTutorialParry() {
+function completeBeatriceStakeTutorialParry(force = false) {
   if (!beatriceStakeTutorial.active || beatriceStakeTutorial.stage !== "parryNow") return;
-  if (beatriceStakeTutorial.skipCooldown > 0) return;
+  if (beatriceStakeTutorial.skipCooldown > 0 && !force) return;
   const stake = findBeatriceStakeTutorialTarget();
   if (!stake || !beatriceStakeParryReady(stake)) return;
   beatriceStakeTutorial.active = false;
@@ -4961,7 +5085,7 @@ function completeBeatriceStakeTutorialParry() {
 function handleBeatriceStakeTutorialKey(key) {
   if (!beatriceStakeTutorial.active) return false;
   if (beatriceStakeTutorial.stage === "parryNow") {
-    if (key === "j" || key === "k") completeBeatriceStakeTutorialParry();
+    if (key === "j" || key === "k") completeBeatriceStakeTutorialParry(true);
     return true;
   }
   advanceBeatriceStakeTutorialDialogue();
@@ -5064,6 +5188,7 @@ function spawnWave() {
     messageTimer = 1.25;
     return;
   }
+  restoreOwnedCompanionsForNormalWave();
   beatriceBoss.active = false;
   const count = Math.min(3 + wave, 8);
   const spawnOrder = shuffledIndices(count);
@@ -5135,10 +5260,22 @@ function startGame() {
   player.oneWingedEagleLevel = 0;
   player.blessings.launchExtension = 0;
   player.blessings.superCharge = false;
+  player.blessings.lambdaKonpeitoSpecial = false;
   player.blessings.paperArmor = false;
   player.blessings.miracleRevival = 0;
   player.blessings.miracleShardFollowup = false;
+  player.blessings.miracleCrystalShardPlus = false;
   player.blessings.miracleRisk = false;
+  if (DEBUG_START_WITH_CANDY_CATACLYSM) {
+    player.blessings.lambdaKonpeitoSpecial = true;
+    player.resolve = 100;
+  }
+  if (DEBUG_START_WITH_CRYSTAL_FOLLOWUP) {
+    player.blessings.miracleShardFollowup = true;
+  }
+  if (DEBUG_START_WITH_CRYSTAL_SHARD_PLUS) {
+    player.blessings.miracleCrystalShardPlus = true;
+  }
   player.poise = 0;
   player.bernHazardTimer = BERN_REVIVE_HAZARD_TEST_MODE ? 0 : bernHazardInterval();
   player.bernHazardAmuseKills = 0;
@@ -5152,6 +5289,9 @@ function startGame() {
   lambdaKonpeitoQuestion.selection = 0;
   lambdaRetaliation.active = false;
   lambdaRetaliation.timer = 0;
+  lambdaRetaliation.laughTimer = 0;
+  lambdaRetaliation.laughDelay = LAMBDA_RETALIATION_LAUGH_INITIAL_DELAY;
+  lambdaRetaliation.laughCount = 0;
   bossBlessingChoice.active = false;
   bossBlessingChoice.choices = [];
   bossBlessingChoice.pendingBoss = false;
@@ -5276,12 +5416,16 @@ function startGame() {
   bernCompanion.parryFade = 0;
   pickups.length = 0;
   crystalShards.length = 0;
+  pendingMiracleCrystalFollowups.length = 0;
+  upwardCrystalShards.length = 0;
   crystalTrails.length = 0;
   crystalShockwaves.length = 0;
   konpeitoShots.length = 0;
   konpeitoShockwaves.length = 0;
   konpeitoGeysers.length = 0;
   konpeitoDomeBursts.length = 0;
+  lambdaSpecialKonpeitos.length = 0;
+  lambdaSpecialShrapnel.length = 0;
   messageBottles.length = 0;
   summonPillars.length = 0;
   screenFlashTimer = 0;
@@ -5592,7 +5736,7 @@ function applyAttackHit(kind, data) {
   }
   if (hit && data.stage === 3) {
     const followupTarget = [...directEnemyHits].find((enemy) => !enemy.dead && enemy.hp > 0);
-    spawnMiracleCrystalFollowup(followupTarget);
+    scheduleMiracleCrystalFollowup(followupTarget);
   }
   if (hit && data.gain) {
     const canGainResolve = !player.attackConsumesResolve || defeatedTarget;
@@ -5853,6 +5997,31 @@ function applyGoatPoundHit(enemy) {
 function attack(kind) {
   if (state !== "playing") return false;
   if ((kind === "punch" || kind === "kick") && tryGoatPoundParry(kind)) return true;
+  if (kind === "special") {
+    if (player.resolve < 100 || player.airborne || player.knockedDown || player.action === "hurt" || player.action === "special" || player.action === "specialBeam" || player.action === "duoCharge" || duoAttack.active) {
+      return false;
+    }
+    player.comboTimer = 0;
+    player.comboQueuedKind = "";
+    player.goatParryCounter = false;
+    player.currentAttack = "special";
+    player.attackConsumesResolve = true;
+    player.pendingResolveAttack = false;
+    player.crestAttackHasHit = false;
+    player.superChargeShockwaveDone = false;
+    player.poise = 0;
+    player.attackLungeRemaining = 0;
+    player.stage3KickAir = false;
+    player.stage3KickTimer = 0;
+    player.stage3KickVz = 0;
+    player.runState = "none";
+    player.runTimer = 0;
+    player.runCharge = 0;
+    player.brakeDrift = 0;
+    player.brakeBurstTimer = 0;
+    setAction("special", attackData.special.lock);
+    return true;
+  }
   if ((kind === "punch" || kind === "kick") && player.attackLock > 0 && player.comboTimer > 0 && player.comboStep > 0 && player.comboStep < 3) {
     player.comboQueuedKind = kind;
     return true;
@@ -5860,7 +6029,6 @@ function attack(kind) {
   if (player.attackLock > 0) return false;
   const action = kind === "punch" && isPlayerAtTopRunSpeed() ? "dashPunch" : kind === "punch" || kind === "kick" ? nextComboAction(kind) : kind;
   const data = attackData[action];
-  if (kind === "special" && player.resolve < 100) return false;
   if (!data) return false;
   if (!player.konpeitoGlowPending && player.konpeitoGlowTimer > 0) {
     player.konpeitoGlowTimer = 0;
@@ -5912,7 +6080,7 @@ function canStartChargedAttack() {
 }
 
 function chargedAttackResolveCost() {
-  return player.blessings.superCharge ? 50 : CHARGED_ATTACK_RESOLVE_COST;
+  return CHARGED_ATTACK_RESOLVE_COST;
 }
 
 function nearestChargeTarget() {
@@ -5935,7 +6103,7 @@ function teleportForSuperCharge() {
   burst(player.x, player.y - 90, "special");
   player.facing = side;
   player.x = clamp(target.x - side * 78, cameraX + 38, cameraX + W - 38);
-  player.y = clamp(target.y, FLOOR_Y - 94, FLOOR_Y + 72);
+  player.y = clampPlayY(target.y);
   burst(player.x, player.y - 90, "special");
 }
 
@@ -6141,7 +6309,7 @@ function startBeatriceAsmodeusDropKick() {
 function spawnBeelzebubDropSlash(side) {
   const facing = side || Math.sign(player.airVx) || player.facing || 1;
   const x = clamp(player.x - facing * BEATRICE_ASMO_DROP_KICK_SIDE_OFFSET, cameraX + 70, cameraX + W - 70);
-  const y = clamp(player.y, FLOOR_Y - 94, FLOOR_Y + 72);
+  const y = clampPlayY(player.y);
   const z = BEELZEBUB_DROP_SLASH_HOVER;
   beelzebubAttacks.push({
     x,
@@ -6163,7 +6331,7 @@ function applyBeelzebubDropSlashHit(attack) {
   if (state !== "playing" || !player.airborne || player.knockedDown) return false;
   const side = attack.facing || Math.sign(player.x - attack.x) || player.facing || 1;
   player.x = clamp(attack.x + side * BEATRICE_ASMO_DROP_KICK_CATCH_OFFSET, cameraX + 24, cameraX + W - 24);
-  player.y = clamp(attack.y, FLOOR_Y - 94, FLOOR_Y + 72);
+  player.y = clampPlayY(attack.y);
   player.z = Math.max(player.z || 0, attack.z || 104);
   damagePlayer(BEATRICE_ASMO_DROP_KICK_DAMAGE);
   player.invuln = Math.max(player.invuln, 0.28);
@@ -6595,13 +6763,76 @@ function triggerAsmodeusStakeHit(stake) {
   spawnAsmodeusUppercut(player.x - side * 18, player.y, side);
 }
 
+function groundPlayerForSpecial() {
+  player.z = 0;
+  player.vz = 0;
+  player.airVx = 0;
+  player.airVy = 0;
+  player.airborne = false;
+  player.knockedDown = false;
+  player.downTime = 0;
+  player.stage3KickAir = false;
+  player.stage3KickTimer = 0;
+  player.stage3KickVz = 0;
+}
+
 function startSpecialBeam() {
+  if (player.blessings.lambdaKonpeitoSpecial) {
+    startLambdaSpecialKonpeito();
+    return;
+  }
   runStats.specialsUnleashed += 1;
+  groundPlayerForSpecial();
   player.action = "specialBeam";
   player.anim = 0;
   player.attackLock = 0.08;
   player.attackHasHit = false;
   player.currentAttack = "specialBeam";
+}
+
+function startLambdaSpecialKonpeito() {
+  runStats.specialsUnleashed += 1;
+  groundPlayerForSpecial();
+  player.action = "specialBeam";
+  player.anim = 0;
+  player.attackLock = 0.08;
+  player.attackHasHit = false;
+  player.currentAttack = "lambdaKonpeitoSpecial";
+  player.resolve = 0;
+  resolveSpendFlashTimer = 0.34;
+  const x = clamp(player.x + player.facing * 164, 80, STAGE_W - 120);
+  const y = clampPlayY(player.y);
+  lambdaSpecialKonpeitos.push({
+    x,
+    y,
+    hoverY: y - 126,
+    facing: player.facing,
+    life: LAMBDA_SPECIAL_KONPEITO_DURATION,
+    max: LAMBDA_SPECIAL_KONPEITO_DURATION,
+    pulseTimer: 0.12,
+    pulses: 0,
+    pulseLaunchedEnemies: new Set(),
+    launched: false,
+    vx: 0,
+    vy: 0,
+    hoverVy: 0,
+    frame: Math.floor(Math.random() * KONPEITO_FRAME_COUNT),
+    spin: (Math.random() < 0.5 ? -1 : 1) * (1.9 + Math.random() * 1.2)
+  });
+  spawnLambdaSpecialPulseVisual(x, y, 0.32);
+  damageLambdaSpecialArea(
+    x,
+    y,
+    LAMBDA_SPECIAL_KONPEITO_PULSE_RADIUS,
+    LAMBDA_SPECIAL_KONPEITO_PULSE_DAMAGE,
+    "battler:lambdaKonpeitoSpecialCast",
+    {
+      launchMode: "unprorated",
+      launchLift: LAMBDA_SPECIAL_KONPEITO_CAST_LAUNCH_LIFT,
+      launchDrift: LAMBDA_SPECIAL_KONPEITO_CAST_LAUNCH_DRIFT
+    }
+  );
+  burst(x, y - 92, "special");
 }
 
 function specialBeamBounds() {
@@ -6646,6 +6877,303 @@ function applySpecialBeam(dt) {
   }
 }
 
+function damageLambdaSpecialArea(x, y, radius, damage, source, options = {}) {
+  const pulseLaunchedEnemies = options instanceof Set ? options : options.pulseLaunchedEnemies || null;
+  const launchMode = options.launchMode || "standard";
+  const launchLift = options.launchLift || 300;
+  const launchDrift = options.launchDrift || 78;
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0) continue;
+    const dist = Math.hypot(enemy.x - x, (enemy.y - y) * 1.15);
+    if (dist > radius) continue;
+    damageEnemy(enemy, damage);
+    enemy.hurt = Math.max(enemy.hurt || 0, 0.16);
+    enemy.attack = 0;
+    enemy.attackHasHit = false;
+    enemy.attackTelegraph = 0;
+    const direction = Math.sign(enemy.x - x) || player.facing || 1;
+    if (launchMode === "unprorated") {
+      launchEnemyUnprorated(enemy, direction, source, launchLift, launchDrift);
+    } else if (pulseLaunchedEnemies && !pulseLaunchedEnemies.has(enemy)) {
+      pulseLaunchedEnemies.add(enemy);
+      launchEnemyByBattlerRules(enemy, direction, source, 300, 78);
+    } else if (enemy.airborne) {
+      extendEnemyLaunch(enemy, direction, source, 160, 48);
+    } else {
+      enemy.x = clamp(enemy.x + direction * 18, 80, STAGE_W - 120);
+    }
+    if (enemy.hp <= 0) defeatEnemy(enemy);
+  }
+
+  if (beatriceCanBeDamaged()) {
+    const box = beatriceHurtbox();
+    const closestX = clamp(x, box.x, box.x + box.w);
+    const closestY = clamp(y - 82, box.y, box.y + box.h);
+    if (Math.hypot(closestX - x, closestY - (y - 82)) <= radius) {
+      const direction = Math.sign(beatriceBoss.x - x) || player.facing || 1;
+      damageBeatrice(damage, direction);
+      if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
+    }
+  }
+}
+
+function spawnLambdaSpecialPulseVisual(x, y, life = 0.4, radius = null) {
+  konpeitoShockwaves.push({
+    x,
+    y,
+    life,
+    max: life,
+    touched: new Set(),
+    playerTouched: false,
+    dome: true,
+    radius,
+    visualOnly: true
+  });
+}
+
+function groundBounceLambdaSpecialAirborneEnemies(x, y) {
+  for (const enemy of enemies) {
+    if (enemy.spawnGrace > 0) continue;
+    if (enemy.dead && !enemy.airborne && !(enemy.z > 0)) continue;
+    if (!enemy.airborne && !(enemy.z > 0)) continue;
+    const dist = Math.hypot(enemy.x - x, (enemy.y - y) * 1.12);
+    if (dist > LAMBDA_SPECIAL_KONPEITO_GROUND_BOUNCE_RADIUS) continue;
+    const direction = Math.sign(enemy.x - x) || player.facing || 1;
+    groundBounceEnemy(
+      enemy,
+      direction,
+      "battler:lambdaKonpeitoSpecialGroundBounce",
+      LAMBDA_SPECIAL_KONPEITO_GROUND_BOUNCE_LIFT,
+      LAMBDA_SPECIAL_KONPEITO_GROUND_BOUNCE_DRIFT
+    );
+  }
+}
+
+function applyLambdaSpecialSuction(effect, dt) {
+  if (effect.launched) return;
+  for (const enemy of enemies) {
+    if (enemy.spawnGrace > 0) continue;
+    if (enemy.dead && !enemy.airborne && !(enemy.z > 0)) continue;
+    if (!enemy.airborne && !(enemy.z > 0)) continue;
+    const dx = effect.x - enemy.x;
+    const dy = effect.y - enemy.y;
+    const dist = Math.hypot(dx, dy * 1.18);
+    if (dist <= 1 || dist > LAMBDA_SPECIAL_KONPEITO_SUCTION_RADIUS) continue;
+    const pull = LAMBDA_SPECIAL_KONPEITO_SUCTION_STRENGTH * (1 - dist / LAMBDA_SPECIAL_KONPEITO_SUCTION_RADIUS);
+    const step = Math.min(dist, pull * dt);
+    enemy.x = clamp(enemy.x + (dx / dist) * step, 80, STAGE_W - 120);
+    enemy.y = clampPlayY(enemy.y + (dy / dist) * step * 0.52);
+    enemy.airVx = (enemy.airVx || 0) * 0.94 + (dx / dist) * pull * 0.1;
+  }
+}
+
+function explodeLambdaSpecialKonpeito(effect) {
+  spawnLambdaSpecialPulseVisual(effect.x, effect.y, 0.58, LAMBDA_SPECIAL_KONPEITO_GROUND_BOUNCE_RADIUS);
+  damageLambdaSpecialArea(
+    effect.x,
+    effect.y,
+    LAMBDA_SPECIAL_KONPEITO_PULSE_RADIUS,
+    LAMBDA_SPECIAL_KONPEITO_PULSE_DAMAGE,
+    "battler:lambdaKonpeitoSpecialCollision"
+  );
+  groundBounceLambdaSpecialAirborneEnemies(effect.x, effect.y);
+  spawnKonpeitoDomeBurst(effect.x, effect.y);
+  screenShakeTimer = Math.max(screenShakeTimer, 0.18);
+  burst(effect.x, effect.y - 92, "special");
+  const baseAngle = effect.facing === 1 ? 0 : Math.PI;
+  for (let i = 0; i < LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_COUNT; i++) {
+    const spread = (Math.random() - 0.5) * Math.PI * 1.55;
+    const angle = baseAngle + spread;
+    const distance = 260 + Math.random() * 620;
+    const laneShift = (Math.random() - 0.5) * 260;
+    const targetX = clamp(effect.x + Math.cos(angle) * distance, 70, STAGE_W - 110);
+    const targetY = clamp(effect.y + laneShift + Math.sin(angle) * 74, PLAY_AREA_TOP - 4, PLAY_AREA_BOTTOM + 4);
+    lambdaSpecialShrapnel.push({
+      startX: effect.x,
+      startY: effect.hoverY,
+      targetX,
+      targetY: targetY - 52,
+      controlX: (effect.x + targetX) * 0.5 + (Math.random() - 0.5) * 120,
+      controlY: Math.min(effect.hoverY, targetY - 52) - 110 - Math.random() * 120,
+      t: 0,
+      duration: 0.48 + Math.random() * 0.22,
+      frame: Math.floor(Math.random() * KONPEITO_FRAME_COUNT),
+      spin: (Math.random() < 0.5 ? -1 : 1) * (3.8 + Math.random() * 2.6),
+      hitEnemies: new Set(),
+      hitBeatrice: false
+    });
+  }
+}
+
+function lambdaSpecialShrapnelPosition(shard) {
+  const t = clamp(shard.t, 0, 1);
+  const inv = 1 - t;
+  return {
+    x: inv * inv * shard.startX + 2 * inv * t * shard.controlX + t * t * shard.targetX,
+    y: inv * inv * shard.startY + 2 * inv * t * shard.controlY + t * t * shard.targetY,
+    t
+  };
+}
+
+function launchLambdaSpecialKonpeito(effect, data) {
+  if (effect.launched) return false;
+  const direction = player.facing || 1;
+  effect.launched = true;
+  effect.pulses = LAMBDA_SPECIAL_KONPEITO_PULSE_COUNT;
+  effect.pulseTimer = LAMBDA_SPECIAL_KONPEITO_PULSE_INTERVAL;
+  effect.life = LAMBDA_SPECIAL_KONPEITO_LAUNCH_LIFE;
+  effect.max = LAMBDA_SPECIAL_KONPEITO_LAUNCH_LIFE;
+  effect.facing = direction;
+  effect.vx = direction * (LAMBDA_SPECIAL_KONPEITO_LAUNCH_SPEED + (data.stage || 1) * 42);
+  effect.vy = player.vy ? Math.sign(player.vy) * LAMBDA_SPECIAL_KONPEITO_LAUNCH_LANE_SPEED : 0;
+  effect.hoverVy = LAMBDA_SPECIAL_KONPEITO_LAUNCH_UP_SPEED;
+  effect.spin *= 2.2;
+  burst(effect.x, effect.hoverY, "special");
+  return true;
+}
+
+function applyLambdaSpecialKonpeitoHit(data) {
+  if (!data?.activeFrames || !lambdaSpecialKonpeitos.length) return false;
+  const hitbox = {
+    x: player.x + (player.facing === 1 ? 28 : -data.range - 28),
+    y: player.y - player.z - data.depth * 1.35,
+    w: data.range,
+    h: data.depth * 2.5
+  };
+  let hit = false;
+  for (const effect of lambdaSpecialKonpeitos) {
+    if (effect.launched) continue;
+    const candyBox = {
+      x: effect.x - LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS,
+      y: effect.hoverY - LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS,
+      w: LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS * 2,
+      h: LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS * 2
+    };
+    if (!rectsTouch(hitbox, candyBox)) continue;
+    if (launchLambdaSpecialKonpeito(effect, data)) hit = true;
+  }
+  return hit;
+}
+
+function distanceToSegment(px, py, ax, ay, bx, by) {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy || 1;
+  const t = clamp(((px - ax) * dx + (py - ay) * dy) / lenSq, 0, 1);
+  const x = ax + dx * t;
+  const y = ay + dy * t;
+  return Math.hypot(px - x, py - y);
+}
+
+function lambdaSpecialKonpeitoCollisionTarget(effect, previousX, previousY) {
+  let best = null;
+  const minX = Math.min(previousX, effect.x) - LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS;
+  const maxX = Math.max(previousX, effect.x) + LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS;
+  const minY = Math.min(previousY, effect.hoverY) - LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS;
+  const maxY = Math.max(previousY, effect.hoverY) + LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS;
+  const pathBox = { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0) continue;
+    const box = enemyHurtbox(enemy);
+    if (!rectsTouch(pathBox, box)) continue;
+    const centerX = box.x + box.w * 0.5;
+    const centerY = box.y + box.h * 0.5;
+    const dist = distanceToSegment(centerX, centerY, previousX, previousY, effect.x, effect.hoverY);
+    if (dist > LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS + 18) continue;
+    if (!best || dist < best.dist) best = { type: "enemy", enemy, dist };
+  }
+  if (beatriceCanBeDamaged()) {
+    const box = beatriceHurtbox();
+    if (rectsTouch(pathBox, box)) {
+      const centerX = box.x + box.w * 0.5;
+      const centerY = box.y + box.h * 0.5;
+      const dist = distanceToSegment(centerX, centerY, previousX, previousY, effect.x, effect.hoverY);
+      if (dist <= LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS + 22 && (!best || dist < best.dist)) {
+        best = { type: "beatrice", dist };
+      }
+    }
+  }
+  return best;
+}
+
+function updateLambdaSpecialKonpeitos(dt) {
+  for (let i = lambdaSpecialKonpeitos.length - 1; i >= 0; i--) {
+    const effect = lambdaSpecialKonpeitos[i];
+    const previousX = effect.x;
+    const previousY = effect.hoverY;
+    effect.life -= dt;
+    effect.frame += dt * 10;
+    if (effect.launched) {
+      effect.x = clamp(effect.x + effect.vx * dt, 50, STAGE_W - 70);
+      effect.y = clamp(effect.y + effect.vy * dt, PLAY_AREA_TOP - 18, PLAY_AREA_BOTTOM + 18);
+      effect.hoverY += effect.hoverVy * dt;
+      effect.hoverVy += LAMBDA_SPECIAL_KONPEITO_LAUNCH_GRAVITY * dt;
+      const target = lambdaSpecialKonpeitoCollisionTarget(effect, previousX, previousY);
+      if (target) {
+        explodeLambdaSpecialKonpeito(effect);
+        lambdaSpecialKonpeitos.splice(i, 1);
+        continue;
+      }
+    }
+    applyLambdaSpecialSuction(effect, dt);
+    effect.pulseTimer -= dt;
+    if (!effect.launched && effect.pulses < LAMBDA_SPECIAL_KONPEITO_PULSE_COUNT && effect.pulseTimer <= 0) {
+      effect.pulses += 1;
+      effect.pulseTimer += LAMBDA_SPECIAL_KONPEITO_PULSE_INTERVAL;
+      spawnLambdaSpecialPulseVisual(effect.x, effect.y);
+      damageLambdaSpecialArea(
+        effect.x,
+        effect.y,
+        LAMBDA_SPECIAL_KONPEITO_PULSE_RADIUS,
+        LAMBDA_SPECIAL_KONPEITO_PULSE_DAMAGE,
+        "battler:lambdaKonpeitoSpecial",
+        {
+          launchMode: "unprorated",
+          launchLift: LAMBDA_SPECIAL_KONPEITO_PULSE_LAUNCH_LIFT,
+          launchDrift: LAMBDA_SPECIAL_KONPEITO_PULSE_LAUNCH_DRIFT
+        }
+      );
+    }
+    if (effect.life <= 0) {
+      explodeLambdaSpecialKonpeito(effect);
+      lambdaSpecialKonpeitos.splice(i, 1);
+    }
+  }
+}
+
+function updateLambdaSpecialShrapnel(dt) {
+  for (let i = lambdaSpecialShrapnel.length - 1; i >= 0; i--) {
+    const shard = lambdaSpecialShrapnel[i];
+    shard.t += dt / shard.duration;
+    shard.frame += dt * 12;
+    const pos = lambdaSpecialShrapnelPosition(shard);
+    for (let enemyIndex = 0; enemyIndex < enemies.length; enemyIndex++) {
+      if (shard.hitEnemies.has(enemyIndex)) continue;
+      const enemy = enemies[enemyIndex];
+      if (enemy.dead || enemy.spawnGrace > 0) continue;
+      const hurtY = enemy.y - (enemy.z || 0) - 72;
+      if (Math.hypot(enemy.x - pos.x, (hurtY - pos.y) * 0.82) > LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_RADIUS) continue;
+      shard.hitEnemies.add(enemyIndex);
+      damageEnemy(enemy, LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE);
+      enemy.hurt = Math.max(enemy.hurt || 0, 0.12);
+      enemy.attack = 0;
+      if (enemy.hp <= 0) defeatEnemy(enemy);
+    }
+    if (!shard.hitBeatrice && beatriceCanBeDamaged()) {
+      const box = beatriceHurtbox();
+      if (pos.x >= box.x && pos.x <= box.x + box.w && pos.y >= box.y && pos.y <= box.y + box.h) {
+        shard.hitBeatrice = true;
+        damageBeatrice(LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE, Math.sign(beatriceBoss.x - player.x) || player.facing || 1);
+        if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
+      }
+    }
+    if (shard.t >= 1) {
+      burst(shard.targetX, shard.targetY, "special");
+      lambdaSpecialShrapnel.splice(i, 1);
+    }
+  }
+}
+
 function spawnBeamContactSparks(x, y, dt) {
   if (Math.random() > 42 * dt) return;
   const count = 2 + Math.floor(Math.random() * 2);
@@ -6677,7 +7205,7 @@ function updatePlayer(dt) {
     const t = 1 - player.wallSlamTimer / BEATRICE_MELEE_KICK_WALL_SLAM_TIME;
     const ease = 1 - Math.pow(1 - clamp(t, 0, 1), 3);
     player.x = player.wallSlamStartX + (player.wallSlamTargetX - player.wallSlamStartX) * ease;
-    player.y = clamp(player.y, FLOOR_Y - 94, FLOOR_Y + 72);
+    player.y = clampPlayY(player.y);
     player.vx = (player.wallSlamTargetX - player.wallSlamStartX) / BEATRICE_MELEE_KICK_WALL_SLAM_TIME;
     player.vy = 0;
     player.anim = Math.min(frames.hurt.length - 0.01, player.anim + dt * 16);
@@ -6758,6 +7286,15 @@ function updatePlayer(dt) {
   if (player.action === "specialBeam") {
     player.attackLock = 0.08;
     player.anim += dt * 12;
+    if (player.currentAttack === "lambdaKonpeitoSpecial") {
+      if (player.anim >= frames.specialBeam.length) {
+        player.attackLock = 0;
+        player.currentAttack = "";
+        setAction("idle");
+      }
+      cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+      return;
+    }
     player.resolve = Math.max(0, player.resolve - SPECIAL_BEAM_DRAIN * dt);
     applySpecialBeam(dt);
     if (player.resolve <= 0) {
@@ -6803,7 +7340,7 @@ function updatePlayer(dt) {
     }
     const forwardSpeed = inStartup ? STAGE3_KICK_START_SPEED : STAGE3_KICK_FALL_SPEED;
     player.x = clamp(player.x + player.facing * forwardSpeed * dt, 80, STAGE_W - 120);
-    player.y = constrainLaneToBeatriceWalls(clamp(player.y + lane * STAGE3_KICK_LANE_SPEED * dt, FLOOR_Y - 94, FLOOR_Y + 72));
+    player.y = constrainLaneToBeatriceWalls(clampPlayY(player.y + lane * STAGE3_KICK_LANE_SPEED * dt));
     player.z += player.stage3KickVz * dt;
     player.stage3KickVz -= STAGE3_KICK_GRAVITY * dt;
     player.vx = player.facing * forwardSpeed;
@@ -6928,7 +7465,7 @@ function updatePlayer(dt) {
       player.vy = moveY;
     }
     player.x = clamp(player.x, 80, STAGE_W - 120);
-    player.y = constrainLaneToBeatriceWalls(clamp(player.y, FLOOR_Y - 94, FLOOR_Y + 72));
+    player.y = constrainLaneToBeatriceWalls(clampPlayY(player.y));
     if (mx) player.facing = Math.sign(mx);
     setAction(action);
   } else {
@@ -6945,6 +7482,7 @@ function updatePlayer(dt) {
   }
   if (data?.activeFrames?.includes(frame)) {
     applyKonpeitoJuggleHit(data);
+    applyLambdaSpecialKonpeitoHit(data);
   }
   if (data?.activeFrames?.includes(frame) && !player.crestAttackHasHit) {
     player.crestAttackHasHit = applyCrestEchoHit(player.action, data);
@@ -7083,7 +7621,7 @@ function updateEnemies(dt) {
         const minX = enemy.bossMechanic === "beatriceGoatRush" ? -260 : 80;
         const maxX = enemy.bossMechanic === "beatriceGoatRush" ? STAGE_W + 260 : STAGE_W - 80;
         enemy.x = clamp(enemy.x + (enemy.goatChargeDx || enemy.facing) * step, minX, maxX);
-        enemy.y = clamp(enemy.y + (enemy.goatChargeDy || 0) * step, FLOOR_Y - 58, FLOOR_Y + 58);
+        enemy.y = clamp(enemy.y + (enemy.goatChargeDy || 0) * step, PLAY_AREA_TOP + 36, PLAY_AREA_BOTTOM - 14);
         enemy.goatChargeDistance += step;
         if (!enemy.goatHasHit && applyGoatChargeHit(enemy)) enemy.goatHasHit = true;
         if (enemy.goatChargeDistance >= (enemy.goatChargeLimit || GOAT_CHARGE_DISTANCE)) {
@@ -7269,6 +7807,55 @@ function updateCrystalShards(dt) {
     player.crystalShardTimer = crystalShardHudCooldown();
   }
 
+  for (let i = pendingMiracleCrystalFollowups.length - 1; i >= 0; i--) {
+    const followup = pendingMiracleCrystalFollowups[i];
+    followup.delay -= dt;
+    if (followup.delay > 0) continue;
+    spawnMiracleCrystalFollowup(followup.target);
+    pendingMiracleCrystalFollowups.splice(i, 1);
+  }
+
+  for (let i = upwardCrystalShards.length - 1; i >= 0; i--) {
+    const shard = upwardCrystalShards[i];
+    if (shard.delay > 0) {
+      shard.delay -= dt;
+      continue;
+    }
+    shard.life -= dt;
+    const t = 1 - shard.life / shard.max;
+    shard.z = 24 + t * (shard.y + CRYSTAL_SHARD_PLUS_EXIT_MARGIN);
+    const radius = CRYSTAL_SHARD_PLUS_RADIUS * (0.48 + t * 0.42);
+    for (let enemyIndex = 0; enemyIndex < enemies.length; enemyIndex++) {
+      if (shard.touched.has(enemyIndex)) continue;
+      const enemy = enemies[enemyIndex];
+      if (enemy.dead || enemy.spawnGrace > 0) continue;
+      const hurtY = enemy.y - (enemy.z || 0) - 68;
+      const dist = Math.hypot(enemy.x - shard.x, (hurtY - (shard.y - shard.z)) * 0.75);
+      if (dist > radius) continue;
+      shard.touched.add(enemyIndex);
+      damageEnemy(enemy, CRYSTAL_SHARD_PLUS_DAMAGE);
+      enemy.hurt = Math.max(enemy.hurt || 0, 0.18);
+      enemy.attack = 0;
+      const direction = Math.sign(enemy.x - shard.x) || 1;
+      if (enemy.airborne) {
+        extendEnemyLaunch(enemy, direction, "bern:crystalShardPlus", CRYSTAL_SHARD_PLUS_LIFT, CRYSTAL_SHARD_PLUS_DRIFT);
+      } else {
+        launchEnemy(enemy, direction, CRYSTAL_SHARD_PLUS_LIFT, CRYSTAL_SHARD_PLUS_DRIFT, "bern:crystalShardPlus");
+      }
+      if (enemy.hp <= 0) defeatEnemy(enemy);
+    }
+    if (beatriceCanBeDamaged() && !shard.hitBeatrice) {
+      const box = beatriceHurtbox();
+      const tipY = shard.y - shard.z;
+      if (shard.x >= box.x && shard.x <= box.x + box.w && tipY >= box.y && tipY <= box.y + box.h) {
+        shard.hitBeatrice = true;
+        damageBeatrice(CRYSTAL_SHARD_PLUS_DAMAGE, Math.sign(beatriceBoss.x - shard.x) || 1);
+        if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
+      }
+    }
+    if (shard.life <= 0) upwardCrystalShards.splice(i, 1);
+  }
+
   for (let i = crystalShards.length - 1; i >= 0; i--) {
     const shard = crystalShards[i];
     if (shard.delay > 0) {
@@ -7295,6 +7882,7 @@ function updateCrystalShards(dt) {
       dome: shard.source === "bern",
       touched: new Set()
     });
+    scheduleCrystalShardPlus(shard.targetX, shard.targetY, shard.source || "crystalShard");
     burst(shard.targetX, shard.targetY - 48, "special");
     if (shard.source === "bernHazard") {
       const playerDist = Math.hypot(player.x - shard.targetX, player.y - shard.targetY);
@@ -7381,8 +7969,14 @@ function updateKonpeito(dt) {
   }
   for (let i = konpeitoShockwaves.length - 1; i >= 0; i--) {
     const wave = konpeitoShockwaves[i];
+    if (wave.visualOnly) {
+      wave.life -= dt;
+      if (wave.life <= 0) konpeitoShockwaves.splice(i, 1);
+      continue;
+    }
     const t = 1 - wave.life / wave.max;
-    const radius = KONPEITO_RADIUS + (KONPEITO_SHOCKWAVE_MAX_RADIUS - KONPEITO_RADIUS) * t;
+    const maxRadius = wave.radius || KONPEITO_SHOCKWAVE_MAX_RADIUS;
+    const radius = KONPEITO_RADIUS + (maxRadius - KONPEITO_RADIUS) * t;
     for (let enemyIndex = 0; enemyIndex < enemies.length; enemyIndex++) {
       if (wave.touched.has(enemyIndex)) continue;
       const enemy = enemies[enemyIndex];
@@ -8080,7 +8674,7 @@ function updateLambda(dt) {
     updateLambdaKonpeitoCharge(dt);
     if ((lambdaCompanion.konpeitoCharge || 0) >= 100 && startLambdaKonpeitoCast()) return;
     const followX = clamp(player.x - player.facing * 104, 90, STAGE_W - 130);
-    const followY = clamp(player.y + 22, FLOOR_Y - 94, FLOOR_Y + 72);
+    const followY = clampPlayY(player.y + 22);
     const nearest = nearestEnemyTo(lambdaCompanion.x, lambdaCompanion.y);
     const enemyFacing = nearest ? (nearest.x >= lambdaCompanion.x ? 1 : -1) : player.facing;
     const dx = followX - lambdaCompanion.x;
@@ -8147,7 +8741,7 @@ function updateBernkastel(dt) {
       bernCompanion.crystalHasFired = true;
       fireBernHazardCrystals();
       bernCompanion.x = clamp(bernCompanion.x - bernCompanion.facing * 34, 90, STAGE_W - 130);
-      bernCompanion.y = clamp(bernCompanion.y - 18, FLOOR_Y - 94, FLOOR_Y + 72);
+      bernCompanion.y = clampPlayY(bernCompanion.y - 18);
     }
     if (bernCompanion.anim >= bernFrames.hazardCharge.length) {
       if (!bernCompanion.crystalHasFired) fireBernHazardCrystals();
@@ -8244,7 +8838,7 @@ function updateBernkastel(dt) {
       bernCompanion.crystalHasFired = true;
       fireBernColumnCrystals();
       bernCompanion.x = clamp(bernCompanion.x - bernCompanion.facing * 34, 90, STAGE_W - 130);
-      bernCompanion.y = clamp(bernCompanion.y - 18, FLOOR_Y - 94, FLOOR_Y + 72);
+      bernCompanion.y = clampPlayY(bernCompanion.y - 18);
     }
     if (bernCompanion.anim >= bernFrames.crystalCharge.length) {
       if (!bernCompanion.crystalHasFired) fireBernColumnCrystals();
@@ -8291,7 +8885,7 @@ function updateBernkastel(dt) {
     updateBernCrystalGauge(dt);
     if ((bernCompanion.crystalChargeGauge || 0) >= 100 && startBernCrystalAttack()) return;
     const followX = clamp(player.x - player.facing * 132, 90, STAGE_W - 130);
-    const followY = clamp(player.y - 56, FLOOR_Y - 116, FLOOR_Y + 10);
+    const followY = clampBackgroundCompanionY(player.y - 56);
     const dx = followX - bernCompanion.x;
     const dy = followY - bernCompanion.y;
     const dist = Math.hypot(dx, dy);
@@ -8360,6 +8954,8 @@ function update(dt) {
     updateCrystalTrails(dt);
     updateCrystalShockwaves(dt);
     updateKonpeito(dt);
+    updateLambdaSpecialKonpeitos(dt);
+    updateLambdaSpecialShrapnel(dt);
     updateBeatrice(dt);
     updateBeatriceStakes(dt);
     updateBeatriceStakeParryLine(dt);
@@ -8397,6 +8993,12 @@ function update(dt) {
   if (state === "lambdaRetaliation") {
     resetAttackHolds();
     lambdaRetaliation.timer = Math.max(0, lambdaRetaliation.timer - dt);
+    lambdaRetaliation.laughTimer -= dt;
+    while (lambdaRetaliation.laughTimer <= 0 && lambdaRetaliation.laughCount < 260) {
+      lambdaRetaliation.laughCount += Math.max(1, Math.floor(lambdaRetaliation.laughCount / 14));
+      lambdaRetaliation.laughDelay = Math.max(LAMBDA_RETALIATION_LAUGH_MIN_DELAY, lambdaRetaliation.laughDelay * 0.78);
+      lambdaRetaliation.laughTimer += lambdaRetaliation.laughDelay;
+    }
     updateLambda(dt);
     screenShakeTimer = Math.max(0, screenShakeTimer - dt);
     updateResolveDuoOutline();
@@ -8509,6 +9111,8 @@ function update(dt) {
     drawCrystalShards();
     drawKonpeitoShockwaves();
     drawKonpeitoDomeBursts(true);
+    drawLambdaSpecialKonpeitos();
+    drawLambdaSpecialShrapnel();
     drawBeatriceStakeShockwaves();
     drawKonpeitoShots();
     drawBeatriceTowerVolleyMissiles();
@@ -8583,6 +9187,8 @@ function update(dt) {
   updateCrystalTrails(dt);
   updateCrystalShockwaves(dt);
   updateKonpeito(dt);
+  updateLambdaSpecialKonpeitos(dt);
+  updateLambdaSpecialShrapnel(dt);
   updateBeatrice(dt);
   if (startBeatriceBarrierTutorial()) {
     healthBar.style.width = `${player.hp}%`;
@@ -9248,6 +9854,28 @@ function drawBeatriceBossWalls() {
   drawWall(beatriceBoss.wallBottom);
 }
 
+function drawBeatriceGoatTrialObjective() {
+  if (!beatriceBoss.active || beatriceBoss.mechanic !== "goatTrial") return;
+  const text = "Defeat or Parry Goat-kun";
+  const pulse = pulseValue(9);
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.font = "900 25px Segoe UI, Arial";
+  const w = clamp(ctx.measureText(text).width + 54, 260, W - 140);
+  const x = W / 2 - w / 2;
+  const y = 138;
+  ctx.fillStyle = "rgba(9, 0, 7, 0.54)";
+  ctx.fillRect(x, y, w, 46);
+  ctx.strokeStyle = `rgba(255, 58, 94, ${0.62 + pulse * 0.28})`;
+  ctx.lineWidth = 2.5 + pulse * 1.5;
+  ctx.strokeRect(x + 2, y + 2, w - 4, 42);
+  ctx.fillStyle = "#ffe9ed";
+  ctx.shadowColor = "rgba(255, 46, 91, 0.75)";
+  ctx.shadowBlur = 12 + pulse * 10;
+  ctx.fillText(text, W / 2, y + 31);
+  ctx.restore();
+}
+
 function drawBeatriceRingTelegraphs() {
   if (!beatriceBoss.active || beatriceBoss.mechanic !== "ringAttack") return;
   const pulse = pulseValue(12);
@@ -9744,6 +10372,40 @@ function drawBeatriceAfterimages() {
   }
 }
 
+function drawBeatriceBarrierAura(x, y) {
+  if (!beatriceBoss.barrierActive || beatriceBoss.vulnerable || beatriceBoss.flavor === "barrierBreak" || beatriceBoss.flavor === "defeated") return;
+  const barrierT = clamp((beatriceBoss.barrierHp ?? beatriceBoss.barrierMax ?? BEATRICE_BARRIER_MAX) / Math.max(1, beatriceBoss.barrierMax || BEATRICE_BARRIER_MAX), 0, 1);
+  const pulse = pulseValue(6);
+  const cx = x;
+  const cy = y - 125 * BEATRICE_SPRITE_SCALE;
+  const radius = (104 + pulse * 7) * BEATRICE_SPRITE_SCALE;
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = 0.28 + barrierT * 0.36;
+  const aura = ctx.createRadialGradient(cx, cy, radius * 0.48, cx, cy, radius);
+  aura.addColorStop(0, "rgba(255, 238, 144, 0.02)");
+  aura.addColorStop(0.64, "rgba(255, 206, 58, 0.18)");
+  aura.addColorStop(0.82, "rgba(255, 226, 91, 0.56)");
+  aura.addColorStop(1, "rgba(255, 160, 27, 0)");
+  ctx.fillStyle = aura;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = 0.56 + pulse * 0.28;
+  ctx.strokeStyle = "rgba(255, 226, 104, 0.9)";
+  ctx.lineWidth = 2.5 + pulse * 2.2;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * (0.96 + pulse * 0.03), 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.globalAlpha = 0.32 + barrierT * 0.22;
+  ctx.strokeStyle = "rgba(255, 246, 188, 0.74)";
+  ctx.lineWidth = 1.1;
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.82, -Math.PI * 0.18, Math.PI * 1.28);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawBeatrice() {
   if (!beatriceBoss.active) return;
   drawBeatriceAfterimages();
@@ -9755,6 +10417,7 @@ function drawBeatrice() {
   const y = Math.round(beatriceBoss.y - hover - (beatriceBoss.z || 0));
 
   drawActorShadow(beatriceBoss, 38);
+  drawBeatriceBarrierAura(x, y);
   const recoveryAlpha = beatriceBoss.flavor === "stunRecover"
     ? clamp(beatriceBoss.recoveryTimer / BEATRICE_STUN_RECOVERY_TIME, 0, 1)
     : 1;
@@ -10083,6 +10746,7 @@ function drawEagleCrestEcho() {
 
 function drawSpecialBeam() {
   if (player.action !== "specialBeam") return;
+  if (player.currentAttack === "lambdaKonpeitoSpecial") return;
   const beam = specialBeamBounds();
   const pulse = pulseValue(12);
   const x = beam.x - cameraX;
@@ -10835,6 +11499,26 @@ function drawCrystalShards() {
     drawCrystalTrail(originScreenX, originScreenY, x, y);
     drawCrystalShape(x, y, 24, 0.95, angle);
   }
+  for (const shard of upwardCrystalShards) {
+    if (shard.delay > 0) continue;
+    const t = 1 - shard.life / shard.max;
+    const x = shard.x - cameraX;
+    const y = shard.y - shard.z;
+    const alpha = 1 - t * 0.35;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const glow = ctx.createRadialGradient(x, y + 18, 4, x, y + 18, 78);
+    glow.addColorStop(0, `rgba(230, 255, 255, ${0.38 * alpha})`);
+    glow.addColorStop(0.48, `rgba(92, 238, 255, ${0.2 * alpha})`);
+    glow.addColorStop(1, "rgba(92, 238, 255, 0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x, y + 18, 80 * (1 - t * 0.18), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    drawCrystalTrail(x, shard.y - 10, x, y + 16, alpha);
+    drawCrystalShape(x, y, 25, alpha, 0);
+  }
 }
 
 function drawCrystalShockwaves() {
@@ -10934,11 +11618,79 @@ function drawKonpeitoShots() {
   }
 }
 
+function drawLambdaSpecialKonpeitos() {
+  for (const effect of lambdaSpecialKonpeitos) {
+    const t = 1 - effect.life / effect.max;
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 90);
+    const x = effect.x - cameraX;
+    const y = effect.hoverY + Math.sin(t * Math.PI * 6) * 6;
+    const nextPulse = clamp(1 - effect.pulseTimer / LAMBDA_SPECIAL_KONPEITO_PULSE_INTERVAL, 0, 1);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    if (effect.launched) {
+      const trailX = x - Math.sign(effect.vx || effect.facing || 1) * 116;
+      const trailY = y - Math.sign(effect.hoverVy || 1) * 22;
+      const trail = ctx.createLinearGradient(trailX, trailY, x, y);
+      trail.addColorStop(0, "rgba(255, 80, 220, 0)");
+      trail.addColorStop(0.55, "rgba(255, 92, 228, 0.2)");
+      trail.addColorStop(1, "rgba(255, 246, 122, 0.72)");
+      ctx.strokeStyle = trail;
+      ctx.lineWidth = 14 + pulse * 4;
+      ctx.beginPath();
+      ctx.moveTo(trailX, trailY);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    }
+    const glow = ctx.createRadialGradient(x, y, 8, x, y, 96 + pulse * 18);
+    glow.addColorStop(0, `rgba(255, 238, 255, ${0.42 + pulse * 0.18})`);
+    glow.addColorStop(0.42, `rgba(255, 86, 220, ${0.24 + pulse * 0.08})`);
+    glow.addColorStop(1, "rgba(255, 86, 220, 0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(x, y, 98 + pulse * 16, 0, Math.PI * 2);
+    ctx.fill();
+    if (!effect.launched) {
+      ctx.strokeStyle = `rgba(255, 246, 136, ${0.42 + pulse * 0.18})`;
+      ctx.lineWidth = 2 + pulse * 2;
+      ctx.beginPath();
+      ctx.ellipse(x, y + 4, 64 + nextPulse * 28, 24 + nextPulse * 9, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+    drawKonpeitoCandy(x, y, 58 + pulse * 6, effect.frame, t * effect.spin * Math.PI * 2, 0.98);
+  }
+}
+
+function drawLambdaSpecialShrapnel() {
+  for (const shard of lambdaSpecialShrapnel) {
+    const pos = lambdaSpecialShrapnelPosition(shard);
+    const x = pos.x - cameraX;
+    const y = pos.y;
+    const sx = shard.startX - cameraX;
+    const sy = shard.startY;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const trail = ctx.createLinearGradient(sx, sy, x, y);
+    trail.addColorStop(0, "rgba(255, 120, 230, 0)");
+    trail.addColorStop(0.56, "rgba(255, 90, 224, 0.18)");
+    trail.addColorStop(1, "rgba(255, 246, 122, 0.58)");
+    ctx.strokeStyle = trail;
+    ctx.lineWidth = 8 * (1 - pos.t * 0.45);
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.quadraticCurveTo(shard.controlX - cameraX, shard.controlY, x, y);
+    ctx.stroke();
+    ctx.restore();
+    drawKonpeitoCandy(x, y, 22 + Math.sin(pos.t * Math.PI) * 6, shard.frame, shard.spin * pos.t, 0.9);
+  }
+}
+
 function drawKonpeitoShockwaves() {
   for (const wave of konpeitoShockwaves) {
     const t = 1 - wave.life / wave.max;
     const alpha = 1 - t;
-    const radius = KONPEITO_RADIUS + (KONPEITO_SHOCKWAVE_MAX_RADIUS - KONPEITO_RADIUS) * t;
+    const maxRadius = wave.radius || KONPEITO_SHOCKWAVE_MAX_RADIUS;
+    const radius = KONPEITO_RADIUS + (maxRadius - KONPEITO_RADIUS) * t;
     const x = wave.x - cameraX;
     const y = wave.y + 10;
     ctx.save();
@@ -11675,15 +12427,51 @@ function drawLambdaRetaliationOverlay() {
   ctx.save();
   ctx.fillStyle = `rgba(125, 0, 0, ${0.22 + t * 0.78})`;
   ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = clamp(t * 0.65, 0, 0.65);
+  ctx.fillStyle = "#ff0000";
+  ctx.fillRect(0, 0, W, H);
+  const laughCount = lambdaRetaliation.laughCount || 0;
+  if (laughCount > 0) {
+    const fontSize = 34 + t * 14;
+    const stepX = fontSize * 1.75;
+    const stepY = fontSize * 1.04;
+    const cols = Math.max(1, Math.floor((W - 36) / stepX));
+    const rows = Math.ceil(laughCount / cols);
+    const lowerTop = H * 0.52;
+    const maxLowerRows = Math.max(1, Math.floor((H - lowerTop - 16) / stepY));
+    const top = Math.max(12, lowerTop - Math.max(0, rows - maxLowerRows) * stepY);
+    ctx.globalAlpha = clamp(0.45 + t * 0.55, 0, 1);
+    ctx.font = `900 ${fontSize}px Segoe UI Black, Impact, Arial`;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    const darken = clamp(t * 1.15, 0, 1);
+    const fillR = Math.round(255 - darken * 155);
+    const fillG = Math.round(27 - darken * 23);
+    const fillB = Math.round(32 - darken * 28);
+    ctx.shadowColor = `rgba(${Math.max(95, fillR)}, 0, 0, 0.92)`;
+    ctx.shadowBlur = 14 + t * 16;
+    for (let i = 0; i < laughCount; i += 1) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const jitterX = Math.sin(i * 7.13) * 3;
+      const jitterY = Math.cos(i * 5.71) * 2;
+      const x = 18 + col * stepX + jitterX;
+      const y = top + row * stepY + jitterY;
+      if (y > H + stepY) continue;
+      ctx.strokeStyle = "rgba(18, 0, 0, 0.86)";
+      ctx.lineWidth = 4;
+      ctx.strokeText("HA", x, y);
+      ctx.fillStyle = `rgb(${fillR}, ${fillG}, ${fillB})`;
+      ctx.fillText("HA", x, y);
+    }
+  }
   if (portrait) {
     const portraitH = H * (0.9 + t * 0.22);
     const portraitW = portrait.width * (portraitH / portrait.height);
     ctx.globalAlpha = clamp(0.18 + t * 0.82, 0, 1);
+    ctx.shadowBlur = 0;
     ctx.drawImage(portrait, W / 2 - portraitW / 2, H / 2 - portraitH / 2 + 18, portraitW, portraitH);
   }
-  ctx.globalAlpha = clamp(t * 0.65, 0, 0.65);
-  ctx.fillStyle = "#ff0000";
-  ctx.fillRect(0, 0, W, H);
   ctx.restore();
 }
 
@@ -11735,6 +12523,7 @@ function drawOverlay() {
   drawLambdaRetaliationOverlay();
   drawBeatriceStakeTutorialArrow();
   drawBeatriceTutorialDialogue();
+  drawBeatriceGoatTrialObjective();
   if (messageTimer > 0 && state === "playing") {
     ctx.font = "700 24px Segoe UI, Arial";
     ctx.textAlign = "center";
@@ -11926,6 +12715,8 @@ function draw() {
     drawCrystalShards();
     drawKonpeitoShockwaves();
     drawKonpeitoDomeBursts(true);
+    drawLambdaSpecialKonpeitos();
+    drawLambdaSpecialShrapnel();
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
     drawBeatriceStakeTrails();
@@ -11964,6 +12755,8 @@ function draw() {
     drawCrystalShards();
     drawKonpeitoShockwaves();
     drawKonpeitoDomeBursts(true);
+    drawLambdaSpecialKonpeitos();
+    drawLambdaSpecialShrapnel();
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
     drawBeatriceStakeTrails();
