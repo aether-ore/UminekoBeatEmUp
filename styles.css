@@ -147,6 +147,57 @@ canvas {
   image-rendering: crisp-edges;
 }
 
+body.touch-layout-active {
+  width: 100dvw;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  padding: 0;
+  background: #05060a;
+  overscroll-behavior: none;
+}
+
+body.touch-layout-active .shell {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  width: 100dvw;
+  height: 100dvh;
+  max-width: none;
+}
+
+body.touch-layout-active .hud,
+body.touch-layout-active .controls {
+  display: none;
+}
+
+body.touch-layout-active .game-stage {
+  width: 100dvw;
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #05060a;
+}
+
+body.touch-layout-active canvas {
+  width: min(100dvw, calc(100dvh * 16 / 9));
+  height: min(100dvh, calc(100dvw * 9 / 16));
+  border: 0;
+}
+
+body.touch-layout-active .touch-controls,
+body.touch-layout-active .orientation-prompt {
+  width: min(100dvw, calc(100dvh * 16 / 9));
+  height: min(100dvh, calc(100dvw * 9 / 16));
+  left: 50%;
+  top: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translate(-50%, -50%);
+}
+
 .touch-controls {
   position: absolute;
   inset: 0;
@@ -231,6 +282,69 @@ canvas {
   min-height: clamp(42px, 6vw, 54px);
   border-color: rgba(105, 244, 255, 0.52);
   color: #c8f9ff;
+}
+
+.touch-button--toggle {
+  display: none;
+  grid-column: 1 / -1;
+  min-height: clamp(38px, 5.4vw, 48px);
+  border-color: rgba(255, 139, 218, 0.46);
+  color: #ffd6f1;
+}
+
+body.touch-layout-active.game-paused .touch-button--toggle {
+  display: block;
+}
+
+.orientation-prompt {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  background:
+    radial-gradient(circle, rgba(105, 244, 255, 0.15), transparent 48%),
+    rgba(3, 5, 9, 0.92);
+  text-align: center;
+  touch-action: none;
+}
+
+.orientation-prompt[hidden] {
+  display: none;
+}
+
+.orientation-prompt__card {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  max-width: 320px;
+  padding: 24px;
+  border: 1px solid rgba(105, 244, 255, 0.48);
+  background: rgba(8, 12, 18, 0.88);
+  box-shadow: 0 0 34px rgba(105, 244, 255, 0.22);
+}
+
+.orientation-prompt__icon {
+  display: grid;
+  place-items: center;
+  width: 58px;
+  aspect-ratio: 1;
+  border: 2px solid rgba(255, 244, 198, 0.72);
+  border-radius: 50%;
+  color: #fff4c6;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.orientation-prompt strong {
+  color: #fff4c6;
+  font-size: 1.25rem;
+}
+
+.orientation-prompt span:last-child {
+  color: #c8f9ff;
+  font-weight: 700;
 }
 
 .run-details {

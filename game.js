@@ -15,6 +15,7 @@ const touchControlsEl = document.getElementById("touchControls");
 const touchStickEl = document.querySelector("[data-touch-stick]");
 const touchStickNub = touchStickEl?.querySelector(".touch-stick__nub");
 const touchToggle = document.getElementById("touchToggle");
+const orientationPrompt = document.getElementById("orientationPrompt");
 
 const W = canvas.width;
 const H = canvas.height;
@@ -471,6 +472,10 @@ const touchControls = {
   enabled: false,
   visible: false,
   userPreference: null,
+  touchDeviceDetected: false,
+  layoutActive: false,
+  orientationBlocked: false,
+  fullscreenAttempted: false,
   movementX: 0,
   movementY: 0,
   stickPointerId: null,
@@ -12337,6 +12342,60 @@ function drawScoreComboHud() {
   ctx.restore();
 }
 
+function drawCanvasMobileHud() {
+  if (!touchControls.layoutActive) return;
+  const panelW = 286;
+  const panelH = 68;
+  const x = W - panelW - 18;
+  const y = 14;
+  const healthT = clamp(player.hp / 100, 0, 1);
+  const resolveT = clamp(player.resolve / 100, 0, 1);
+  ctx.save();
+  ctx.fillStyle = "rgba(5, 8, 14, 0.62)";
+  ctx.strokeStyle = "rgba(255, 236, 178, 0.32)";
+  ctx.lineWidth = 2;
+  ctx.fillRect(x, y, panelW, panelH);
+  ctx.strokeRect(x + 0.5, y + 0.5, panelW - 1, panelH - 1);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#fff4c6";
+  ctx.font = "900 18px Segoe UI, Arial";
+  const labelY = beatriceBoss.active && waveMode === "boss" ? 86 : 24;
+  ctx.fillText(currentWaveLabel(), W / 2, labelY);
+  ctx.fillStyle = "#d8d0ba";
+  ctx.font = "800 14px Segoe UI, Arial";
+  ctx.fillText(`Score ${formatStatNumber(score)}`, W / 2, labelY + 18);
+
+  function drawMiniMeter(label, t, rowY, gradientStops) {
+    const barX = x + 84;
+    const barY = y + rowY;
+    const barW = panelW - 104;
+    const barH = 12;
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#d8d0ba";
+    ctx.font = "800 13px Segoe UI, Arial";
+    ctx.fillText(label, x + 12, barY + 10);
+    ctx.fillStyle = "rgba(22, 22, 30, 0.94)";
+    ctx.fillRect(barX, barY, barW, barH);
+    const grad = ctx.createLinearGradient(barX, barY, barX + barW, barY);
+    gradientStops.forEach(([stop, color]) => grad.addColorStop(stop, color));
+    ctx.fillStyle = grad;
+    ctx.fillRect(barX, barY, barW * t, barH);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.26)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(barX + 0.5, barY + 0.5, barW - 1, barH - 1);
+  }
+
+  drawMiniMeter("HP", healthT, 16, [[0, "#cc2738"], [1, "#f07f4f"]]);
+  const resolveStops = player.resolve >= 100
+    ? [[0, "#ffe78a"], [0.5, "#f4df84"], [1, "#d09a35"]]
+    : player.resolve >= chargedAttackResolveCost()
+      ? [[0, "#74e9ff"], [0.5, "#1557da"], [1, "#74e9ff"]]
+      : [[0, "#45d76f"], [1, "#45d76f"]];
+  drawMiniMeter("RES", resolveT, 42, resolveStops);
+  ctx.restore();
+}
+
 function drawBernHazardWarning() {
   if (!bernHazardCanSpawn() || !bernCompanion.active) return;
   if (!bernCompanion.state.startsWith("hazard")) return;
@@ -12718,6 +12777,7 @@ function drawOverlay() {
   runDetailsButton.visible = false;
   if (state === "playing" || state === "paused" || state === "lost" || state === "itemTutorial" || state === "bossBlessing" || state === "beatriceTutorial" || state === "beatriceStakeTutorial") {
     drawBeatriceBossHud();
+    drawCanvasMobileHud();
     drawItemHud();
     drawScoreComboHud();
   }
@@ -13101,6 +13161,36 @@ function isCoarsePointerDevice() {
   return Boolean(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
 }
 
+function touchLayoutShouldBeActive() {
+  return Boolean(touchControls.enabled && (touchControls.touchDeviceDetected || isCoarsePointerDevice()));
+}
+
+function touchLayoutShouldBlockForPortrait() {
+  return Boolean(touchControls.layoutActive && window.innerHeight > window.innerWidth);
+}
+
+function syncTouchLayoutState() {
+  touchControls.layoutActive = touchLayoutShouldBeActive();
+  touchControls.orientationBlocked = touchLayoutShouldBlockForPortrait();
+  document.body.classList.toggle("touch-layout-active", touchControls.layoutActive);
+  document.body.classList.toggle("touch-layout-portrait", touchControls.orientationBlocked);
+  document.body.classList.toggle("game-paused", state === "paused");
+  if (orientationPrompt) orientationPrompt.hidden = !touchControls.orientationBlocked;
+}
+
+function maybeRequestTouchFullscreen() {
+  if (!touchControls.layoutActive || touchControls.fullscreenAttempted || document.fullscreenElement) return;
+  const target = document.documentElement;
+  if (!target.requestFullscreen) return;
+  touchControls.fullscreenAttempted = true;
+  try {
+    const request = target.requestFullscreen({ navigationUI: "hide" });
+    if (request && typeof request.catch === "function") request.catch(() => {});
+  } catch (error) {
+    // Fullscreen is a nice-to-have on mobile; layout mode still works without it.
+  }
+}
+
 function setTouchControlsEnabled(enabled, persist = false) {
   touchControls.enabled = Boolean(enabled);
   if (persist) {
@@ -13125,6 +13215,7 @@ function updateTouchToggleLabel() {
 
 function initializeTouchControls() {
   touchControls.userPreference = storedTouchPreference();
+  touchControls.touchDeviceDetected = isCoarsePointerDevice();
   setTouchControlsEnabled(touchControls.userPreference ?? isCoarsePointerDevice(), false);
 }
 
@@ -13137,7 +13228,8 @@ function touchControlsBlockedByModalState() {
 }
 
 function syncTouchControlsVisibility() {
-  const nextVisible = Boolean(touchControls.enabled && !touchControlsBlockedByModalState());
+  syncTouchLayoutState();
+  const nextVisible = Boolean(touchControls.enabled && !touchControls.orientationBlocked && !touchControlsBlockedByModalState());
   if (touchControls.visible === nextVisible) {
     if (touchControlsEl) touchControlsEl.hidden = !nextVisible;
     document.body.classList.toggle("touch-controls-visible", nextVisible);
@@ -13164,6 +13256,7 @@ function resetTouchInput() {
 }
 
 function enableTouchControlsFromPointer(event) {
+  if (event.pointerType === "touch") touchControls.touchDeviceDetected = true;
   if (touchControls.userPreference !== null) return;
   if (event.pointerType === "touch") setTouchControlsEnabled(true, false);
 }
@@ -13215,8 +13308,13 @@ function updateTouchStickFromEvent(event) {
 
 function handleTouchActionPress(action) {
   if (!touchControls.visible && action !== "pause") return;
+  maybeRequestTouchFullscreen();
   if (action === "pause") {
     togglePause();
+    return;
+  }
+  if (action === "touchToggle") {
+    if (state === "paused") setTouchControlsEnabled(false, true);
     return;
   }
   if (action === "start") {
@@ -13406,6 +13504,8 @@ canvas.addEventListener("click", (event) => {
 });
 
 document.addEventListener("pointerdown", enableTouchControlsFromPointer, { passive: true });
+window.addEventListener("resize", syncTouchControlsVisibility);
+window.addEventListener("orientationchange", syncTouchControlsVisibility);
 
 if (touchToggle) {
   touchToggle.addEventListener("click", () => {

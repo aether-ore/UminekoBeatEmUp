@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Golden Witch Brawl</title>
     <link rel="stylesheet" href="styles.css">
   </head>
@@ -38,6 +38,15 @@
             <button type="button" class="touch-button" data-touch-action="punch">Punch</button>
             <button type="button" class="touch-button" data-touch-action="kick">Kick</button>
             <button type="button" class="touch-button touch-button--start" data-touch-action="start">Start</button>
+            <button type="button" class="touch-button touch-button--toggle" data-touch-action="touchToggle">Touch Off</button>
+          </div>
+        </div>
+
+        <div id="orientationPrompt" class="orientation-prompt" hidden>
+          <div class="orientation-prompt__card">
+            <span class="orientation-prompt__icon">Turn</span>
+            <strong>Rotate to landscape</strong>
+            <span>This brawl needs a wider stage.</span>
           </div>
         </div>
       </div>
