@@ -48,6 +48,7 @@ const MESSAGE_BOTTLE_THROW_DELAY = 0.48;
 const ENEMY_HEALTH_FIVE_WAVE_BONUS = 8;
 const BOSS_WAVE_INTERVAL = 10;
 const GLOBAL_ENEMY_DROP_RATE = 0.28;
+const BOSS_ITEM_ABSORB_DURATION = 0.42;
 const LOCAL_SCOREBOARD_KEY = "uminekoBeatEmUpHighScoresV1";
 const LOCAL_SCOREBOARD_LIMIT = 10;
 const ITEM_DROP_RATES = {
@@ -104,12 +105,6 @@ const LAMBDA_BLESSINGS = [
     source: "Lambdadelta",
     title: "Blessing of Certainty: Candy Cataclysm",
     text: "Special summons a hovering konpeito that pulses three times before bursting into candy shrapnel."
-  },
-  {
-    id: "paperArmor",
-    source: "Lambdadelta",
-    title: "Blessing of Certainty: +1 Super Paper Armor",
-    text: "While attacking, Battler gains poise that can ignore non-launch interruptions up to 25% of his health."
   }
 ];
 const BERN_BLESSINGS = [];
@@ -1108,6 +1103,7 @@ const beatriceStakeTutorial = {
   scroll: 0
 };
 const pickups = [];
+const absorbingPickups = [];
 const crystalShards = [];
 const pendingMiracleCrystalFollowups = [];
 const upwardCrystalShards = [];
@@ -1388,26 +1384,7 @@ function damagePlayer(amount) {
   return actual;
 }
 
-function canUseAttackPoise() {
-  return Boolean(player.blessings.paperArmor)
-    && player.attackLock > 0
-    && attackData[player.action]
-    && !player.airborne
-    && !player.knockedDown;
-}
-
 function absorbPlayerPoise(amount, launch = false) {
-  if (launch) {
-    player.poise = 0;
-    return false;
-  }
-  if (!canUseAttackPoise()) return false;
-  if (player.poise <= 0) player.poise = 25;
-  player.poise -= Math.max(0, amount);
-  if (player.poise > 0) {
-    burst(player.x, player.y - 92, "special");
-    return true;
-  }
   player.poise = 0;
   return false;
 }
@@ -1736,7 +1713,6 @@ const player = {
     launchExtension: 0,
     superCharge: false,
     lambdaKonpeitoSpecial: false,
-    paperArmor: false,
     miracleRevival: 0,
     miracleShardFollowup: false,
     miracleCrystalShardPlus: false,
@@ -2287,7 +2263,7 @@ function absorbEnemyIntoDuoSingularity(enemy) {
   score += 250;
 }
 
-function activatePickup(pickup) {
+function activatePickup(pickup, options = {}) {
   runStats.itemsPickedUp += 1;
   if (!player.itemOrder.includes(pickup.type)) {
     player.itemOrder.push(pickup.type);
@@ -2324,7 +2300,33 @@ function activatePickup(pickup) {
     message = "One-Winged Eagle Crest";
   }
   messageTimer = 1.1;
-  showItemTutorial(pickup.type);
+  if (!options.skipTutorial) showItemTutorial(pickup.type);
+}
+
+function absorbFloorPickupsIntoBattler() {
+  if (!pickups.length) return;
+  const loosePickups = pickups.splice(0, pickups.length);
+  for (const pickup of loosePickups) {
+    absorbingPickups.push({
+      type: pickup.type,
+      startX: pickup.x,
+      startY: pickup.y,
+      endX: player.x,
+      endY: player.y - 16,
+      bob: pickup.bob || 0,
+      t: 0,
+      duration: BOSS_ITEM_ABSORB_DURATION
+    });
+    activatePickup(pickup, { skipTutorial: true });
+  }
+}
+
+function updateAbsorbingPickups(dt) {
+  for (let i = absorbingPickups.length - 1; i >= 0; i--) {
+    const pickup = absorbingPickups[i];
+    pickup.t += dt / Math.max(0.01, pickup.duration);
+    if (pickup.t >= 1) absorbingPickups.splice(i, 1);
+  }
 }
 
 function debugGrantStartingPlumTea() {
@@ -4321,8 +4323,6 @@ function applyBossBlessing(blessing) {
     player.blessings.superCharge = true;
   } else if (blessing.id === "lambdaKonpeitoSpecial") {
     player.blessings.lambdaKonpeitoSpecial = true;
-  } else if (blessing.id === "paperArmor") {
-    player.blessings.paperArmor = true;
   } else if (blessing.id === "miracleRevival") {
     player.blessings.miracleRevival = (player.blessings.miracleRevival || 0) + 1;
   } else if (blessing.id === "miracleShardFollowup") {
@@ -4349,6 +4349,7 @@ function chooseBossBlessing(index = bossBlessingChoice.selected || 0) {
 }
 
 function beginBossWave() {
+  absorbFloorPickupsIntoBattler();
   const options = bossBlessingOptionsFromCompanions();
   dismissCompanionsForBossWave();
   if (options.length > 0) {
@@ -5261,7 +5262,6 @@ function startGame() {
   player.blessings.launchExtension = 0;
   player.blessings.superCharge = false;
   player.blessings.lambdaKonpeitoSpecial = false;
-  player.blessings.paperArmor = false;
   player.blessings.miracleRevival = 0;
   player.blessings.miracleShardFollowup = false;
   player.blessings.miracleCrystalShardPlus = false;
@@ -5415,6 +5415,7 @@ function startGame() {
   bernCompanion.parryVz = 0;
   bernCompanion.parryFade = 0;
   pickups.length = 0;
+  absorbingPickups.length = 0;
   crystalShards.length = 0;
   pendingMiracleCrystalFollowups.length = 0;
   upwardCrystalShards.length = 0;
@@ -6041,7 +6042,7 @@ function attack(kind) {
   player.pendingResolveAttack = false;
   player.crestAttackHasHit = false;
   player.superChargeShockwaveDone = false;
-  player.poise = player.blessings.paperArmor && data.stage ? 25 : 0;
+  player.poise = 0;
   player.attackLungeRemaining = data.lunge || 0;
   if (action === "kick3") {
     player.stage3KickAir = true;
@@ -8950,6 +8951,7 @@ function update(dt) {
     updateResolveDuoOutline();
     player.anim = Math.min(frames.down.length - 0.01, player.anim + dt * 8);
     updateParticles(dt);
+    updateAbsorbingPickups(dt);
     updateCrystalShards(dt);
     updateCrystalTrails(dt);
     updateCrystalShockwaves(dt);
@@ -8976,6 +8978,7 @@ function update(dt) {
     resetAttackHolds();
     updateLambda(dt);
     updateParticles(dt);
+    updateAbsorbingPickups(dt);
     updateCrystalTrails(dt);
     updateCrystalShockwaves(dt);
     updateKonpeitoGeysers(dt);
@@ -9012,6 +9015,7 @@ function update(dt) {
   if (state === "bossBlessing") {
     resetAttackHolds();
     updateParticles(dt);
+    updateAbsorbingPickups(dt);
     updateKonpeitoGeysers(dt);
     updateSummonPillars(dt);
     screenFlashTimer = Math.max(0, screenFlashTimer - dt);
@@ -9030,6 +9034,7 @@ function update(dt) {
     beatriceStakeTutorial.skipCooldown = Math.max(0, beatriceStakeTutorial.skipCooldown - dt);
     updateBeatrice(dt);
     updateParticles(dt);
+    updateAbsorbingPickups(dt);
     updateBeatriceStakeParryLine(dt);
     updateCrystalTrails(dt);
     updateCrystalShockwaves(dt);
@@ -9091,6 +9096,7 @@ function update(dt) {
     ctx.filter = "grayscale(1) saturate(0.08) brightness(0.58)";
     drawBackground();
     drawPickups();
+    drawAbsorbingPickups();
     drawMessageBottles();
     drawSummonPillars();
     drawKonpeitoGeysers(false);
@@ -9180,6 +9186,7 @@ function update(dt) {
   }
   updatePlayer(dt);
   enemyFreezeTimer = Math.max(0, enemyFreezeTimer - dt);
+  updateAbsorbingPickups(dt);
   updateMessageBottles(dt);
   updateEnemies(dt);
   updatePickups(dt);
@@ -11299,19 +11306,43 @@ function drawOneWingedEagleCrest(x, y, height = EAGLE_CREST_PICKUP_SIZE, alpha =
   ctx.restore();
 }
 
+function drawPickupIcon(type, x, y, bob, pulse, alpha = 1, scale = 1) {
+  if (type === "konpeito") {
+    drawKonpeitoCandy(x, y - 42 * scale, (26 + pulse * 4) * scale, Math.floor(bob * 3) % KONPEITO_FRAME_COUNT, bob * 0.28, alpha);
+  } else if (type === "plumTea") {
+    drawPlumTeaIcon(x, y - 42 * scale, (28 + pulse * 4) * scale, alpha * 0.92);
+  } else if (type === "oneWingedEagle") {
+    drawOneWingedEagleCrest(x, y - 42 * scale, (EAGLE_CREST_PICKUP_SIZE + pulse * 7) * scale, alpha * (0.9 + pulse * 0.1), false, pulse > 0.62);
+  } else {
+    drawCrystalShape(x, y - 36 * scale, (19 + pulse * 3) * scale, alpha * (0.8 + pulse * 0.2), bob * 0.18);
+  }
+}
+
 function drawPickups() {
   const pulse = pulseValue(8);
   for (const pickup of pickups) {
     const bob = Math.sin(pickup.bob) * 7;
-    if (pickup.type === "konpeito") {
-      drawKonpeitoCandy(pickup.x - cameraX, pickup.y - 42 + bob, 26 + pulse * 4, Math.floor(pickup.bob * 3) % KONPEITO_FRAME_COUNT, pickup.bob * 0.28, 0.9);
-    } else if (pickup.type === "plumTea") {
-      drawPlumTeaIcon(pickup.x - cameraX, pickup.y - 42 + bob, 28 + pulse * 4, 0.92);
-    } else if (pickup.type === "oneWingedEagle") {
-      drawOneWingedEagleCrest(pickup.x - cameraX, pickup.y - 42 + bob, EAGLE_CREST_PICKUP_SIZE + pulse * 7, 0.9 + pulse * 0.1, false, pulse > 0.62);
-    } else {
-      drawCrystalShape(pickup.x - cameraX, pickup.y - 36 + bob, 19 + pulse * 3, 0.8 + pulse * 0.2, pickup.bob * 0.18);
-    }
+    drawPickupIcon(pickup.type, pickup.x - cameraX, pickup.y + bob, pickup.bob, pulse, 1, 1);
+  }
+}
+
+function drawAbsorbingPickups() {
+  if (!absorbingPickups.length) return;
+  const pulse = pulseValue(10);
+  for (const pickup of absorbingPickups) {
+    const t = clamp(pickup.t, 0, 1);
+    const ease = 1 - Math.pow(1 - t, 3);
+    const arc = Math.sin(t * Math.PI) * 56;
+    const x = pickup.startX + (pickup.endX - pickup.startX) * ease - cameraX;
+    const y = pickup.startY + (pickup.endY - pickup.startY) * ease - arc;
+    const alpha = clamp(1 - Math.max(0, t - 0.78) / 0.22, 0, 1);
+    const scale = 1 + Math.sin(t * Math.PI) * 0.28;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.shadowColor = "rgba(255, 246, 180, 0.86)";
+    ctx.shadowBlur = 18;
+    drawPickupIcon(pickup.type, x, y, pickup.bob + t * 5, pulse, alpha, scale);
+    ctx.restore();
   }
 }
 
@@ -12697,6 +12728,7 @@ function draw() {
     ctx.filter = "grayscale(1) saturate(0.18) brightness(0.82)";
     drawBackground();
     drawPickups();
+    drawAbsorbingPickups();
     drawMessageBottles();
     drawSummonPillars();
     drawKonpeitoGeysers(false);
@@ -12735,6 +12767,7 @@ function draw() {
   } else {
     drawBackground();
     drawPickups();
+    drawAbsorbingPickups();
     drawMessageBottles();
     drawSummonPillars();
     drawKonpeitoGeysers(false);
