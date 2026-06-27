@@ -63,10 +63,7 @@ const COMBO_DEFEAT_SCORE_BONUS = 320;
 const COMBO_DEFEAT_MULTIPLIER = 0.28;
 const PERFECT_SCORE_BASE = 1800;
 const PERFECT_SCORE_PER_WAVE = 220;
-const SCORE_BLESSING_FIRST_THRESHOLD = 7200;
-const SCORE_BLESSING_WAVE_VALUE_MULTIPLIER = 2.65;
-const SCORE_BLESSING_MIN_STEP = 6500;
-const SCORE_BLESSING_MAX_STEP = 22000;
+const SCORE_BLESSING_STEP = 30000;
 const ITEM_DROP_RATES = {
   crystalShard: 1,
   konpeito: 0.7,
@@ -460,6 +457,7 @@ const DASH_COOLDOWN = 1.5;
 const DASH_START_DURATION = 0.24;
 const DASH_RUN_ACCEL_TIME = 0.78;
 const DASH_TAP_DODGE_BRAKE_DURATION = 0.32;
+const DASH_BRAKE_DURATION = 0.36;
 const DASH_TAP_DODGE_DRIFT = 122;
 const DASH_TAP_DODGE_DRIFT_SPEED = 520;
 const EXPERIMENTAL_JUGGLE_LAMBDA_KONPEITO = true;
@@ -481,8 +479,11 @@ const touchControls = {
   stickPointerId: null,
   buttonPointers: new Map(),
   runHeld: false,
+  runLatched: false,
   duoHeld: false
 };
+
+let lastTouchEndTime = 0;
 const mouse = {
   x: W / 2,
   y: FLOOR_Y,
@@ -1327,7 +1328,7 @@ const runStats = {
   bossesDefeated: 0,
   perfects: 0
 };
-let nextScoreBlessingAt = SCORE_BLESSING_FIRST_THRESHOLD;
+let nextScoreBlessingAt = SCORE_BLESSING_STEP;
 const scoreBlessingQueue = [];
 
 function resetRunStats() {
@@ -1355,32 +1356,11 @@ function resetScoreCombo(perfectEligible = true) {
 }
 
 function resetScoreProgression() {
-  nextScoreBlessingAt = SCORE_BLESSING_FIRST_THRESHOLD;
+  nextScoreBlessingAt = SCORE_BLESSING_STEP;
   scoreBlessingQueue.length = 0;
   scoreCombo.lastBanked = 0;
   scoreCombo.lastMultiplier = 1;
   resetScoreCombo(true);
-}
-
-function expectedWaveScoreValue(targetWave = wave) {
-  const normalWave = Math.max(1, targetWave);
-  const count = Math.min(3 + normalWave, 8);
-  const fiveWaveSteps = Math.floor(Math.max(0, normalWave - 1) / 5);
-  const baseHp = 42 + normalWave * 10 + fiveWaveSteps * ENEMY_HEALTH_FIVE_WAVE_BONUS;
-  const goatCount = Array.from({ length: count }, (_, index) => normalWave >= 2 && (index + normalWave) % 4 === 0).filter(Boolean).length;
-  const battlerCount = count - goatCount;
-  const expectedDamageScore = (battlerCount * baseHp + goatCount * Math.round(baseHp * 1.25)) * COMBO_DAMAGE_SCORE_MULTIPLIER;
-  const expectedDefeatScore = count * COMBO_DEFEAT_SCORE_BONUS;
-  const expectedMultiplier = 1 + Math.min(2.4, count * COMBO_DEFEAT_MULTIPLIER * 0.62);
-  return Math.round((expectedDamageScore + expectedDefeatScore) * expectedMultiplier);
-}
-
-function scoreBlessingStepForWave(targetWave = wave) {
-  return clamp(
-    Math.round(expectedWaveScoreValue(targetWave) * SCORE_BLESSING_WAVE_VALUE_MULTIPLIER),
-    SCORE_BLESSING_MIN_STEP,
-    SCORE_BLESSING_MAX_STEP
-  );
 }
 
 function addScoreComboDamage(actualDamage) {
@@ -1423,7 +1403,7 @@ function scoreBlessingOptions() {
 function queueScoreBlessingChoices() {
   while (score >= nextScoreBlessingAt) {
     scoreBlessingQueue.push(scoreBlessingOptions());
-    nextScoreBlessingAt += scoreBlessingStepForWave(wave);
+    nextScoreBlessingAt += SCORE_BLESSING_STEP;
   }
   maybeStartScoreBlessingChoice();
 }
@@ -1855,6 +1835,7 @@ const player = {
   wallSlamHit: false,
   meleeParryRecoilVx: 0,
   runState: "none",
+  runLocked: false,
   runTimer: 0,
   runCharge: 0,
   dashCooldown: 0,
@@ -5422,6 +5403,7 @@ function startGame() {
   player.wallSlamHit = false;
   player.meleeParryRecoilVx = 0;
   player.runState = "none";
+  player.runLocked = false;
   player.runTimer = 0;
   player.runCharge = 0;
   player.dashCooldown = 0;
@@ -6199,6 +6181,7 @@ function attack(kind) {
     player.stage3KickTimer = 0;
     player.stage3KickVz = 0;
     player.runState = "none";
+    player.runLocked = false;
     player.runTimer = 0;
     player.runCharge = 0;
     player.brakeDrift = 0;
@@ -6214,6 +6197,14 @@ function attack(kind) {
   const action = kind === "punch" && isPlayerAtTopRunSpeed() ? "dashPunch" : kind === "punch" || kind === "kick" ? nextComboAction(kind) : kind;
   const data = attackData[action];
   if (!data) return false;
+  if (action === "dashPunch" && touchControls.runLatched) {
+    touchControls.runLatched = false;
+    touchControls.runHeld = false;
+    syncTouchRunButtonState();
+  }
+  if (action === "dashPunch") {
+    player.runLocked = false;
+  }
   if (!player.konpeitoGlowPending && player.konpeitoGlowTimer > 0) {
     player.konpeitoGlowTimer = 0;
   }
@@ -6238,6 +6229,7 @@ function attack(kind) {
     player.stage3KickVz = 0;
   }
   player.runState = "none";
+  player.runLocked = false;
   player.runTimer = 0;
   player.runCharge = 0;
   player.brakeDrift = 0;
@@ -7568,6 +7560,14 @@ function updatePlayer(dt) {
 
   if (player.attackLock <= 0) {
     const moving = mx || my;
+    const runButtonHeld = inputRunButtonHeld();
+    if (!moving && player.runLocked) {
+      player.runLocked = false;
+      if (touchControls.runLatched) {
+        touchControls.runLatched = false;
+        syncTouchRunButtonState();
+      }
+    }
     const wantsRunInput = Boolean(moving && inputRunHeld());
     const wantsRun = wantsRunInput && (player.runState === "starting" || player.runState === "running" || player.dashCooldown <= 0);
     let moveSpeed = 240;
@@ -7577,6 +7577,11 @@ function updatePlayer(dt) {
     if (wantsRun) {
       if (player.runState === "none" || player.runState === "braking") {
         player.runState = "starting";
+        player.runLocked = false;
+        if (touchControls.runLatched) {
+          touchControls.runLatched = false;
+          syncTouchRunButtonState();
+        }
         player.runTimer = 0;
         player.runCharge = 0;
         player.dashCooldown = DASH_COOLDOWN;
@@ -7592,6 +7597,13 @@ function updatePlayer(dt) {
         laneSpeed = 150;
         if (player.runTimer >= DASH_START_DURATION) {
           player.runState = "running";
+          if (runButtonHeld) {
+            player.runLocked = true;
+            if (touchControls.runHeld && !touchControls.runLatched) {
+              touchControls.runLatched = true;
+              syncTouchRunButtonState();
+            }
+          }
           player.runTimer = 0;
           player.brakeBurstTimer = 0;
           setAction("run");
@@ -7609,8 +7621,14 @@ function updatePlayer(dt) {
     } else if (player.runState === "starting" || player.runState === "running") {
       const burstRelease = player.runState === "starting" || player.brakeBurstTimer > 0;
       player.runState = "braking";
-      player.runTimer = 0.36;
+      player.runLocked = false;
+      if (touchControls.runLatched) {
+        touchControls.runLatched = false;
+        syncTouchRunButtonState();
+      }
+      player.runTimer = DASH_BRAKE_DURATION;
       player.brakeDrift = burstRelease ? DASH_TAP_DODGE_DRIFT : 46 + 42 * player.runCharge;
+      if (burstRelease) player.invuln = Math.max(player.invuln, DASH_BRAKE_DURATION);
       player.runCharge = 0;
       setAction("runBrake");
     }
@@ -7629,6 +7647,7 @@ function updatePlayer(dt) {
       player.vy = 0;
       if (player.runTimer <= 0) {
         player.runState = "none";
+        player.runLocked = false;
         player.runCharge = 0;
         player.brakeDrift = 0;
         player.brakeBurstTimer = 0;
@@ -13248,9 +13267,11 @@ function resetTouchInput() {
   touchControls.stickPointerId = null;
   touchControls.buttonPointers.clear();
   touchControls.runHeld = false;
+  touchControls.runLatched = false;
   touchControls.duoHeld = false;
   if (touchStickNub) touchStickNub.style.transform = "translate(-50%, -50%)";
   document.querySelectorAll("[data-touch-action].is-held").forEach((button) => button.classList.remove("is-held"));
+  syncTouchRunButtonState();
   releaseAttackHold("punch");
   releaseAttackHold("kick");
 }
@@ -13277,8 +13298,14 @@ function inputAxisY() {
   return clamp(axis, -1, 1);
 }
 
-function inputRunHeld() {
+function inputRunButtonHeld() {
   return keys.has("shift") || (touchControls.visible && touchControls.runHeld);
+}
+
+function inputRunHeld() {
+  const lockedRun = player.runState === "running" && player.runLocked;
+  const touchLockedRun = touchControls.visible && touchControls.runLatched && player.runState === "running";
+  return inputRunButtonHeld() || lockedRun || touchLockedRun;
 }
 
 function inputDuoHeld() {
@@ -13301,9 +13328,19 @@ function updateTouchStickFromEvent(event) {
   const rawY = max ? (ny * clamped) / max : 0;
   touchControls.movementX = Math.abs(rawX) < TOUCH_STICK_DEADZONE ? 0 : rawX;
   touchControls.movementY = Math.abs(rawY) < TOUCH_STICK_DEADZONE ? 0 : rawY;
+  if (!touchControls.movementX && !touchControls.movementY && touchControls.runLatched) {
+    touchControls.runLatched = false;
+    syncTouchRunButtonState();
+  }
   if (touchStickNub) {
     touchStickNub.style.transform = `translate(calc(-50% + ${nx * clamped}px), calc(-50% + ${ny * clamped}px))`;
   }
+}
+
+function syncTouchRunButtonState() {
+  document.querySelectorAll('[data-touch-action="run"]').forEach((button) => {
+    button.classList.toggle("is-held", touchControls.runHeld || touchControls.runLatched);
+  });
 }
 
 function handleTouchActionPress(action) {
@@ -13347,14 +13384,20 @@ function handleTouchActionPress(action) {
   if (action === "kick") beginAttackHold("kick");
   if (action === "special") attack("special");
   if (action === "duo") touchControls.duoHeld = true;
-  if (action === "run") touchControls.runHeld = true;
+  if (action === "run") {
+    touchControls.runHeld = true;
+    syncTouchRunButtonState();
+  }
 }
 
 function handleTouchActionRelease(action) {
   if (action === "punch") releaseAttackHold("punch");
   if (action === "kick") releaseAttackHold("kick");
   if (action === "duo") touchControls.duoHeld = false;
-  if (action === "run") touchControls.runHeld = false;
+  if (action === "run") {
+    touchControls.runHeld = false;
+    syncTouchRunButtonState();
+  }
 }
 
 window.addEventListener("keydown", (event) => {
@@ -13506,6 +13549,19 @@ canvas.addEventListener("click", (event) => {
 document.addEventListener("pointerdown", enableTouchControlsFromPointer, { passive: true });
 window.addEventListener("resize", syncTouchControlsVisibility);
 window.addEventListener("orientationchange", syncTouchControlsVisibility);
+document.addEventListener("dblclick", (event) => {
+  if (touchControls.enabled || isCoarsePointerDevice()) event.preventDefault();
+}, { passive: false });
+document.addEventListener("touchend", (event) => {
+  const now = Date.now();
+  if (touchControls.enabled || isCoarsePointerDevice()) {
+    if (now - lastTouchEndTime < 360) event.preventDefault();
+    lastTouchEndTime = now;
+  }
+}, { passive: false });
+document.addEventListener("gesturestart", (event) => event.preventDefault(), { passive: false });
+document.addEventListener("gesturechange", (event) => event.preventDefault(), { passive: false });
+document.addEventListener("gestureend", (event) => event.preventDefault(), { passive: false });
 
 if (touchToggle) {
   touchToggle.addEventListener("click", () => {
@@ -13532,6 +13588,8 @@ if (touchStickEl) {
     touchControls.movementX = 0;
     touchControls.movementY = 0;
     touchControls.stickPointerId = null;
+    touchControls.runLatched = false;
+    syncTouchRunButtonState();
     if (touchStickNub) touchStickNub.style.transform = "translate(-50%, -50%)";
   };
   touchStickEl.addEventListener("pointerup", releaseStick);

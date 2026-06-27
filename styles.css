@@ -14,6 +14,11 @@ body {
   width: 100%;
   min-height: 100%;
   margin: 0;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 body {
@@ -34,6 +39,8 @@ body {
 .game-stage {
   position: relative;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .hud,
@@ -145,6 +152,10 @@ canvas {
   background: #11141d;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 body.touch-layout-active {
