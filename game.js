@@ -11,6 +11,10 @@ const parryTip = document.getElementById("parryTip");
 const runDetailsPanel = document.getElementById("runDetailsPanel");
 const runDetailsList = document.getElementById("runDetailsList");
 const runDetailsClose = document.getElementById("runDetailsClose");
+const touchControlsEl = document.getElementById("touchControls");
+const touchStickEl = document.querySelector("[data-touch-stick]");
+const touchStickNub = touchStickEl?.querySelector(".touch-stick__nub");
+const touchToggle = document.getElementById("touchToggle");
 
 const W = canvas.width;
 const H = canvas.height;
@@ -50,7 +54,18 @@ const BOSS_WAVE_INTERVAL = 10;
 const GLOBAL_ENEMY_DROP_RATE = 0.28;
 const BOSS_ITEM_ABSORB_DURATION = 0.42;
 const LOCAL_SCOREBOARD_KEY = "uminekoBeatEmUpHighScoresV1";
+const TOUCH_CONTROLS_KEY = "uminekoBeatEmUpTouchControlsV1";
+const TOUCH_STICK_DEADZONE = 0.18;
 const LOCAL_SCOREBOARD_LIMIT = 10;
+const COMBO_DAMAGE_SCORE_MULTIPLIER = 10;
+const COMBO_DEFEAT_SCORE_BONUS = 320;
+const COMBO_DEFEAT_MULTIPLIER = 0.28;
+const PERFECT_SCORE_BASE = 1800;
+const PERFECT_SCORE_PER_WAVE = 220;
+const SCORE_BLESSING_FIRST_THRESHOLD = 7200;
+const SCORE_BLESSING_WAVE_VALUE_MULTIPLIER = 2.65;
+const SCORE_BLESSING_MIN_STEP = 6500;
+const SCORE_BLESSING_MAX_STEP = 22000;
 const ITEM_DROP_RATES = {
   crystalShard: 1,
   konpeito: 0.7,
@@ -452,6 +467,17 @@ const LAMBDA_KONPEITO_JUGGLE_DURATION = 0.56;
 const LAMBDA_KONPEITO_JUGGLE_ARC = 210;
 const LAMBDA_KONPEITO_JUGGLE_PUSH = 260;
 const keys = new Set();
+const touchControls = {
+  enabled: false,
+  visible: false,
+  userPreference: null,
+  movementX: 0,
+  movementY: 0,
+  stickPointerId: null,
+  buttonPointers: new Map(),
+  runHeld: false,
+  duoHeld: false
+};
 const mouse = {
   x: W / 2,
   y: FLOOR_Y,
@@ -1084,7 +1110,16 @@ const bossBlessingChoice = {
   active: false,
   choices: [],
   pendingBoss: false,
-  selected: 0
+  selected: 0,
+  context: "boss"
+};
+const scoreCombo = {
+  hits: 0,
+  bank: 0,
+  defeats: 0,
+  lastBanked: 0,
+  lastMultiplier: 1,
+  perfectEligible: true
 };
 const beatriceTutorial = {
   active: false,
@@ -1284,8 +1319,11 @@ const runStats = {
   launchedByLambdadelta: 0,
   revivedByBernkastel: 0,
   parriesPerformed: 0,
-  bossesDefeated: 0
+  bossesDefeated: 0,
+  perfects: 0
 };
+let nextScoreBlessingAt = SCORE_BLESSING_FIRST_THRESHOLD;
+const scoreBlessingQueue = [];
 
 function resetRunStats() {
   runStats.wavesCompleted = 0;
@@ -1301,6 +1339,119 @@ function resetRunStats() {
   runStats.revivedByBernkastel = 0;
   runStats.parriesPerformed = 0;
   runStats.bossesDefeated = 0;
+  runStats.perfects = 0;
+}
+
+function resetScoreCombo(perfectEligible = true) {
+  scoreCombo.hits = 0;
+  scoreCombo.bank = 0;
+  scoreCombo.defeats = 0;
+  scoreCombo.perfectEligible = perfectEligible;
+}
+
+function resetScoreProgression() {
+  nextScoreBlessingAt = SCORE_BLESSING_FIRST_THRESHOLD;
+  scoreBlessingQueue.length = 0;
+  scoreCombo.lastBanked = 0;
+  scoreCombo.lastMultiplier = 1;
+  resetScoreCombo(true);
+}
+
+function expectedWaveScoreValue(targetWave = wave) {
+  const normalWave = Math.max(1, targetWave);
+  const count = Math.min(3 + normalWave, 8);
+  const fiveWaveSteps = Math.floor(Math.max(0, normalWave - 1) / 5);
+  const baseHp = 42 + normalWave * 10 + fiveWaveSteps * ENEMY_HEALTH_FIVE_WAVE_BONUS;
+  const goatCount = Array.from({ length: count }, (_, index) => normalWave >= 2 && (index + normalWave) % 4 === 0).filter(Boolean).length;
+  const battlerCount = count - goatCount;
+  const expectedDamageScore = (battlerCount * baseHp + goatCount * Math.round(baseHp * 1.25)) * COMBO_DAMAGE_SCORE_MULTIPLIER;
+  const expectedDefeatScore = count * COMBO_DEFEAT_SCORE_BONUS;
+  const expectedMultiplier = 1 + Math.min(2.4, count * COMBO_DEFEAT_MULTIPLIER * 0.62);
+  return Math.round((expectedDamageScore + expectedDefeatScore) * expectedMultiplier);
+}
+
+function scoreBlessingStepForWave(targetWave = wave) {
+  return clamp(
+    Math.round(expectedWaveScoreValue(targetWave) * SCORE_BLESSING_WAVE_VALUE_MULTIPLIER),
+    SCORE_BLESSING_MIN_STEP,
+    SCORE_BLESSING_MAX_STEP
+  );
+}
+
+function addScoreComboDamage(actualDamage) {
+  if (actualDamage <= 0) return;
+  scoreCombo.hits += 1;
+  scoreCombo.bank += Math.max(1, Math.round(actualDamage * COMBO_DAMAGE_SCORE_MULTIPLIER));
+}
+
+function addScoreComboDefeat() {
+  scoreCombo.defeats += 1;
+  scoreCombo.bank += COMBO_DEFEAT_SCORE_BONUS;
+}
+
+function scoreComboHasValue() {
+  return scoreCombo.hits > 0 || scoreCombo.defeats > 0 || scoreCombo.bank > 0;
+}
+
+function scoreRewardItemChoice() {
+  const type = chooseItemDrop() || "crystalShard";
+  const tutorial = ITEM_TUTORIALS[type] || ITEM_TUTORIALS.crystalShard;
+  return {
+    id: `item:${type}`,
+    type,
+    source: "Item",
+    color: "gold",
+    title: tutorial.title,
+    text: tutorial.tip,
+    itemReward: true
+  };
+}
+
+function scoreBlessingOptions() {
+  return [
+    { ...LAMBDA_BLESSINGS[Math.floor(Math.random() * LAMBDA_BLESSINGS.length)], color: "pink" },
+    { ...BERN_BLESSINGS[Math.floor(Math.random() * BERN_BLESSINGS.length)], color: "purple" },
+    scoreRewardItemChoice()
+  ];
+}
+
+function queueScoreBlessingChoices() {
+  while (score >= nextScoreBlessingAt) {
+    scoreBlessingQueue.push(scoreBlessingOptions());
+    nextScoreBlessingAt += scoreBlessingStepForWave(wave);
+  }
+  maybeStartScoreBlessingChoice();
+}
+
+function maybeStartScoreBlessingChoice() {
+  if (state !== "playing" || bossBlessingChoice.active || !scoreBlessingQueue.length) return false;
+  startBlessingChoice(scoreBlessingQueue.shift(), "score");
+  return true;
+}
+
+function bankScoreCombo({ waveEnd = false, allowRewards = true } = {}) {
+  if (scoreComboHasValue()) {
+    const multiplier = 1 + scoreCombo.defeats * COMBO_DEFEAT_MULTIPLIER;
+    const banked = Math.round(scoreCombo.bank * multiplier);
+    score += banked;
+    scoreCombo.lastBanked = banked;
+    scoreCombo.lastMultiplier = multiplier;
+  }
+  if (waveEnd && scoreCombo.perfectEligible) {
+    const perfectBonus = PERFECT_SCORE_BASE + wave * PERFECT_SCORE_PER_WAVE;
+    score += perfectBonus;
+    runStats.perfects += 1;
+    message = "Perfect!";
+    messageTimer = 1.35;
+  }
+  resetScoreCombo(!waveEnd);
+  if (allowRewards) queueScoreBlessingChoices();
+}
+
+function breakPerfectAndBankCombo() {
+  scoreCombo.perfectEligible = false;
+  bankScoreCombo();
+  scoreCombo.perfectEligible = false;
 }
 
 function damageEnemy(enemy, amount) {
@@ -1309,6 +1460,7 @@ function damageEnemy(enemy, amount) {
   const actual = Math.max(0, Math.min(enemy.hp, scaledAmount));
   enemy.hp -= scaledAmount;
   runStats.damageDealt += actual;
+  addScoreComboDamage(actual);
   return actual;
 }
 
@@ -1358,6 +1510,7 @@ function damageBeatrice(amount, direction = 0) {
   beatriceBoss.hp -= actual;
   beatriceBoss.stunDamageTaken = (beatriceBoss.stunDamageTaken || 0) + actual;
   runStats.damageDealt += actual;
+  addScoreComboDamage(actual);
   beatriceBoss.stunIdleTimer = BEATRICE_STUN_IDLE_TIMEOUT;
   if (beatriceBoss.stunDamageTimer <= 0) beatriceBoss.stunDamageTimer = BEATRICE_STUN_DAMAGE_TIMEOUT;
   if (beatriceBoss.flavor === "dizzy" || beatriceBoss.flavor === "hurt") {
@@ -1379,6 +1532,7 @@ function damagePlayer(amount) {
   if (actual > 0) {
     runStats.damageReceived += actual;
     runStats.hitsReceived += 1;
+    breakPerfectAndBankCombo();
     triggerBeatriceHitReaction();
   }
   return actual;
@@ -1404,6 +1558,7 @@ function formatStatNumber(value) {
 function runPerformanceValue(record) {
   const waves = record.wavesCompleted || 0;
   const bosses = record.bossesDefeated || 0;
+  const perfects = record.perfects || 0;
   const defeated = record.enemiesDefeated || 0;
   const hits = record.hitsReceived || 0;
   const damage = record.damageReceived || 0;
@@ -1412,6 +1567,7 @@ function runPerformanceValue(record) {
   return Math.round(
     waves * 12000
     + bosses * 18000
+    + perfects * 4200
     + defeated * 520
     + cleanRatio * 2600
     + Math.sqrt(Math.max(0, scoreValue)) * 18
@@ -1465,7 +1621,8 @@ function currentRunRecord() {
     launchedByLambdadelta: runStats.launchedByLambdadelta,
     revivedByBernkastel: runStats.revivedByBernkastel,
     parriesPerformed: runStats.parriesPerformed,
-    bossesDefeated: runStats.bossesDefeated
+    bossesDefeated: runStats.bossesDefeated,
+    perfects: runStats.perfects
   };
   record.performance = runPerformanceValue(record);
   return record;
@@ -1499,6 +1656,7 @@ function compareRunRecords(a, b) {
   return (b.performance || 0) - (a.performance || 0)
     || (b.bossesDefeated || 0) - (a.bossesDefeated || 0)
     || (b.wavesCompleted || 0) - (a.wavesCompleted || 0)
+    || (b.perfects || 0) - (a.perfects || 0)
     || (b.enemiesDefeated || 0) - (a.enemiesDefeated || 0)
     || (b.score || 0) - (a.score || 0);
 }
@@ -1523,6 +1681,7 @@ function runStatsRows() {
     ["Performance value", latestRunRecord ? latestRunRecord.performance : runPerformanceValue(currentRunRecord())],
     ["Waves completed", runStats.wavesCompleted],
     ["Bosses defeated", runStats.bossesDefeated],
+    ["Perfects", runStats.perfects],
     ["Enemies defeated", runStats.enemiesDefeated],
     ["Items picked up", runStats.itemsPickedUp],
     ["Companions encountered", runStats.companionsEncountered.size ? Array.from(runStats.companionsEncountered).join(", ") : "None"],
@@ -1586,7 +1745,7 @@ function refreshRunDetailsPanel() {
       const left = document.createElement("span");
       const right = document.createElement("span");
       const date = record.date ? new Date(record.date).toLocaleDateString() : "";
-      left.textContent = `#${index + 1}  W${record.wavesCompleted || 0} / B${record.bossesDefeated || 0} / ${record.enemiesDefeated || 0} defeated`;
+      left.textContent = `#${index + 1}  Waves ${record.wavesCompleted || 0} / Bosses ${record.bossesDefeated || 0} / Perfects ${record.perfects || 0}`;
       right.textContent = `${record.performance || 0} pts${date ? ` - ${date}` : ""}`;
       row.append(left, right);
       runDetailsList.append(row);
@@ -2241,7 +2400,7 @@ function defeatEnemy(enemy) {
   maybeAmuseBernkastel();
   maybeDropEnemyItem(enemy);
   runStats.enemiesDefeated += 1;
-  score += 250;
+  addScoreComboDefeat();
   if (resolvesBeatriceTrial) resolveBeatriceGoatTrial();
 }
 
@@ -2260,7 +2419,7 @@ function absorbEnemyIntoDuoSingularity(enemy) {
   enemy.duoAbsorb = 1;
   enemy.duoSlamDamage = 0;
   runStats.enemiesDefeated += 1;
-  score += 250;
+  addScoreComboDefeat();
 }
 
 function activatePickup(pickup, options = {}) {
@@ -2837,7 +2996,7 @@ function finishDuoAttack() {
 
 function updateDuoCharge(dt) {
   if (duoAttack.active) return;
-  if (!keys.has("q") || !hasBernLambdaDuo()) {
+  if (!inputDuoHeld() || !hasBernLambdaDuo()) {
     player.duoCharge = Math.max(0, player.duoCharge - dt * 2.8);
     if (player.action === "duoCharge") setAction("idle");
     return;
@@ -4305,18 +4464,29 @@ function dismissCompanionsForBossWave() {
   bernCompanion.catForm = false;
 }
 
-function startBossBlessingChoice(options) {
+function startBlessingChoice(options, context = "boss") {
   bossBlessingChoice.active = true;
   bossBlessingChoice.choices = options;
-  bossBlessingChoice.pendingBoss = true;
+  bossBlessingChoice.pendingBoss = context === "boss";
   bossBlessingChoice.selected = 0;
+  bossBlessingChoice.context = context;
   state = "bossBlessing";
-  message = "Choose a blessing";
+  message = context === "score" ? "Score Reward" : "Choose a blessing";
   messageTimer = 1.25;
+}
+
+function startBossBlessingChoice(options) {
+  startBlessingChoice(options, "boss");
 }
 
 function applyBossBlessing(blessing) {
   if (!blessing) return;
+  if (blessing.itemReward) {
+    activatePickup({ type: blessing.type, x: player.x, y: player.y, bob: 0 }, { skipTutorial: true });
+    message = blessing.title;
+    messageTimer = 1.35;
+    return;
+  }
   if (blessing.id === "launchExtension") {
     player.blessings.launchExtension = (player.blessings.launchExtension || 0) + 1;
   } else if (blessing.id === "superCharge") {
@@ -4339,13 +4509,19 @@ function applyBossBlessing(blessing) {
 function chooseBossBlessing(index = bossBlessingChoice.selected || 0) {
   if (!bossBlessingChoice.active) return;
   const choice = bossBlessingChoice.choices[index] || bossBlessingChoice.choices[0];
+  const context = bossBlessingChoice.context || "boss";
   applyBossBlessing(choice);
   bossBlessingChoice.active = false;
   bossBlessingChoice.choices = [];
   bossBlessingChoice.pendingBoss = false;
   bossBlessingChoice.selected = 0;
+  bossBlessingChoice.context = "boss";
   state = "playing";
-  activateBeatriceBoss();
+  if (context === "boss") {
+    activateBeatriceBoss();
+  } else {
+    maybeStartScoreBlessingChoice();
+  }
 }
 
 function beginBossWave() {
@@ -5182,6 +5358,7 @@ function spawnWave() {
     if (!enemies[i].dead) enemies.splice(i, 1);
   }
   messageBottles.length = 0;
+  resetScoreCombo(true);
   waveMode = currentWaveMode();
   if (waveMode === "boss") {
     beginBossWave();
@@ -5296,6 +5473,7 @@ function startGame() {
   bossBlessingChoice.choices = [];
   bossBlessingChoice.pendingBoss = false;
   bossBlessingChoice.selected = 0;
+  bossBlessingChoice.context = "boss";
   beatriceTutorial.active = false;
   beatriceTutorial.seen = false;
   beatriceTutorial.index = 0;
@@ -5439,6 +5617,7 @@ function startGame() {
   lambdaGameOverDialogue.timer = 0;
   lambdaGameOverDialogue.skipCooldown = 0;
   score = 0;
+  resetScoreProgression();
   wave = 1;
   waveMode = currentWaveMode();
   cameraX = 0;
@@ -5538,6 +5717,7 @@ function triggerBernRevive() {
 function defeatPlayer() {
   if (state === "lost") return;
   if (triggerBernRevive()) return;
+  bankScoreCombo({ allowRewards: false });
   runStats.wavesCompleted = Math.max(runStats.wavesCompleted, wave - 1);
   recordCompletedRun();
   player.hp = 0;
@@ -5671,7 +5851,6 @@ function applyAttackHit(kind, data) {
       }
       if (enemy.type !== "goat") enemy.facing = -player.facing;
       player.combo += 1;
-      score += 50 + player.combo * 8;
       hit = true;
       if (enemy.hp <= 0) {
         defeatedTarget = true;
@@ -5722,7 +5901,6 @@ function applyAttackHit(kind, data) {
         startBeatriceDowned();
       }
       player.combo += 1;
-      score += 90 + player.combo * 10;
       hit = true;
       if (beatriceBoss.hp <= 0) {
         defeatedTarget = true;
@@ -6730,6 +6908,7 @@ function defeatBeatriceBoss() {
 }
 
 function finishBeatriceBossDefeat() {
+  bankScoreCombo({ waveEnd: true });
   beatriceBoss.active = false;
   beatriceBoss.flavor = "idle";
   beatriceBoss.anim = 0;
@@ -7336,8 +7515,9 @@ function updatePlayer(dt) {
     const inStartup = player.stage3KickTimer < STAGE3_KICK_STARTUP_TIME;
     let lane = 0;
     if (inStartup) {
-      if (keys.has("arrowup") || keys.has("w")) lane -= 1;
-      if (keys.has("arrowdown") || keys.has("s")) lane += 1;
+      const axisY = inputAxisY();
+      if (axisY < -TOUCH_STICK_DEADZONE) lane -= 1;
+      if (axisY > TOUCH_STICK_DEADZONE) lane += 1;
     }
     const forwardSpeed = inStartup ? STAGE3_KICK_START_SPEED : STAGE3_KICK_FALL_SPEED;
     player.x = clamp(player.x + player.facing * forwardSpeed * dt, 80, STAGE_W - 120);
@@ -7378,14 +7558,12 @@ function updatePlayer(dt) {
   }
   let mx = 0;
   let my = 0;
-  if (keys.has("arrowleft") || keys.has("a")) mx -= 1;
-  if (keys.has("arrowright") || keys.has("d")) mx += 1;
-  if (keys.has("arrowup") || keys.has("w")) my -= 1;
-  if (keys.has("arrowdown") || keys.has("s")) my += 1;
+  mx = inputAxisX();
+  my = inputAxisY();
 
   if (player.attackLock <= 0) {
     const moving = mx || my;
-    const wantsRunInput = Boolean(moving && keys.has("shift"));
+    const wantsRunInput = Boolean(moving && inputRunHeld());
     const wantsRun = wantsRunInput && (player.runState === "starting" || player.runState === "running" || player.dashCooldown <= 0);
     let moveSpeed = 240;
     let laneSpeed = 150;
@@ -7716,6 +7894,8 @@ function updateEnemies(dt) {
     }
   }
   if (living === 0 && state === "playing" && waveMode === "normal") {
+    bankScoreCombo({ waveEnd: true });
+    if (state !== "playing") return;
     wave += 1;
     runStats.wavesCompleted = Math.max(runStats.wavesCompleted, wave - 1);
     player.hp = clamp(player.hp + 16, 0, 100);
@@ -12129,6 +12309,34 @@ function drawItemHud() {
   if (hoverType) drawItemTooltip(hoverType, hoverX, hoverY);
 }
 
+function drawScoreComboHud() {
+  if (!scoreComboHasValue()) return;
+  const itemCount = Math.max(1, player.itemOrder.length);
+  const x = 20;
+  const y = 102;
+  const w = clamp(itemCount * 66 - 12, 216, 430);
+  const h = 44;
+  const pulse = Math.min(1, scoreCombo.hits / 20);
+  ctx.save();
+  ctx.fillStyle = "rgba(4, 7, 13, 0.58)";
+  ctx.strokeStyle = `rgba(105, 244, 255, ${0.34 + pulse * 0.28})`;
+  ctx.lineWidth = 2;
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#caffff";
+  ctx.font = "900 16px Segoe UI, Arial";
+  ctx.fillText(`${scoreCombo.hits} HIT`, x + 12, y + 18);
+  ctx.fillStyle = "#fff2c7";
+  ctx.font = "800 14px Segoe UI, Arial";
+  ctx.fillText(`Bank ${formatStatNumber(Math.round(scoreCombo.bank))}`, x + 12, y + 36);
+  ctx.textAlign = "right";
+  ctx.fillStyle = scoreCombo.defeats > 0 ? "#ffd06a" : "#d7cfba";
+  ctx.font = "800 14px Segoe UI, Arial";
+  ctx.fillText(`${scoreCombo.defeats} defeated`, x + w - 12, y + 36);
+  ctx.restore();
+}
+
 function drawBernHazardWarning() {
   if (!bernHazardCanSpawn() || !bernCompanion.active) return;
   if (!bernCompanion.state.startsWith("hazard")) return;
@@ -12511,6 +12719,7 @@ function drawOverlay() {
   if (state === "playing" || state === "paused" || state === "lost" || state === "itemTutorial" || state === "bossBlessing" || state === "beatriceTutorial" || state === "beatriceStakeTutorial") {
     drawBeatriceBossHud();
     drawItemHud();
+    drawScoreComboHud();
   }
   drawBernHazardWarning();
   if (itemTutorial.active) {
@@ -12568,14 +12777,31 @@ function drawOverlay() {
 }
 
 function bossBlessingCardRects() {
-  const count = bossBlessingChoice.choices.length;
-  const cardW = count > 1 ? 430 : 560;
-  const cardH = 188;
+  const choices = bossBlessingChoice.choices || [];
+  const scoreReward = bossBlessingChoice.context === "score" && choices.length === 3;
   const gap = 30;
+  if (scoreReward) {
+    const cardW = Math.min(380, Math.max(260, (W - 150 - gap) / 2));
+    const topY = Math.max(178, Math.min(210, H * 0.28));
+    const cardH = Math.min(188, Math.max(160, (H - topY - 132 - 24) / 2));
+    const topTotalW = cardW * 2 + gap;
+    const topX = (W - topTotalW) / 2;
+    const bottomW = Math.min(430, Math.max(300, cardW));
+    const bottomY = topY + cardH + 24;
+    return [
+      { choice: choices[0], x: topX, y: topY, w: cardW, h: cardH },
+      { choice: choices[1], x: topX + cardW + gap, y: topY, w: cardW, h: cardH },
+      { choice: choices[2], x: (W - bottomW) / 2, y: bottomY, w: bottomW, h: cardH }
+    ];
+  }
+
+  const count = choices.length;
+  const cardW = count > 1 ? Math.min(430, (W - 120 - Math.max(0, count - 1) * gap) / count) : Math.min(560, W - 120);
+  const cardH = 188;
   const totalW = count * cardW + Math.max(0, count - 1) * gap;
   const startX = (W - totalW) / 2;
   const y = H / 2 - 48;
-  return bossBlessingChoice.choices.map((choice, index) => ({
+  return choices.map((choice, index) => ({
     choice,
     x: startX + index * (cardW + gap),
     y,
@@ -12586,30 +12812,35 @@ function bossBlessingCardRects() {
 
 function drawBossBlessingOverlay() {
   const rects = bossBlessingCardRects();
+  const scoreReward = bossBlessingChoice.context === "score";
   ctx.save();
   ctx.fillStyle = "rgba(5, 6, 12, 0.72)";
   ctx.fillRect(0, 0, W, H);
   ctx.textAlign = "center";
   ctx.fillStyle = "#fff2c7";
   ctx.font = "900 42px Segoe UI, Arial";
-  ctx.fillText("A Witch Offers Certainty", W / 2, 132);
+  ctx.fillText(scoreReward ? "Score Reward" : "A Witch Offers Certainty", W / 2, 132);
   ctx.font = "600 19px Segoe UI, Arial";
   ctx.fillStyle = "#d8d0ba";
-  ctx.fillText("Choose one blessing before the boss battle begins.", W / 2, 166);
+  ctx.fillText(scoreReward ? "Choose a reward earned from your combo score." : "Choose one blessing before the boss battle begins.", W / 2, 166);
   for (const [index, rect] of rects.entries()) {
     const isSelected = index === bossBlessingChoice.selected;
     const pink = rect.choice.color === "pink";
-    const fill = pink ? "rgba(96, 16, 64, 0.92)" : "rgba(42, 24, 96, 0.92)";
-    const stroke = pink ? "rgba(255, 139, 218, 0.92)" : "rgba(188, 147, 255, 0.92)";
+    const gold = rect.choice.color === "gold" || rect.choice.itemReward;
+    const fill = gold ? "rgba(83, 57, 8, 0.92)" : pink ? "rgba(96, 16, 64, 0.92)" : "rgba(42, 24, 96, 0.92)";
+    const stroke = gold ? "rgba(255, 217, 105, 0.92)" : pink ? "rgba(255, 139, 218, 0.92)" : "rgba(188, 147, 255, 0.92)";
     ctx.fillStyle = fill;
     ctx.strokeStyle = isSelected ? "#fff2c7" : stroke;
     ctx.lineWidth = isSelected ? 4 : 2;
     ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
     ctx.strokeRect(rect.x + 0.5, rect.y + 0.5, rect.w - 1, rect.h - 1);
     ctx.textAlign = "left";
-    ctx.fillStyle = pink ? "#ffd6f1" : "#e1d2ff";
+    ctx.fillStyle = gold ? "#ffe7a1" : pink ? "#ffd6f1" : "#e1d2ff";
     ctx.font = "800 15px Segoe UI, Arial";
     ctx.fillText(rect.choice.source, rect.x + 22, rect.y + 34);
+    if (rect.choice.itemReward) {
+      drawItemTutorialIcon(rect.choice.type, rect.x + rect.w - 48, rect.y + 58, 0.82);
+    }
     ctx.fillStyle = "#fff7d6";
     ctx.font = "900 22px Segoe UI, Arial";
     const titleLines = wrappedTextLines(rect.choice.title, rect.w - 44, "900 22px Segoe UI, Arial");
@@ -12809,6 +13040,7 @@ function draw() {
 function loop(time) {
   const dt = Math.min(0.033, (time - lastTime) / 1000 || 0);
   lastTime = time;
+  syncTouchControlsVisibility();
   update(dt);
   draw();
   requestAnimationFrame(loop);
@@ -12819,10 +13051,12 @@ function togglePause() {
     state = "paused";
     keys.clear();
     resetAttackHolds();
+    resetTouchInput();
   } else if (state === "paused") {
     state = "playing";
     keys.clear();
     resetAttackHolds();
+    resetTouchInput();
   }
 }
 
@@ -12850,6 +13084,179 @@ function releaseAttackHold(kind) {
   hold.timer = 0;
   hold.triggered = false;
   if (shouldTap) attack(kind);
+}
+
+function storedTouchPreference() {
+  try {
+    const stored = localStorage.getItem(TOUCH_CONTROLS_KEY);
+    if (stored === "on") return true;
+    if (stored === "off") return false;
+  } catch (error) {
+    return null;
+  }
+  return null;
+}
+
+function isCoarsePointerDevice() {
+  return Boolean(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+}
+
+function setTouchControlsEnabled(enabled, persist = false) {
+  touchControls.enabled = Boolean(enabled);
+  if (persist) {
+    touchControls.userPreference = touchControls.enabled;
+    try {
+      localStorage.setItem(TOUCH_CONTROLS_KEY, touchControls.enabled ? "on" : "off");
+    } catch (error) {
+      // Ignore storage failures; the controls still work for this session.
+    }
+  }
+  syncTouchControlsVisibility();
+  updateTouchToggleLabel();
+}
+
+function updateTouchToggleLabel() {
+  if (!touchToggle) return;
+  const explicit = touchControls.userPreference !== null;
+  touchToggle.textContent = explicit
+    ? `Touch: ${touchControls.enabled ? "On" : "Off"}`
+    : `Touch: ${touchControls.enabled ? "Auto On" : "Auto Off"}`;
+}
+
+function initializeTouchControls() {
+  touchControls.userPreference = storedTouchPreference();
+  setTouchControlsEnabled(touchControls.userPreference ?? isCoarsePointerDevice(), false);
+}
+
+function touchControlsBlockedByModalState() {
+  return state === "bossBlessing"
+    || lambdaKonpeitoQuestion.active
+    || beatriceTutorial.active
+    || itemTutorial.active
+    || (runDetailsPanel && !runDetailsPanel.hidden);
+}
+
+function syncTouchControlsVisibility() {
+  const nextVisible = Boolean(touchControls.enabled && !touchControlsBlockedByModalState());
+  if (touchControls.visible === nextVisible) {
+    if (touchControlsEl) touchControlsEl.hidden = !nextVisible;
+    document.body.classList.toggle("touch-controls-visible", nextVisible);
+    return;
+  }
+  touchControls.visible = nextVisible;
+  if (touchControlsEl) touchControlsEl.hidden = !touchControls.visible;
+  document.body.classList.toggle("touch-controls-visible", touchControls.visible);
+  if (!touchControls.visible) resetTouchInput();
+  updateTouchToggleLabel();
+}
+
+function resetTouchInput() {
+  touchControls.movementX = 0;
+  touchControls.movementY = 0;
+  touchControls.stickPointerId = null;
+  touchControls.buttonPointers.clear();
+  touchControls.runHeld = false;
+  touchControls.duoHeld = false;
+  if (touchStickNub) touchStickNub.style.transform = "translate(-50%, -50%)";
+  document.querySelectorAll("[data-touch-action].is-held").forEach((button) => button.classList.remove("is-held"));
+  releaseAttackHold("punch");
+  releaseAttackHold("kick");
+}
+
+function enableTouchControlsFromPointer(event) {
+  if (touchControls.userPreference !== null) return;
+  if (event.pointerType === "touch") setTouchControlsEnabled(true, false);
+}
+
+function inputAxisX() {
+  let axis = 0;
+  if (keys.has("arrowleft") || keys.has("a")) axis -= 1;
+  if (keys.has("arrowright") || keys.has("d")) axis += 1;
+  if (touchControls.visible) axis += touchControls.movementX;
+  return clamp(axis, -1, 1);
+}
+
+function inputAxisY() {
+  let axis = 0;
+  if (keys.has("arrowup") || keys.has("w")) axis -= 1;
+  if (keys.has("arrowdown") || keys.has("s")) axis += 1;
+  if (touchControls.visible) axis += touchControls.movementY;
+  return clamp(axis, -1, 1);
+}
+
+function inputRunHeld() {
+  return keys.has("shift") || (touchControls.visible && touchControls.runHeld);
+}
+
+function inputDuoHeld() {
+  return keys.has("q") || (touchControls.visible && touchControls.duoHeld);
+}
+
+function updateTouchStickFromEvent(event) {
+  if (!touchStickEl) return;
+  const rect = touchStickEl.getBoundingClientRect();
+  const centerX = rect.left + rect.width * 0.5;
+  const centerY = rect.top + rect.height * 0.5;
+  const max = rect.width * 0.42;
+  const dx = event.clientX - centerX;
+  const dy = event.clientY - centerY;
+  const dist = Math.hypot(dx, dy);
+  const clamped = Math.min(dist, max);
+  const nx = dist ? dx / dist : 0;
+  const ny = dist ? dy / dist : 0;
+  const rawX = max ? (nx * clamped) / max : 0;
+  const rawY = max ? (ny * clamped) / max : 0;
+  touchControls.movementX = Math.abs(rawX) < TOUCH_STICK_DEADZONE ? 0 : rawX;
+  touchControls.movementY = Math.abs(rawY) < TOUCH_STICK_DEADZONE ? 0 : rawY;
+  if (touchStickNub) {
+    touchStickNub.style.transform = `translate(calc(-50% + ${nx * clamped}px), calc(-50% + ${ny * clamped}px))`;
+  }
+}
+
+function handleTouchActionPress(action) {
+  if (!touchControls.visible && action !== "pause") return;
+  if (action === "pause") {
+    togglePause();
+    return;
+  }
+  if (action === "start") {
+    if (state === "ready" || state === "lost") startGame();
+    return;
+  }
+  if (beatriceTutorial.active) {
+    advanceBeatriceTutorialDialogue();
+    return;
+  }
+  if (beatriceStakeTutorial.active) {
+    if (action === "punch" || action === "kick") {
+      handleBeatriceStakeTutorialKey(action === "punch" ? "j" : "k");
+    } else if (beatriceStakeTutorial.stage !== "parryNow") {
+      advanceBeatriceStakeTutorialDialogue();
+    }
+    return;
+  }
+  if (itemTutorial.active) {
+    dismissItemTutorial();
+    return;
+  }
+  if (lambdaKonpeitoQuestion.active || state === "bossBlessing") return;
+  if (state === "lost" && lambdaGameOverDialogue.active) {
+    advanceLambdaGameOverDialogue(true);
+    return;
+  }
+  if (state !== "playing") return;
+  if (action === "punch") beginAttackHold("punch");
+  if (action === "kick") beginAttackHold("kick");
+  if (action === "special") attack("special");
+  if (action === "duo") touchControls.duoHeld = true;
+  if (action === "run") touchControls.runHeld = true;
+}
+
+function handleTouchActionRelease(action) {
+  if (action === "punch") releaseAttackHold("punch");
+  if (action === "kick") releaseAttackHold("kick");
+  if (action === "duo") touchControls.duoHeld = false;
+  if (action === "run") touchControls.runHeld = false;
 }
 
 window.addEventListener("keydown", (event) => {
@@ -12998,6 +13405,63 @@ canvas.addEventListener("click", (event) => {
   fireKonpeito();
 });
 
+document.addEventListener("pointerdown", enableTouchControlsFromPointer, { passive: true });
+
+if (touchToggle) {
+  touchToggle.addEventListener("click", () => {
+    setTouchControlsEnabled(!touchControls.enabled, true);
+  });
+}
+
+if (touchStickEl) {
+  touchStickEl.addEventListener("pointerdown", (event) => {
+    if (!touchControls.enabled || touchControls.stickPointerId !== null) return;
+    event.preventDefault();
+    touchControls.stickPointerId = event.pointerId;
+    touchStickEl.setPointerCapture(event.pointerId);
+    updateTouchStickFromEvent(event);
+  });
+  touchStickEl.addEventListener("pointermove", (event) => {
+    if (event.pointerId !== touchControls.stickPointerId) return;
+    event.preventDefault();
+    updateTouchStickFromEvent(event);
+  });
+  const releaseStick = (event) => {
+    if (event.pointerId !== touchControls.stickPointerId) return;
+    event.preventDefault();
+    touchControls.movementX = 0;
+    touchControls.movementY = 0;
+    touchControls.stickPointerId = null;
+    if (touchStickNub) touchStickNub.style.transform = "translate(-50%, -50%)";
+  };
+  touchStickEl.addEventListener("pointerup", releaseStick);
+  touchStickEl.addEventListener("pointercancel", releaseStick);
+}
+
+document.querySelectorAll("[data-touch-action]").forEach((button) => {
+  const action = button.getAttribute("data-touch-action");
+  button.addEventListener("pointerdown", (event) => {
+    if (!touchControls.enabled || !action) return;
+    event.preventDefault();
+    button.setPointerCapture(event.pointerId);
+    button.classList.add("is-held");
+    touchControls.buttonPointers.set(event.pointerId, { action, button });
+    handleTouchActionPress(action);
+  });
+  const releaseButton = (event) => {
+    const active = touchControls.buttonPointers.get(event.pointerId);
+    if (!active) return;
+    event.preventDefault();
+    touchControls.buttonPointers.delete(event.pointerId);
+    active.button.classList.remove("is-held");
+    handleTouchActionRelease(active.action);
+  };
+  button.addEventListener("pointerup", releaseButton);
+  button.addEventListener("pointercancel", releaseButton);
+  button.addEventListener("lostpointercapture", releaseButton);
+  button.addEventListener("click", (event) => event.preventDefault());
+});
+
 if (runDetailsClose) {
   runDetailsClose.addEventListener("click", hideRunDetails);
 }
@@ -13009,6 +13473,7 @@ if (runDetailsPanel) {
   });
 }
 
+initializeTouchControls();
 loadImages().then(() => {
   state = "ready";
   healthBar.style.width = "100%";
