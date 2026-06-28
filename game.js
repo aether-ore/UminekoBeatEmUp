@@ -7,6 +7,7 @@ const resolveBar = document.getElementById("resolveBar");
 const resolveMeter = resolveBar.parentElement;
 const waveLabel = document.getElementById("waveLabel");
 const scoreLabel = document.getElementById("scoreLabel");
+const scoreBlessingBar = document.getElementById("scoreBlessingBar");
 const parryTip = document.getElementById("parryTip");
 const runDetailsPanel = document.getElementById("runDetailsPanel");
 const runDetailsList = document.getElementById("runDetailsList");
@@ -15,6 +16,9 @@ const touchControlsEl = document.getElementById("touchControls");
 const touchStickEl = document.querySelector("[data-touch-stick]");
 const touchStickNub = touchStickEl?.querySelector(".touch-stick__nub");
 const touchToggle = document.getElementById("touchToggle");
+const touchAdjustToggle = document.getElementById("touchAdjustToggle");
+const touchAdjustSizer = document.getElementById("touchAdjustSizer");
+const touchAdjustSize = document.getElementById("touchAdjustSize");
 const orientationPrompt = document.getElementById("orientationPrompt");
 
 const W = canvas.width;
@@ -23,6 +27,7 @@ const FLOOR_Y = 562;
 const PLAY_AREA_TOP = FLOOR_Y - 94;
 const PLAY_AREA_BOTTOM = H - 46;
 const STAGE_W = 3600;
+
 const PLAYER_SCALE = 1.45;
 const SPECIAL_BEAM_DRAIN = 42;
 const SPECIAL_BEAM_DAMAGE = 38;
@@ -56,7 +61,10 @@ const GLOBAL_ENEMY_DROP_RATE = 0.28;
 const BOSS_ITEM_ABSORB_DURATION = 0.42;
 const LOCAL_SCOREBOARD_KEY = "uminekoBeatEmUpHighScoresV1";
 const TOUCH_CONTROLS_KEY = "uminekoBeatEmUpTouchControlsV1";
+const TOUCH_LAYOUT_KEY = "uminekoBeatEmUpTouchLayoutV1";
 const TOUCH_STICK_DEADZONE = 0.18;
+const TOUCH_ADJUST_MIN_SCALE = 0.75;
+const TOUCH_ADJUST_MAX_SCALE = 1.35;
 const LOCAL_SCOREBOARD_LIMIT = 10;
 const COMBO_DAMAGE_SCORE_MULTIPLIER = 10;
 const COMBO_DEFEAT_SCORE_BONUS = 320;
@@ -64,12 +72,16 @@ const COMBO_DEFEAT_MULTIPLIER = 0.28;
 const PERFECT_SCORE_BASE = 1800;
 const PERFECT_SCORE_PER_WAVE = 220;
 const SCORE_BLESSING_STEP = 30000;
+const SCORE_BLESSING_STEP_GROWTH = 10000;
 const ITEM_DROP_RATES = {
   crystalShard: 1,
   konpeito: 0.7,
   plumTea: 0.55,
-  oneWingedEagle: 0.45
+  oneWingedEagle: 0.45,
+  goldenBroochRight: 0.45
 };
+const MAX_ACTIVE_COMPANIONS = 2;
+const COMPANION_ITEM_TYPES = new Set(["konpeito", "plumTea", "goldenBroochRight"]);
 const ITEM_TUTORIALS = {
   crystalShard: {
     title: "Crystal Shard",
@@ -86,12 +98,25 @@ const ITEM_TUTORIALS = {
     label: "PLUM TEA",
     tip: "Summons Bernkastel. She fires crystal barrages and can revive Battler once before the tea goes cold."
   },
+  goldenBroochRight: {
+    title: "Golden Brooch (Right)",
+    label: "BROOCH",
+    tip: "Summons Shannon as a companion. Battler can keep up to two companions at once."
+  },
   oneWingedEagle: {
     title: "One-Winged Eagle Crest",
     label: "CREST",
     tip: "Mirrors Battler's attacks from behind him, dealing half damage and copying launch effects. Pick up more Crests to extend its range up to level 5."
+  },
+  miracleRevival: {
+    title: "Revival",
+    label: "REVIVAL",
+    tip: "Each charge rewrites one defeat without spending Plum Tea or making the tea go cold."
   }
 };
+const MAX_MIRACLE_REVIVALS = 3;
+const MIRACLE_REFLEX_PER_STACK = 0.1;
+const MAX_MIRACLE_REFLEX = 0.5;
 
 function clampPlayY(y) {
   return clamp(y, PLAY_AREA_TOP, PLAY_AREA_BOTTOM);
@@ -105,7 +130,7 @@ const LAMBDA_BLESSINGS = [
     id: "launchExtension",
     source: "Lambdadelta",
     title: "Blessing of Certainty: +1 Launch Extension",
-    text: "Once per combo target, Battler may launch or ground bounce one extra time before that attack becomes a prorated juggle."
+    text: "Each stack lets Battler launch or ground bounce each combo target one extra time before that attack becomes a prorated juggle."
   },
   {
     id: "superCharge",
@@ -118,6 +143,12 @@ const LAMBDA_BLESSINGS = [
     source: "Lambdadelta",
     title: "Blessing of Certainty: Candy Cataclysm",
     text: "Special summons a hovering konpeito that pulses three times before bursting into candy shrapnel."
+  },
+  {
+    id: "lambdaDamageUp",
+    source: "Lambdadelta",
+    title: "Blessing of Certainty: +5% Damage",
+    text: "Battler deals 5% more damage. This blessing can stack."
   }
 ];
 const BERN_BLESSINGS = [];
@@ -145,6 +176,18 @@ BERN_BLESSINGS.push(
     source: "Bernkastel",
     title: "Blessing of Miracles: Cruel Equation",
     text: "Battler deals 50% more damage, but also takes 50% more damage."
+  },
+  {
+    id: "miracleMaxHealth",
+    source: "Bernkastel",
+    title: "Blessing of Miracles: +10% Max Health",
+    text: "Battler's maximum health rises by 10%. This blessing can stack."
+  },
+  {
+    id: "miracleReflex",
+    source: "Bernkastel",
+    title: "Blessing of Miracles: +10% Reflex",
+    text: "Adds a green grace area to parry timing, making parries more forgiving. Stacks up to 50%."
   }
 );
 const EAGLE_CREST_DAMAGE_MULTIPLIER = 0.5;
@@ -212,7 +255,7 @@ const KONPEITO_DAMAGE = 30;
 const KONPEITO_RADIUS = 118;
 const KONPEITO_SHOCKWAVE_MAX_RADIUS = 230;
 const KONPEITO_DOME_BURST_DURATION = 0.82;
-const LAMBDA_SPECIAL_KONPEITO_PULSE_DAMAGE = 18;
+const LAMBDA_SPECIAL_KONPEITO_PULSE_DAMAGE = 38;
 const LAMBDA_SPECIAL_KONPEITO_PULSE_RADIUS = 154;
 const LAMBDA_SPECIAL_KONPEITO_PULSE_INTERVAL = 0.42;
 const LAMBDA_SPECIAL_KONPEITO_PULSE_COUNT = 3;
@@ -226,7 +269,7 @@ const LAMBDA_SPECIAL_KONPEITO_GROUND_BOUNCE_DRIFT = 128;
 const LAMBDA_SPECIAL_KONPEITO_SUCTION_RADIUS = 245;
 const LAMBDA_SPECIAL_KONPEITO_SUCTION_STRENGTH = 520;
 const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_COUNT = 16;
-const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE = 8;
+const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE = 24;
 const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_RADIUS = 46;
 const LAMBDA_SPECIAL_KONPEITO_DURATION = 1.62;
 const LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS = 52;
@@ -270,6 +313,7 @@ const BEATRICE_STAKE_PARRY_WINDOW = 0.42;
 const BEATRICE_STAKE_PARRY_RING_RADIUS = 31;
 const BEATRICE_STAKE_PARRY_START_RADIUS = 96;
 const BEATRICE_STAKE_PARRY_DISTANCE = 110;
+const BEATRICE_STAKE_REFLEX_MULTIPLIER = 2.25;
 const BEATRICE_STAKE_TRAIL_TIME = 0.22;
 const BEATRICE_STAKE_SHOCKWAVE_TIME = 0.48;
 const BEATRICE_GOAT_TRIAL_WALL_PADDING = 46;
@@ -321,7 +365,14 @@ const BEATRICE_TOWER_VOLLEY_DRIFT = 155;
 const BEATRICE_TOWER_VOLLEY_TOWER_SCALE = 1.08;
 const BEATRICE_TOWER_VOLLEY_EDGE_OVERHANG = 22;
 const BEATRICE_TOWER_VOLLEY_TOWER_SEPARATION = 176;
-const BEATRICE_MECHANIC_CHOICES = ["goatTrial", "ringAttack", "teleportAttack", "goatRush", "towerVolley"];
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_APPEAR_MIN = 0.32;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_APPEAR_MAX = 0.92;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MIN = 0.58;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MAX = 0.82;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_LEAD_TIME = 0.42;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_STOP_SPEED = 18;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_TRACK_RATE = 0.62;
+const BEATRICE_MECHANIC_CHOICES = ["goatTrial", "teleportAttack", "goatRush", "towerVolley"];
 const DEBUG_START_BEATRICE_BOSS_WAVE = false;
 const DEBUG_BEATRICE_TELEPORT_PREP_TEST = false;
 const BEATRICE_TELEPORT_PREP_JUMPS = 7;
@@ -445,6 +496,8 @@ const BERN_CAT_FORM_CHANCE = 0.18;
 const DEBUG_FORCE_BERN_CAT_FORM = false;
 const DEBUG_START_WITH_PLUM_TEA = false;
 const DEBUG_START_WITH_KONPEITO = false;
+const DEBUG_START_WITH_GOLDEN_BROOCH_RIGHT = true;
+const DEBUG_START_WITH_50_REFLEX = true;
 const DEBUG_START_WITH_CANDY_CATACLYSM = false;
 const DEBUG_START_WITH_CRYSTAL_FOLLOWUP = false;
 const DEBUG_START_WITH_CRYSTAL_SHARD_PLUS = false;
@@ -454,6 +507,7 @@ const BERN_CAT_SHEET_COLS = 6;
 const BERN_CAT_WALK_FRAMES = Array.from({ length: 24 }, (_, i) => i).filter((i) => i !== 23);
 const DASH_START_INVULN = 0.5;
 const DASH_COOLDOWN = 1.5;
+const DASH_STOCK_MAX = 2;
 const DASH_START_DURATION = 0.24;
 const DASH_RUN_ACCEL_TIME = 0.78;
 const DASH_TAP_DODGE_BRAKE_DURATION = 0.32;
@@ -465,6 +519,28 @@ const DEBUG_JUGGLED_KONPEITO_TARGETS_LAMBDA = false;
 const LAMBDA_KONPEITO_JUGGLE_DURATION = 0.56;
 const LAMBDA_KONPEITO_JUGGLE_ARC = 210;
 const LAMBDA_KONPEITO_JUGGLE_PUSH = 260;
+const SHANNON_WALL_INTERVAL = 5;
+const SHANNON_WALL_DAMAGE = 18;
+const SHANNON_WALL_SPEED = 720;
+const SHANNON_WALL_DISTANCE = 430;
+const SHANNON_WALL_WIDTH = 76;
+const SHANNON_WALL_HEIGHT = 270;
+const SHANNON_WALL_DEPTH = 176;
+const SHANNON_WALL_AOE_PAD_X = 44;
+const SHANNON_WALL_AOE_PAD_Y = 34;
+const SHANNON_WALL_MAX_HITS = 3;
+const SHANNON_WALL_HIT_COOLDOWN = 0.24;
+const SHANNON_WALL_SLOW_RANGE = 265;
+const SHANNON_WALL_SLOW_SPEED = 72;
+const SHANNON_WALL_LAUNCH_LIFT = 430;
+const SHANNON_WALL_LAUNCH_DRIFT = 220;
+const SHANNON_WALK_SPEED = 225;
+const SHANNON_RUN_SPEED = 390;
+const SHANNON_RUN_START_DISTANCE = W * 0.34;
+const SHANNON_RUN_STOP_DISTANCE = 190;
+const SHANNON_RUN_START_RATE = 10.5;
+const SHANNON_RUN_LOOP_RATE = 12;
+const SHANNON_RUN_BRAKE_RATE = 11;
 const keys = new Set();
 const touchControls = {
   enabled: false,
@@ -480,7 +556,11 @@ const touchControls = {
   buttonPointers: new Map(),
   runHeld: false,
   runLatched: false,
-  duoHeld: false
+  duoHeld: false,
+  adjusting: false,
+  selectedAdjustTarget: null,
+  adjustPointer: null,
+  layout: {}
 };
 
 let lastTouchEndTime = 0;
@@ -572,6 +652,17 @@ const bernFrames = {
   duoAttackLoop: [672, 673, 674, 675, 676],
   sacrifice: [685, 686, 687, 688, 689, 690, 691, 692, 693, 694]
 };
+const shannonFrames = {
+  summon: [810, 811, 812, 813, 814, 815, 816, 817, 818, 819, 820, 821, 822, 823],
+  idle: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  move: [52, 53, 54, 55, 56],
+  moveBackStart: [57, 58],
+  moveBack: [59, 60, 61, 62, 63, 64, 65, 66],
+  runStart: [120, 121, 122, 123, 124],
+  run: [125, 126, 127, 128, 129, 130, 131, 132, 133, 134],
+  runBrake: [136, 137, 138, 139],
+  wallCast: [625, 626, 627, 628, 629, 630, 631, 632, 633, 634]
+};
 
 const attackData = {
   punch1: { kind: "punch", stage: 1, lock: 0.26, range: 140, depth: 50, damage: 8, gain: 8, activeFrames: [194] },
@@ -643,6 +734,8 @@ const dialoguePortraits = {};
 const lambdaKonpeitoAnchors = {};
 const lambdaKnockdownAnchors = {};
 const bernImages = {};
+const shannonImages = {};
+const shannonFrameAnchors = {};
 const effectImages = {};
 const bernCatFrameBounds = [];
 const bernCatFrameAnchors = [];
@@ -1103,6 +1196,7 @@ let state = "loading";
 let cameraX = 0;
 let lastTime = 0;
 let score = 0;
+let displayedScore = 0;
 let wave = 1;
 let waveMode = "normal";
 let messageTimer = 0;
@@ -1127,6 +1221,17 @@ const scoreCombo = {
   lastMultiplier: 1,
   perfectEligible: true
 };
+const waveStats = {
+  active: null,
+  completed: []
+};
+const scoreTick = {
+  from: 0,
+  to: 0,
+  timer: 0,
+  duration: 0.7
+};
+const perfectFlourishes = [];
 const beatriceTutorial = {
   active: false,
   seen: false,
@@ -1156,6 +1261,7 @@ const konpeitoGeysers = [];
 const konpeitoDomeBursts = [];
 const lambdaSpecialKonpeitos = [];
 const lambdaSpecialShrapnel = [];
+const shannonWalls = [];
 const beatriceStakes = [];
 const beatriceStakeTrails = [];
 const beatriceStakeShockwaves = [];
@@ -1170,7 +1276,8 @@ const beatriceTowerVolley = {
   points: [],
   safeZones: [],
   missiles: [],
-  hitWaves: []
+  hitWaves: [],
+  leviathanRings: []
 };
 const beatriceDefeatWisps = [];
 const beatriceDefeatTrails = [];
@@ -1300,7 +1407,7 @@ const beatriceBoss = {
   juggleCount: 0,
   battlerLaunchSpent: false,
   battlerGroundBounceSpent: false,
-  battlerExtraLaunchExtensionSpent: false,
+  battlerExtraLaunchExtensionsUsed: 0,
   groundBouncePending: false,
   groundBounceTimer: 0,
   groundBounceDirection: 0,
@@ -1329,7 +1436,10 @@ const runStats = {
   perfects: 0
 };
 let nextScoreBlessingAt = SCORE_BLESSING_STEP;
+let lastScoreBlessingAt = 0;
+let scoreBlessingsEarned = 0;
 const scoreBlessingQueue = [];
+let scoreBlessingWaitingForPerfectFlourish = false;
 
 function resetRunStats() {
   runStats.wavesCompleted = 0;
@@ -1346,6 +1456,8 @@ function resetRunStats() {
   runStats.parriesPerformed = 0;
   runStats.bossesDefeated = 0;
   runStats.perfects = 0;
+  waveStats.active = null;
+  waveStats.completed.length = 0;
 }
 
 function resetScoreCombo(perfectEligible = true) {
@@ -1357,28 +1469,181 @@ function resetScoreCombo(perfectEligible = true) {
 
 function resetScoreProgression() {
   nextScoreBlessingAt = SCORE_BLESSING_STEP;
+  lastScoreBlessingAt = 0;
+  scoreBlessingsEarned = 0;
   scoreBlessingQueue.length = 0;
+  scoreBlessingWaitingForPerfectFlourish = false;
   scoreCombo.lastBanked = 0;
   scoreCombo.lastMultiplier = 1;
   resetScoreCombo(true);
+}
+
+function startWaveStats() {
+  waveStats.active = {
+    label: currentWaveLabel(),
+    startScore: score,
+    scoreEarned: 0,
+    highestCombo: 0,
+    defeats: 0,
+    perfect: true,
+    inProgress: true
+  };
+}
+
+function previewCurrentWaveScore() {
+  const bankPreview = scoreComboHasValue()
+    ? Math.round(scoreCombo.bank * (1 + scoreCombo.defeats * COMBO_DEFEAT_MULTIPLIER))
+    : 0;
+  return Math.max(0, score - (waveStats.active?.startScore ?? score) + bankPreview);
+}
+
+function updateWaveComboPeak() {
+  if (!waveStats.active) return;
+  waveStats.active.highestCombo = Math.max(waveStats.active.highestCombo, scoreCombo.hits);
+  waveStats.active.perfect = scoreCombo.perfectEligible;
+}
+
+function finalizeWaveStats(scoreAdded, wasPerfect) {
+  if (!waveStats.active) return;
+  updateWaveComboPeak();
+  waveStats.active.scoreEarned = Math.max(0, score - waveStats.active.startScore);
+  waveStats.active.perfect = Boolean(wasPerfect);
+  waveStats.active.inProgress = false;
+  waveStats.completed.push({ ...waveStats.active });
+  waveStats.active = null;
+}
+
+function runWaveBreakdownRows() {
+  const rows = waveStats.completed.map((entry) => ({ ...entry }));
+  if (waveStats.active) {
+    updateWaveComboPeak();
+    rows.push({
+      ...waveStats.active,
+      scoreEarned: previewCurrentWaveScore(),
+      perfect: scoreCombo.perfectEligible,
+      inProgress: true
+    });
+  }
+  return rows;
 }
 
 function addScoreComboDamage(actualDamage) {
   if (actualDamage <= 0) return;
   scoreCombo.hits += 1;
   scoreCombo.bank += Math.max(1, Math.round(actualDamage * COMBO_DAMAGE_SCORE_MULTIPLIER));
+  updateWaveComboPeak();
 }
 
 function addScoreComboDefeat() {
   scoreCombo.defeats += 1;
   scoreCombo.bank += COMBO_DEFEAT_SCORE_BONUS;
+  if (waveStats.active) waveStats.active.defeats += 1;
+  updateWaveComboPeak();
 }
 
 function scoreComboHasValue() {
   return scoreCombo.hits > 0 || scoreCombo.defeats > 0 || scoreCombo.bank > 0;
 }
 
+function displayedScoreValue() {
+  return Math.round(displayedScore || 0);
+}
+
+function scoreBlessingProgress() {
+  const start = Math.max(0, lastScoreBlessingAt || 0);
+  const span = Math.max(1, nextScoreBlessingAt - start);
+  return clamp((displayedScoreValue() - start) / span, 0, 1);
+}
+
+function updateScoreBlessingMeter() {
+  if (!scoreBlessingBar) return;
+  const progress = scoreBlessingProgress();
+  scoreBlessingBar.style.width = `${Math.round(progress * 100)}%`;
+  scoreBlessingBar.style.setProperty("--score-blessing-glow-size", `${(5 + progress * 18).toFixed(1)}px`);
+  scoreBlessingBar.style.setProperty("--score-blessing-glow-alpha", (0.24 + progress * 0.56).toFixed(3));
+  scoreBlessingBar.style.setProperty("--score-blessing-inner-alpha", (0.08 + progress * 0.34).toFixed(3));
+}
+
+function scoreHudTargetPoint() {
+  if (touchControls?.layoutActive) {
+    const labelY = beatriceBoss.active && waveMode === "boss" ? 86 : 24;
+    return { x: W / 2, y: labelY + 18 };
+  }
+  return { x: W / 2, y: 54 };
+}
+
+function animateScoreToCurrent(duration = 0.72) {
+  scoreTick.from = displayedScoreValue();
+  scoreTick.to = score;
+  scoreTick.duration = Math.max(0.18, duration);
+  scoreTick.timer = scoreTick.duration;
+}
+
+function updateDisplayedScore(dt) {
+  if (scoreTick.timer > 0) {
+    scoreTick.timer = Math.max(0, scoreTick.timer - dt);
+    const t = 1 - scoreTick.timer / scoreTick.duration;
+    const eased = 1 - Math.pow(1 - clamp(t, 0, 1), 3);
+    displayedScore = scoreTick.from + (scoreTick.to - scoreTick.from) * eased;
+  } else {
+    displayedScore += (score - displayedScore) * Math.min(1, dt * 12);
+    if (Math.abs(score - displayedScore) < 1) displayedScore = score;
+  }
+  if (scoreLabel) scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
+  updateScoreBlessingMeter();
+}
+
+function spawnPerfectScoreButterflies(count = 34) {
+  const target = scoreHudTargetPoint();
+  for (let i = 0; i < count; i++) {
+    beatriceStakeSparkles.push({
+      x: W / 2 + cameraX + (Math.random() - 0.5) * 260,
+      y: H / 2 + 18 + (Math.random() - 0.5) * 96,
+      targetX: target.x + cameraX + (Math.random() - 0.5) * 70,
+      targetY: target.y + (Math.random() - 0.5) * 26,
+      vx: (Math.random() - 0.5) * 80,
+      vy: -80 - Math.random() * 80,
+      life: 0.95 + Math.random() * 0.28,
+      max: 1.2,
+      size: 5 + Math.random() * 6,
+      butterfly: true,
+      homeToTarget: true,
+      angle: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 12
+    });
+  }
+}
+
+function spawnPerfectFlourish() {
+  perfectFlourishes.push({
+    life: 1.35,
+    max: 1.35,
+    flash: 0.22
+  });
+  spawnGoldenSparkles(W / 2 + cameraX, H / 2 + 14, 32);
+  spawnPerfectScoreButterflies();
+}
+
+function updatePerfectFlourishes(dt) {
+  for (let i = perfectFlourishes.length - 1; i >= 0; i--) {
+    const flourish = perfectFlourishes[i];
+    flourish.life -= dt;
+    flourish.flash = Math.max(0, (flourish.flash || 0) - dt);
+    if (flourish.life <= 0) perfectFlourishes.splice(i, 1);
+  }
+}
+
 function scoreRewardItemChoice() {
+  if (Math.random() < 0.25) {
+    return {
+      id: "heal:25",
+      source: "Item",
+      color: "gold",
+      title: "Health Recovery",
+      text: "Immediately restores 25% of Battler's maximum health.",
+      healthReward: true
+    };
+  }
   const type = chooseItemDrop() || "crystalShard";
   const tutorial = ITEM_TUTORIALS[type] || ITEM_TUTORIALS.crystalShard;
   return {
@@ -1392,56 +1657,96 @@ function scoreRewardItemChoice() {
   };
 }
 
+function isBlessingRollable(blessing) {
+  if (!blessing) return false;
+  if (blessing.id === "miracleRevival") return (player.blessings.miracleRevival || 0) < MAX_MIRACLE_REVIVALS;
+  if (blessing.id === "miracleReflex") return playerReflexBonus() < MAX_MIRACLE_REFLEX;
+  if (blessing.id === "superCharge") return !player.blessings.superCharge;
+  if (blessing.id === "lambdaKonpeitoSpecial") return !player.blessings.lambdaKonpeitoSpecial;
+  if (blessing.id === "miracleShardFollowup") return !player.blessings.miracleShardFollowup;
+  if (blessing.id === "miracleCrystalShardPlus") return !player.blessings.miracleCrystalShardPlus;
+  if (blessing.id === "miracleRisk") return !player.blessings.miracleRisk;
+  return true;
+}
+
+function randomBlessingFromPool(pool, fallbackId) {
+  const rollable = pool.filter(isBlessingRollable);
+  return rollable.length
+    ? randomChoice(rollable)
+    : pool.find((blessing) => blessing.id === fallbackId) || randomChoice(pool);
+}
+
 function scoreBlessingOptions() {
   return [
-    { ...LAMBDA_BLESSINGS[Math.floor(Math.random() * LAMBDA_BLESSINGS.length)], color: "pink" },
-    { ...BERN_BLESSINGS[Math.floor(Math.random() * BERN_BLESSINGS.length)], color: "purple" },
+    { ...randomBlessingFromPool(LAMBDA_BLESSINGS, "lambdaDamageUp"), color: "pink" },
+    { ...randomBlessingFromPool(BERN_BLESSINGS, "miracleMaxHealth"), color: "purple" },
     scoreRewardItemChoice()
   ];
 }
 
-function queueScoreBlessingChoices() {
+function queueScoreBlessingChoices({ waitForPerfectFlourish = false } = {}) {
+  let queued = false;
   while (score >= nextScoreBlessingAt) {
-    scoreBlessingQueue.push(scoreBlessingOptions());
-    nextScoreBlessingAt += SCORE_BLESSING_STEP;
+    scoreBlessingQueue.push(true);
+    lastScoreBlessingAt = nextScoreBlessingAt;
+    scoreBlessingsEarned += 1;
+    nextScoreBlessingAt += SCORE_BLESSING_STEP + SCORE_BLESSING_STEP_GROWTH * scoreBlessingsEarned;
+    queued = true;
+  }
+  if (waitForPerfectFlourish && queued) {
+    scoreBlessingWaitingForPerfectFlourish = true;
+    return;
   }
   maybeStartScoreBlessingChoice();
 }
 
 function maybeStartScoreBlessingChoice() {
+  if (scoreBlessingWaitingForPerfectFlourish && perfectFlourishes.length > 0) return false;
+  scoreBlessingWaitingForPerfectFlourish = false;
   if (state !== "playing" || bossBlessingChoice.active || !scoreBlessingQueue.length) return false;
-  startBlessingChoice(scoreBlessingQueue.shift(), "score");
+  scoreBlessingQueue.shift();
+  startBlessingChoice(scoreBlessingOptions(), "score");
   return true;
 }
 
 function bankScoreCombo({ waveEnd = false, allowRewards = true } = {}) {
+  let scoreAdded = 0;
+  updateWaveComboPeak();
+  const wasPerfectWave = waveEnd && scoreCombo.perfectEligible;
   if (scoreComboHasValue()) {
     const multiplier = 1 + scoreCombo.defeats * COMBO_DEFEAT_MULTIPLIER;
     const banked = Math.round(scoreCombo.bank * multiplier);
     score += banked;
+    scoreAdded += banked;
     scoreCombo.lastBanked = banked;
     scoreCombo.lastMultiplier = multiplier;
   }
-  if (waveEnd && scoreCombo.perfectEligible) {
+  if (wasPerfectWave) {
     const perfectBonus = PERFECT_SCORE_BASE + wave * PERFECT_SCORE_PER_WAVE;
     score += perfectBonus;
+    scoreAdded += perfectBonus;
     runStats.perfects += 1;
+    spawnPerfectFlourish();
     message = "Perfect!";
     messageTimer = 1.35;
   }
+  if (waveEnd) finalizeWaveStats(scoreAdded, scoreCombo.perfectEligible);
+  if (scoreAdded > 0) animateScoreToCurrent(wasPerfectWave ? 1.18 : 0.72);
   resetScoreCombo(!waveEnd);
-  if (allowRewards) queueScoreBlessingChoices();
+  if (allowRewards) queueScoreBlessingChoices({ waitForPerfectFlourish: wasPerfectWave });
 }
 
 function breakPerfectAndBankCombo() {
   scoreCombo.perfectEligible = false;
+  if (waveStats.active) waveStats.active.perfect = false;
   bankScoreCombo();
   scoreCombo.perfectEligible = false;
+  if (waveStats.active) waveStats.active.perfect = false;
 }
 
 function damageEnemy(enemy, amount) {
   if (!enemy || amount <= 0) return 0;
-  const scaledAmount = player.blessings.miracleRisk ? amount * 1.5 : amount;
+  const scaledAmount = amount * playerOutgoingDamageMultiplier();
   const actual = Math.max(0, Math.min(enemy.hp, scaledAmount));
   enemy.hp -= scaledAmount;
   runStats.damageDealt += actual;
@@ -1485,7 +1790,7 @@ function beatriceHurtbox() {
 
 function damageBeatrice(amount, direction = 0) {
   if (!beatriceCanBeDamaged() || amount <= 0) return 0;
-  const incomingAmount = player.blessings.miracleRisk ? amount * 1.5 : amount;
+  const incomingAmount = amount * playerOutgoingDamageMultiplier();
   const fullDamageCap = beatriceBoss.maxHp * BEATRICE_STUN_FULL_DAMAGE_FRACTION;
   const fullDamageRemaining = Math.max(0, fullDamageCap - (beatriceBoss.stunDamageTaken || 0));
   const fullPortion = Math.min(incomingAmount, fullDamageRemaining);
@@ -1607,7 +1912,8 @@ function currentRunRecord() {
     revivedByBernkastel: runStats.revivedByBernkastel,
     parriesPerformed: runStats.parriesPerformed,
     bossesDefeated: runStats.bossesDefeated,
-    perfects: runStats.perfects
+    perfects: runStats.perfects,
+    waveBreakdown: runWaveBreakdownRows()
   };
   record.performance = runPerformanceValue(record);
   return record;
@@ -1710,6 +2016,36 @@ function refreshRunDetailsPanel() {
     runDetailsList.append(row);
   }
 
+  const waveTitle = document.createElement("h3");
+  waveTitle.className = "run-details__section-title";
+  waveTitle.textContent = "Wave Breakdown";
+  runDetailsList.append(waveTitle);
+  const waveRows = runWaveBreakdownRows();
+  if (!waveRows.length) {
+    const empty = document.createElement("div");
+    empty.className = "run-details__row";
+    const name = document.createElement("span");
+    const stat = document.createElement("span");
+    name.textContent = "No waves yet";
+    stat.textContent = "Start fighting";
+    empty.append(name, stat);
+    runDetailsList.append(empty);
+  } else {
+    waveRows.forEach((entry) => {
+      const row = document.createElement("div");
+      row.className = `run-details__wave-row${entry.perfect ? " is-perfect" : ""}${entry.inProgress ? " is-active" : ""}`;
+      const left = document.createElement("span");
+      const right = document.createElement("span");
+      const star = document.createElement("b");
+      star.textContent = "★";
+      star.setAttribute("aria-label", entry.perfect ? "Perfect" : "Not perfect");
+      left.append(star, document.createTextNode(` ${entry.label}${entry.inProgress ? " (current)" : ""}`));
+      right.textContent = `${formatStatNumber(entry.scoreEarned || 0)} score | ${entry.highestCombo || 0} hit best | ${entry.defeats || 0} defeated`;
+      row.append(left, right);
+      runDetailsList.append(row);
+    });
+  }
+
   const boardTitle = document.createElement("h3");
   boardTitle.className = "run-details__section-title";
   boardTitle.textContent = "Best Runs";
@@ -1795,6 +2131,21 @@ const bernCompanion = {
   parryFailFade: 0
 };
 
+const shannonCompanion = {
+  active: false,
+  summoned: false,
+  x: 0,
+  y: FLOOR_Y,
+  facing: 1,
+  anim: 0,
+  state: "idle",
+  moveSettle: 0,
+  wallCharge: 100,
+  wallTimer: 0,
+  wallCastFacing: 1,
+  wallCastSpawned: false
+};
+
 const player = {
   x: 240,
   y: FLOOR_Y,
@@ -1839,6 +2190,9 @@ const player = {
   runTimer: 0,
   runCharge: 0,
   dashCooldown: 0,
+  dashCooldowns: Array(DASH_STOCK_MAX).fill(0),
+  heldDashCooldownIndex: -1,
+  dashInvulnTimer: 0,
   brakeDrift: 0,
   brakeBurstTimer: 0,
   invuln: 0,
@@ -1852,16 +2206,21 @@ const player = {
   konpeitoCooldown: 0,
   plumTeaActive: false,
   plumTeaBurned: false,
+  goldenBroochRightActive: false,
+  companionSlots: [null, null],
   oneWingedEagleActive: false,
   oneWingedEagleLevel: 0,
   blessings: {
     launchExtension: 0,
     superCharge: false,
     lambdaKonpeitoSpecial: false,
+    lambdaDamageUp: 0,
     miracleRevival: 0,
     miracleShardFollowup: false,
     miracleCrystalShardPlus: false,
-    miracleRisk: false
+    miracleRisk: false,
+    miracleMaxHealth: 0,
+    miracleReflex: 0
   },
   poise: 0,
   bernHazardTimer: BERN_REVIVE_HAZARD_INTERVAL,
@@ -1870,6 +2229,50 @@ const player = {
   seenItemTutorials: new Set(),
   combo: 0
 };
+
+function playerMaxHp() {
+  return 100 * (1 + (player.blessings.miracleMaxHealth || 0) * 0.1);
+}
+
+function playerReflexBonus() {
+  return clamp((player.blessings.miracleReflex || 0) * MIRACLE_REFLEX_PER_STACK, 0, MAX_MIRACLE_REFLEX);
+}
+
+function reflexParryOuterBonus(radius, multiplier = 1) {
+  const reflex = playerReflexBonus();
+  return reflex > 0 ? Math.max(10, radius * reflex * multiplier) : 0;
+}
+
+function parryRingReadyWithReflex(timingRadius, targetRadius, baseWindow) {
+  const diff = timingRadius - targetRadius;
+  return diff >= -baseWindow && diff <= baseWindow + reflexParryOuterBonus(targetRadius);
+}
+
+function parryDistanceWithReflex(baseDistance) {
+  return baseDistance * (1 + playerReflexBonus());
+}
+
+function beatriceStakeParryDistanceWithReflex() {
+  return BEATRICE_STAKE_PARRY_DISTANCE * (1 + playerReflexBonus() * BEATRICE_STAKE_REFLEX_MULTIPLIER);
+}
+
+function playerHealthPercent() {
+  return clamp(player.hp / Math.max(1, playerMaxHp()), 0, 1) * 100;
+}
+
+function healPlayer(amount) {
+  player.hp = clamp(player.hp + amount, 0, playerMaxHp());
+}
+
+function fullHealPlayer() {
+  player.hp = playerMaxHp();
+}
+
+function playerOutgoingDamageMultiplier() {
+  const miracle = player.blessings.miracleRisk ? 1.5 : 1;
+  const lambda = 1 + (player.blessings.lambdaDamageUp || 0) * 0.05;
+  return miracle * lambda;
+}
 
 function fileName(id) {
   return `assets/battler/${String(id).padStart(8, "0")}.PNG`;
@@ -1881,6 +2284,10 @@ function lambdaFileName(id) {
 
 function bernFileName(id) {
   return `assets/bernkastel/${String(id).padStart(8, "0")}.PNG`;
+}
+
+function shannonFileName(id) {
+  return `assets/shannon/${String(id).padStart(8, "0")}.png`;
 }
 
 function goatFileName(id) {
@@ -1994,6 +2401,24 @@ function loadImages() {
     };
     img.src = bernFileName(id);
   }));
+  const shannonLoads = [...new Set(Object.values(shannonFrames).flat())].map((id) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      shannonImages[id] = img;
+      shannonFrameAnchors[id] = imageBottomFootAnchor(img);
+      if (
+        shannonFrames.moveBackStart.includes(id) ||
+        shannonFrames.moveBack.includes(id) ||
+        shannonFrames.runStart.includes(id) ||
+        shannonFrames.run.includes(id) ||
+        shannonFrames.runBrake.includes(id)
+      ) {
+        shannonFrameAnchors[id] = { x: img.width * 0.5, y: shannonFrameAnchors[id].y };
+      }
+      resolve();
+    };
+    img.src = shannonFileName(id);
+  }));
   const goatLoads = [...new Set(Object.values(goatFrames).flat())].map((id) => new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -2032,6 +2457,7 @@ function loadImages() {
   const effectLoads = [
     ["konpeito", "assets/effects/Konpeito.PNG"],
     ["plumTea", "assets/effects/PlumTea.png"],
+    ["goldenBroochRight", "assets/effects/GoldenBroochRight.png"],
     ["oneWingedEagle", "assets/effects/OneWingedEagle.webp"],
     ["oneWingedEagleGlow", "assets/effects/OneWingedEagle - Glow.png"],
     ["beatriceStake", "assets/effects/BeatriceStake.png"],
@@ -2087,12 +2513,12 @@ function loadImages() {
   ].map(([name, src]) => new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      effectImages[name] = name === "beatriceStake" || name === "beatriceTowers" || name.startsWith("asmo") || name.startsWith("beelzebub") || name.startsWith("leviathan") || name.startsWith("satan") || name.startsWith("belphegor") ? removeWhiteBackground(img) : img;
+      effectImages[name] = name === "goldenBroochRight" || name === "beatriceStake" || name === "beatriceTowers" || name.startsWith("asmo") || name.startsWith("beelzebub") || name.startsWith("leviathan") || name.startsWith("satan") || name.startsWith("belphegor") ? removeWhiteBackground(img) : img;
       resolve();
     };
     img.src = src;
   }));
-  return Promise.all([...spriteLoads, ...lambdaLoads, ...bernLoads, ...goatLoads, ...beatriceLoads, ...portraitLoads, ...tutorialPortraitLoads, ...effectLoads]).then(() => {
+  return Promise.all([...spriteLoads, ...lambdaLoads, ...bernLoads, ...shannonLoads, ...goatLoads, ...beatriceLoads, ...portraitLoads, ...tutorialPortraitLoads, ...effectLoads]).then(() => {
     alignGoatIdleFrames();
     prepareBernCatSheet();
   });
@@ -2231,6 +2657,44 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function ensureDashCooldownSlots() {
+  if (!Array.isArray(player.dashCooldowns)) player.dashCooldowns = [];
+  while (player.dashCooldowns.length < DASH_STOCK_MAX) player.dashCooldowns.push(0);
+  if (player.dashCooldowns.length > DASH_STOCK_MAX) player.dashCooldowns.length = DASH_STOCK_MAX;
+}
+
+function resetDashCooldowns() {
+  player.dashCooldowns = Array(DASH_STOCK_MAX).fill(0);
+  player.dashCooldown = 0;
+  player.heldDashCooldownIndex = -1;
+  player.dashInvulnTimer = 0;
+}
+
+function updateDashCooldowns(dt) {
+  ensureDashCooldownSlots();
+  const pauseDashRefill = player.runState === "starting" || player.runState === "running" || player.runState === "braking" || player.dashInvulnTimer > 0;
+  for (let i = 0; i < player.dashCooldowns.length; i++) {
+    if (pauseDashRefill) continue;
+    player.dashCooldowns[i] = Math.max(0, player.dashCooldowns[i] - dt);
+  }
+  player.dashCooldown = Math.min(...player.dashCooldowns);
+}
+
+function availableDashStocks() {
+  ensureDashCooldownSlots();
+  return player.dashCooldowns.reduce((count, cooldown) => count + (cooldown <= 0 ? 1 : 0), 0);
+}
+
+function consumeDashStock() {
+  ensureDashCooldownSlots();
+  const index = player.dashCooldowns.findIndex((cooldown) => cooldown <= 0);
+  if (index < 0) return false;
+  player.dashCooldowns[index] = DASH_COOLDOWN;
+  player.heldDashCooldownIndex = index;
+  updateDashCooldowns(0);
+  return true;
+}
+
 function constrainLaneToBeatriceWalls(y) {
   if (!beatriceBoss.active || !beatriceBoss.wallsActive) return y;
   return clamp(y, beatriceBoss.wallTop + 8, beatriceBoss.wallBottom - 8);
@@ -2270,8 +2734,90 @@ function hasBernLambdaDuo() {
     && bernCompanion.state !== "sacrifice";
 }
 
+function companionIdForItem(type) {
+  if (type === "konpeito") return "lambda";
+  if (type === "plumTea") return "bern";
+  if (type === "goldenBroochRight") return "shannon";
+  return "";
+}
+
+function ensureCompanionSlots() {
+  if (!Array.isArray(player.companionSlots)) player.companionSlots = [null, null];
+  while (player.companionSlots.length < MAX_ACTIVE_COMPANIONS) player.companionSlots.push(null);
+  if (player.companionSlots.length > MAX_ACTIVE_COMPANIONS) player.companionSlots.length = MAX_ACTIVE_COMPANIONS;
+}
+
+function companionSlotIndex(id) {
+  ensureCompanionSlots();
+  return player.companionSlots.indexOf(id);
+}
+
+function assignCompanionSlot(id) {
+  if (!id) return -1;
+  ensureCompanionSlots();
+  const existing = companionSlotIndex(id);
+  if (existing >= 0) return existing;
+  const open = player.companionSlots.findIndex((slot) => !slot);
+  if (open >= 0) {
+    player.companionSlots[open] = id;
+    return open;
+  }
+  return -1;
+}
+
+function releaseCompanionSlot(id) {
+  if (!id) return;
+  ensureCompanionSlots();
+  for (let i = 0; i < player.companionSlots.length; i++) {
+    if (player.companionSlots[i] === id) player.companionSlots[i] = null;
+  }
+}
+
+function occupiedCompanionSlotCount() {
+  ensureCompanionSlots();
+  return player.companionSlots.filter(Boolean).length;
+}
+
+function companionFollowTarget(id) {
+  const slot = Math.max(0, companionSlotIndex(id));
+  const foreground = slot === 0;
+  const xOffset = foreground ? 152 : 132;
+  const y = foreground
+    ? clampPlayY(player.y + 22)
+    : clampBackgroundCompanionY(player.y - 56);
+  return {
+    slot,
+    x: clamp(player.x - player.facing * xOffset, 90, STAGE_W - 130),
+    y
+  };
+}
+
+function companionDrawSortY(id, y) {
+  const slot = companionSlotIndex(id);
+  if (slot === 0) return player.y - 0.35;
+  if (slot === 1) return y - 40;
+  return y;
+}
+
 function removeCompanionItem(type) {
   player.itemOrder = player.itemOrder.filter((item) => item !== type);
+  releaseCompanionSlot(companionIdForItem(type));
+}
+
+function ownsCompanionItem(type) {
+  if (type === "konpeito") return player.konpeitoActive;
+  if (type === "plumTea") return player.plumTeaActive && !player.plumTeaBurned;
+  if (type === "goldenBroochRight") return player.goldenBroochRightActive;
+  return false;
+}
+
+function ownedCompanionCount() {
+  return occupiedCompanionSlotCount();
+}
+
+function canAcquireCompanionItem(type) {
+  if (!COMPANION_ITEM_TYPES.has(type)) return true;
+  return ownsCompanionItem(type) || ownedCompanionCount() < MAX_ACTIVE_COMPANIONS;
 }
 
 function baseAction(action) {
@@ -2312,7 +2858,7 @@ function eagleCrestLevelScale() {
 }
 
 function chooseItemDrop() {
-  const entries = Object.entries(ITEM_DROP_RATES).filter(([, weight]) => weight > 0);
+  const entries = Object.entries(ITEM_DROP_RATES).filter(([type, weight]) => weight > 0 && canAcquireCompanionItem(type));
   const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
   if (!total) return null;
   let roll = Math.random() * total;
@@ -2348,7 +2894,7 @@ function maybeAmuseBernkastel() {
     player.bernHazardAmuseKills = 0;
     player.plumTeaBurned = false;
     player.plumTeaActive = false;
-    player.itemOrder = player.itemOrder.filter((type) => type !== "plumTea");
+    removeCompanionItem("plumTea");
     bernCompanion.summoned = false;
     message = "The witch is amused";
     messageTimer = 2.2;
@@ -2409,6 +2955,11 @@ function absorbEnemyIntoDuoSingularity(enemy) {
 }
 
 function activatePickup(pickup, options = {}) {
+  if (!canAcquireCompanionItem(pickup.type)) {
+    message = "Only two companions can answer at once";
+    messageTimer = 1.25;
+    return;
+  }
   runStats.itemsPickedUp += 1;
   if (!player.itemOrder.includes(pickup.type)) {
     player.itemOrder.push(pickup.type);
@@ -2439,6 +2990,17 @@ function activatePickup(pickup, options = {}) {
       triggerBernCrystalAttack(true);
     }
     message = "Plum Tea";
+  } else if (pickup.type === "goldenBroochRight") {
+    const firstSummon = !shannonCompanion.summoned;
+    player.goldenBroochRightActive = true;
+    if (firstSummon) summonShannon();
+    else {
+      addShannonWallCharge(100);
+      shannonCompanion.state = "summon";
+      shannonCompanion.anim = 0;
+      spawnGoldenButterflies(shannonCompanion.x || player.x, (shannonCompanion.y || player.y) - 86, 18);
+    }
+    message = "Golden Brooch (Right)";
   } else if (pickup.type === "oneWingedEagle") {
     player.oneWingedEagleActive = true;
     player.oneWingedEagleLevel = clamp((player.oneWingedEagleLevel || 0) + 1, 1, EAGLE_CREST_MAX_LEVEL);
@@ -2496,6 +3058,18 @@ function debugGrantStartingKonpeito() {
   }
   if (!lambdaCompanion.summoned) summonLambda();
   message = "Konpeito";
+  messageTimer = 1.1;
+}
+
+function debugGrantStartingGoldenBroochRight() {
+  if (!DEBUG_START_WITH_GOLDEN_BROOCH_RIGHT) return;
+  player.goldenBroochRightActive = true;
+  if (!player.itemOrder.includes("goldenBroochRight")) player.itemOrder.push("goldenBroochRight");
+  if (player.seenItemTutorials && typeof player.seenItemTutorials.add === "function") {
+    player.seenItemTutorials.add("goldenBroochRight");
+  }
+  if (!shannonCompanion.summoned) summonShannon();
+  message = "Golden Brooch (Right)";
   messageTimer = 1.1;
 }
 
@@ -2576,6 +3150,11 @@ function addBernCrystalCharge(amount = 100) {
   bernCompanion.crystalTimer = companionChargeCooldown(bernCompanion.crystalChargeGauge, BERN_CRYSTAL_INTERVAL);
 }
 
+function addShannonWallCharge(amount = 100) {
+  shannonCompanion.wallCharge = Math.max(0, (shannonCompanion.wallCharge || 0) + amount);
+  shannonCompanion.wallTimer = companionChargeCooldown(shannonCompanion.wallCharge, SHANNON_WALL_INTERVAL);
+}
+
 function updateLambdaKonpeitoCharge(dt) {
   if (!player.konpeitoActive || state !== "playing") return;
   if ((lambdaCompanion.konpeitoCharge || 0) < 100) {
@@ -2592,12 +3171,22 @@ function updateBernCrystalGauge(dt) {
   bernCompanion.crystalTimer = companionChargeCooldown(bernCompanion.crystalChargeGauge || 0, BERN_CRYSTAL_INTERVAL);
 }
 
+function updateShannonWallGauge(dt) {
+  if (!player.goldenBroochRightActive || state !== "playing") return;
+  if ((shannonCompanion.wallCharge || 0) < 100) {
+    shannonCompanion.wallCharge = Math.min(100, (shannonCompanion.wallCharge || 0) + (dt / SHANNON_WALL_INTERVAL) * 100);
+  }
+  shannonCompanion.wallTimer = companionChargeCooldown(shannonCompanion.wallCharge || 0, SHANNON_WALL_INTERVAL);
+}
+
 function summonLambda() {
   runStats.companionsEncountered.add("Lambdadelta");
+  if (assignCompanionSlot("lambda") < 0) return;
+  const follow = companionFollowTarget("lambda");
   lambdaCompanion.active = true;
   lambdaCompanion.summoned = true;
-  lambdaCompanion.x = clamp(player.x - player.facing * 92, 90, STAGE_W - 130);
-  lambdaCompanion.y = clampPlayY(player.y + 18);
+  lambdaCompanion.x = follow.x;
+  lambdaCompanion.y = follow.y;
   lambdaCompanion.facing = player.facing;
   lambdaCompanion.anim = 0;
   lambdaCompanion.state = "summon";
@@ -2624,10 +3213,12 @@ function launchEnemiesFromLambdaSummon(x, y) {
 
 function summonBernkastel() {
   runStats.companionsEncountered.add("Bernkastel");
+  if (assignCompanionSlot("bern") < 0) return;
+  const follow = companionFollowTarget("bern");
   bernCompanion.active = true;
   bernCompanion.summoned = true;
-  bernCompanion.x = clamp(player.x - player.facing * 132, 90, STAGE_W - 130);
-  bernCompanion.y = clampBackgroundCompanionY(player.y - 56);
+  bernCompanion.x = follow.x;
+  bernCompanion.y = follow.y;
   bernCompanion.facing = player.facing;
   bernCompanion.anim = 0;
   bernCompanion.state = "summon";
@@ -2640,13 +3231,35 @@ function summonBernkastel() {
   bernCompanion.catForm = false;
 }
 
+function summonShannon() {
+  runStats.companionsEncountered.add("Shannon");
+  if (assignCompanionSlot("shannon") < 0) return;
+  const follow = companionFollowTarget("shannon");
+  shannonCompanion.active = true;
+  shannonCompanion.summoned = true;
+  shannonCompanion.x = follow.x;
+  shannonCompanion.y = follow.y;
+  shannonCompanion.facing = player.facing;
+  shannonCompanion.anim = 0;
+  shannonCompanion.state = "summon";
+  shannonCompanion.moveSettle = 0;
+  shannonCompanion.wallCharge = 100;
+  shannonCompanion.wallTimer = 0;
+  shannonCompanion.wallCastFacing = player.facing;
+  shannonCompanion.wallCastSpawned = false;
+  spawnGoldenButterflies(shannonCompanion.x, shannonCompanion.y - 86, 20);
+}
+
 function restoreOwnedCompanionsForNormalWave() {
-  if (waveMode !== "normal" || state !== "playing") return;
-  if (player.konpeitoActive && !lambdaCompanion.summoned) {
+  if (waveMode !== "normal") return;
+  if (player.konpeitoActive && !lambdaCompanion.active) {
     summonLambda();
   }
-  if (player.plumTeaActive && !player.plumTeaBurned && !bernCompanion.summoned) {
+  if (player.plumTeaActive && !player.plumTeaBurned && !bernCompanion.active) {
     summonBernkastel();
+  }
+  if (player.goldenBroochRightActive && !shannonCompanion.active) {
+    summonShannon();
   }
 }
 
@@ -2660,8 +3273,9 @@ function placeBernAboveTarget(target) {
 }
 
 function placeBernAtFollowPosition() {
-  bernCompanion.x = clamp(player.x - player.facing * 132, 90, STAGE_W - 130);
-  bernCompanion.y = clampBackgroundCompanionY(player.y - 56);
+  const follow = companionFollowTarget("bern");
+  bernCompanion.x = follow.x;
+  bernCompanion.y = follow.y;
   const strongest = strongestEnemyTo(bernCompanion.x, bernCompanion.y);
   bernCompanion.facing = strongest ? (strongest.x >= bernCompanion.x ? 1 : -1) : player.facing;
 }
@@ -3246,7 +3860,11 @@ function bernHazardParryReady() {
   if (!BERN_HAZARD_PARRY_ENABLED || !bernCompanion.active) return false;
   if (bernCompanion.state !== "hazardTeleportIn" && bernCompanion.state !== "hazardCharge") return false;
   if (bernCompanion.parryFailed) return false;
-  return Math.abs(bernHazardParryRingRadius() - BERN_HAZARD_PARRY_RING_RADIUS) <= BERN_HAZARD_PARRY_WINDOW;
+  return parryRingReadyWithReflex(
+    bernHazardParryRingRadius(),
+    BERN_HAZARD_PARRY_RING_RADIUS,
+    BERN_HAZARD_PARRY_WINDOW
+  );
 }
 
 function bernHazardParryIndicatorActive() {
@@ -3300,7 +3918,11 @@ function beatriceMeleeKickParryReady() {
   if (!beatriceBoss.active || beatriceBoss.flavor !== "meleeKick" || beatriceBoss.meleeKickParried) return false;
   if (beatriceBoss.meleeKickParryFailed) return false;
   if (!playerInBeatriceMeleeKickTelegraph()) return false;
-  return Math.abs(beatriceMeleeKickParryRingRadius() - BEATRICE_MELEE_KICK_PARRY_RING_RADIUS) <= BEATRICE_MELEE_KICK_PARRY_WINDOW;
+  return parryRingReadyWithReflex(
+    beatriceMeleeKickParryRingRadius(),
+    BEATRICE_MELEE_KICK_PARRY_RING_RADIUS,
+    BEATRICE_MELEE_KICK_PARRY_WINDOW
+  );
 }
 
 function beatriceMeleeKickParryIndicatorActive() {
@@ -3434,7 +4056,11 @@ function goatPoundParryRingRadius(enemy) {
 function goatPoundParryTimingReady(enemy) {
   if (enemy.type !== "goat" || enemy.dead || enemy.spawnGrace > 0) return false;
   if (enemy.goatAction !== "pound" || enemy.goatHasHit || enemy.goatParryFailed) return false;
-  return Math.abs(goatPoundParryRingRadius(enemy) - GOAT_POUND_PARRY_RING_RADIUS) <= GOAT_POUND_PARRY_WINDOW;
+  return parryRingReadyWithReflex(
+    goatPoundParryRingRadius(enemy),
+    GOAT_POUND_PARRY_RING_RADIUS,
+    GOAT_POUND_PARRY_WINDOW
+  );
 }
 
 function goatPoundParryIndicatorActive(enemy) {
@@ -4073,13 +4699,15 @@ function isBattlerOwnedSource(source = "") {
 function resetBattlerLaunchComboFlags(target) {
   target.battlerLaunchSpent = false;
   target.battlerGroundBounceSpent = false;
-  target.battlerExtraLaunchExtensionSpent = false;
+  target.battlerExtraLaunchExtensionsUsed = 0;
 }
 
 function spendBattlerExtraLaunchExtension(target) {
-  if ((player.blessings.launchExtension || 0) <= 0) return false;
-  if (target.battlerExtraLaunchExtensionSpent) return false;
-  target.battlerExtraLaunchExtensionSpent = true;
+  const maxExtensions = Math.max(0, Math.floor(player.blessings.launchExtension || 0));
+  if (maxExtensions <= 0) return false;
+  const used = Math.max(0, Math.floor(target.battlerExtraLaunchExtensionsUsed || 0));
+  if (used >= maxExtensions) return false;
+  target.battlerExtraLaunchExtensionsUsed = used + 1;
   return true;
 }
 
@@ -4156,6 +4784,36 @@ function launchEnemyUnprorated(enemy, direction, source, lift = 360, drift = 100
   enemy.juggleCount = 0;
   enemy.launchSource = source;
   return true;
+}
+
+function triggerShannonWallFollowup() {
+  if (!player.goldenBroochRightActive || !shannonCompanion.summoned || !shannonCompanion.active) return false;
+  if ((shannonCompanion.wallCharge || 0) < 100) return false;
+  if (shannonCompanion.state === "summon" || shannonCompanion.state === "wallCast") return false;
+  shannonCompanion.wallCharge = Math.max(0, (shannonCompanion.wallCharge || 0) - 100);
+  shannonCompanion.wallTimer = companionChargeCooldown(shannonCompanion.wallCharge, SHANNON_WALL_INTERVAL);
+  shannonCompanion.state = "wallCast";
+  shannonCompanion.anim = 0;
+  shannonCompanion.moveSettle = 0;
+  shannonCompanion.facing = player.facing;
+  shannonCompanion.wallCastFacing = player.facing || 1;
+  shannonCompanion.wallCastSpawned = false;
+  return true;
+}
+
+function spawnShannonWallFromCast() {
+  const facing = shannonCompanion.wallCastFacing || player.facing || 1;
+  const startX = clamp(player.x + facing * SHANNON_WALL_DISTANCE, 80, STAGE_W - 80);
+  shannonWalls.push({
+    x: startX,
+    y: player.y,
+    direction: -facing,
+    life: 1.85,
+    max: 1.85,
+    hitsRemaining: SHANNON_WALL_MAX_HITS,
+    hitCooldowns: new Map(),
+    pulse: Math.random() * Math.PI * 2
+  });
 }
 
 function extendEnemyLaunch(enemy, direction, source, lift = 260, drift = 90) {
@@ -4311,7 +4969,7 @@ function makeEnemy(x, y, index = 0, typeOverride = "") {
     juggleCount: 0,
     battlerLaunchSpent: false,
     battlerGroundBounceSpent: false,
-    battlerExtraLaunchExtensionSpent: false,
+    battlerExtraLaunchExtensionsUsed: 0,
     groundBouncePending: false,
     groundBounceTimer: 0,
     groundBounceDirection: 0,
@@ -4417,11 +5075,11 @@ function bossBlessingOptionsFromCompanions() {
   const hadLambda = lambdaCompanion.summoned || lambdaCompanion.active;
   const hadBern = (bernCompanion.summoned || bernCompanion.active) && player.plumTeaActive && !player.plumTeaBurned;
   if (hadLambda) {
-    const blessing = randomChoice(LAMBDA_BLESSINGS);
+    const blessing = randomBlessingFromPool(LAMBDA_BLESSINGS, "lambdaDamageUp");
     if (blessing) options.push({ ...blessing, color: "pink" });
   }
   if (hadBern) {
-    const blessing = randomChoice(BERN_BLESSINGS);
+    const blessing = randomBlessingFromPool(BERN_BLESSINGS, "miracleMaxHealth");
     if (blessing) options.push({ ...blessing, color: "purple" });
   }
   return options;
@@ -4433,6 +5091,9 @@ function dismissCompanionsForBossWave() {
   }
   if (bernCompanion.active || bernCompanion.summoned) {
     spawnGoldenButterflies(bernCompanion.x || player.x, (bernCompanion.y || player.y) - 96, 26);
+  }
+  if (shannonCompanion.active || shannonCompanion.summoned) {
+    spawnGoldenButterflies(shannonCompanion.x || player.x, (shannonCompanion.y || player.y) - 86, 22);
   }
   lambdaCompanion.active = false;
   lambdaCompanion.summoned = false;
@@ -4448,6 +5109,15 @@ function dismissCompanionsForBossWave() {
   bernCompanion.crystalTimer = 0;
   bernCompanion.crystalCharge = 0;
   bernCompanion.catForm = false;
+  shannonCompanion.active = false;
+  shannonCompanion.summoned = false;
+  shannonCompanion.state = "idle";
+  shannonCompanion.anim = 0;
+  shannonCompanion.moveSettle = 0;
+  shannonCompanion.wallCharge = 100;
+  shannonCompanion.wallTimer = 0;
+  shannonCompanion.wallCastFacing = 1;
+  shannonCompanion.wallCastSpawned = false;
 }
 
 function startBlessingChoice(options, context = "boss") {
@@ -4473,20 +5143,38 @@ function applyBossBlessing(blessing) {
     messageTimer = 1.35;
     return;
   }
+  if (blessing.healthReward) {
+    healPlayer(playerMaxHp() * 0.25);
+    message = blessing.title;
+    messageTimer = 1.35;
+    return;
+  }
   if (blessing.id === "launchExtension") {
     player.blessings.launchExtension = (player.blessings.launchExtension || 0) + 1;
   } else if (blessing.id === "superCharge") {
     player.blessings.superCharge = true;
   } else if (blessing.id === "lambdaKonpeitoSpecial") {
     player.blessings.lambdaKonpeitoSpecial = true;
+  } else if (blessing.id === "lambdaDamageUp") {
+    player.blessings.lambdaDamageUp = (player.blessings.lambdaDamageUp || 0) + 1;
   } else if (blessing.id === "miracleRevival") {
-    player.blessings.miracleRevival = (player.blessings.miracleRevival || 0) + 1;
+    player.blessings.miracleRevival = Math.min(MAX_MIRACLE_REVIVALS, (player.blessings.miracleRevival || 0) + 1);
   } else if (blessing.id === "miracleShardFollowup") {
     player.blessings.miracleShardFollowup = true;
   } else if (blessing.id === "miracleCrystalShardPlus") {
     player.blessings.miracleCrystalShardPlus = true;
   } else if (blessing.id === "miracleRisk") {
     player.blessings.miracleRisk = true;
+  } else if (blessing.id === "miracleMaxHealth") {
+    const before = playerMaxHp();
+    player.blessings.miracleMaxHealth = (player.blessings.miracleMaxHealth || 0) + 1;
+    const gained = playerMaxHp() - before;
+    healPlayer(gained);
+  } else if (blessing.id === "miracleReflex") {
+    player.blessings.miracleReflex = Math.min(
+      Math.round(MAX_MIRACLE_REFLEX / MIRACLE_REFLEX_PER_STACK),
+      (player.blessings.miracleReflex || 0) + 1
+    );
   }
   message = blessing.title.replace(/^Blessing of (Certainty|Miracles): /, "");
   messageTimer = 1.35;
@@ -4572,7 +5260,7 @@ function activateBeatriceBoss() {
   beatriceBoss.juggleCount = 0;
   beatriceBoss.battlerLaunchSpent = false;
   beatriceBoss.battlerGroundBounceSpent = false;
-  beatriceBoss.battlerExtraLaunchExtensionSpent = false;
+  beatriceBoss.battlerExtraLaunchExtensionsUsed = 0;
   beatriceBoss.groundBouncePending = false;
   beatriceBoss.groundBounceTimer = 0;
   beatriceBoss.groundBounceDirection = 0;
@@ -4625,10 +5313,6 @@ function startRandomBeatriceMechanic() {
   resetBeatriceTowerVolley();
   if (choice === "goatTrial") {
     startBeatriceGoatTrial();
-    return true;
-  }
-  if (choice === "ringAttack") {
-    startBeatriceRingAttack();
     return true;
   }
   if (choice === "teleportAttack") {
@@ -4898,6 +5582,7 @@ function resetBeatriceTowerVolley() {
   beatriceTowerVolley.safeZones = [];
   beatriceTowerVolley.missiles = [];
   beatriceTowerVolley.hitWaves = [];
+  beatriceTowerVolley.leviathanRings = [];
 }
 
 function beatriceTowerLaneYs() {
@@ -4946,6 +5631,21 @@ function setupBeatriceTowerVolleyWave(waveIndex, side, fresh = false) {
   }
   const laneYs = beatriceTowerLaneYs();
   const chosen = shuffledIndices(laneYs.length).slice(0, 2);
+  const leviathanLaneIndex = chosen[Math.floor(Math.random() * chosen.length)] ?? chosen[0];
+  const leviathanAppearAt = BEATRICE_TOWER_VOLLEY_LEVIATHAN_APPEAR_MIN
+    + Math.random() * (BEATRICE_TOWER_VOLLEY_LEVIATHAN_APPEAR_MAX - BEATRICE_TOWER_VOLLEY_LEVIATHAN_APPEAR_MIN);
+  beatriceTowerVolley.leviathanRings.push({
+    wave: waveIndex,
+    x: clamp(player.x + (Math.random() - 0.5) * 130, 90, STAGE_W - 90),
+    y: clamp(laneYs[leviathanLaneIndex] + (Math.random() - 0.5) * 34, PLAY_AREA_TOP, PLAY_AREA_BOTTOM),
+    radius: BEATRICE_RING_ATTACK_RADIUS,
+    appearAt: leviathanAppearAt,
+    detonateAt: leviathanAppearAt + BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MIN
+      + Math.random() * (BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MAX - BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MIN),
+    detonated: false,
+    leviathanSpawned: false,
+    locked: false
+  });
   const safeLaneIndex = chosen[Math.floor(Math.random() * chosen.length)] ?? chosen[0];
   const safeZone = {
     wave: waveIndex,
@@ -5020,6 +5720,44 @@ function applyBeatriceTowerVolleyHit(point) {
   if (player.hp <= 0) defeatPlayer();
 }
 
+function updateTrackingLeviathanRing(ring, elapsed) {
+  if (!ring || ring.locked || ring.detonated || elapsed < ring.appearAt) return;
+  const speed = Math.hypot(player.vx || 0, player.vy || 0);
+  const leadScale = clamp((elapsed - ring.appearAt) / Math.max(0.001, ring.detonateAt - ring.appearAt), 0, 1);
+  const leadTime = BEATRICE_TOWER_VOLLEY_LEVIATHAN_LEAD_TIME * (0.85 + leadScale * 0.25);
+  const targetX = clamp(player.x + (player.vx || 0) * leadTime, 90, STAGE_W - 90);
+  const targetY = clampPlayY(player.y + (player.vy || 0) * leadTime);
+  const trackRate = elapsed >= ring.detonateAt
+    ? 1
+    : BEATRICE_TOWER_VOLLEY_LEVIATHAN_TRACK_RATE;
+  ring.x += (targetX - ring.x) * trackRate;
+  ring.y += (targetY - ring.y) * trackRate;
+  if (speed <= BEATRICE_TOWER_VOLLEY_LEVIATHAN_STOP_SPEED || elapsed >= ring.detonateAt) {
+    ring.locked = true;
+    ring.x = targetX;
+    ring.y = targetY;
+  }
+}
+
+function updateBeatriceTowerVolleyLeviathanRings() {
+  const volley = beatriceTowerVolley;
+  for (const ring of volley.leviathanRings) {
+    if (ring.wave !== volley.wave || ring.detonated) continue;
+    updateTrackingLeviathanRing(ring, volley.timer);
+    if (volley.timer < ring.detonateAt) continue;
+    ring.detonated = true;
+    ring.leviathanSpawned = true;
+    spawnLeviathanSlash(ring.x, ring.y, ring.radius);
+  }
+}
+
+function beatriceTowerVolleyLeviathanDone() {
+  const volley = beatriceTowerVolley;
+  return volley.leviathanRings
+    .filter((ring) => ring.wave === volley.wave)
+    .every((ring) => ring.detonated);
+}
+
 function updateBeatriceTowerVolley(dt) {
   if (beatriceBoss.mechanic !== "towerVolley" || !beatriceTowerVolley.active) return;
   beatriceTowerVolley.timer += dt;
@@ -5040,6 +5778,7 @@ function updateBeatriceTowerVolley(dt) {
   }
 
   if (volley.phase === "fire") {
+    updateBeatriceTowerVolleyLeviathanRings();
     for (const point of volley.points) {
       if (point.struck || volley.timer < point.delay) continue;
       point.struck = true;
@@ -5068,7 +5807,9 @@ function updateBeatriceTowerVolley(dt) {
       });
       applyBeatriceTowerVolleyHit(point);
     }
-    if (volley.points.every((point) => point.struck) && volley.timer >= BEATRICE_TOWER_VOLLEY_TELEGRAPH_TIME + BEATRICE_TOWER_VOLLEY_SWEEP_TIME + BEATRICE_TOWER_VOLLEY_WAVE_GAP) {
+    if (volley.points.every((point) => point.struck)
+      && beatriceTowerVolleyLeviathanDone()
+      && volley.timer >= BEATRICE_TOWER_VOLLEY_TELEGRAPH_TIME + BEATRICE_TOWER_VOLLEY_SWEEP_TIME + BEATRICE_TOWER_VOLLEY_WAVE_GAP) {
       if (volley.wave === 0) {
         setupBeatriceTowerVolleyWave(1, -volley.side);
       } else {
@@ -5346,6 +6087,7 @@ function spawnWave() {
   messageBottles.length = 0;
   resetScoreCombo(true);
   waveMode = currentWaveMode();
+  startWaveStats();
   if (waveMode === "boss") {
     beginBossWave();
     message = currentWaveLabel();
@@ -5406,7 +6148,7 @@ function startGame() {
   player.runLocked = false;
   player.runTimer = 0;
   player.runCharge = 0;
-  player.dashCooldown = 0;
+  resetDashCooldowns();
   player.brakeDrift = 0;
   player.brakeBurstTimer = 0;
   resetPlayerCombo();
@@ -5421,15 +6163,23 @@ function startGame() {
   player.konpeitoCooldown = 0;
   player.plumTeaActive = false;
   player.plumTeaBurned = false;
+  player.goldenBroochRightActive = false;
+  player.companionSlots = [null, null];
   player.oneWingedEagleActive = false;
   player.oneWingedEagleLevel = 0;
   player.blessings.launchExtension = 0;
   player.blessings.superCharge = false;
   player.blessings.lambdaKonpeitoSpecial = false;
+  player.blessings.lambdaDamageUp = 0;
   player.blessings.miracleRevival = 0;
   player.blessings.miracleShardFollowup = false;
   player.blessings.miracleCrystalShardPlus = false;
   player.blessings.miracleRisk = false;
+  player.blessings.miracleMaxHealth = 0;
+  player.blessings.miracleReflex = 0;
+  if (DEBUG_START_WITH_50_REFLEX) {
+    player.blessings.miracleReflex = Math.round(MAX_MIRACLE_REFLEX / MIRACLE_REFLEX_PER_STACK);
+  }
   if (DEBUG_START_WITH_CANDY_CATACLYSM) {
     player.blessings.lambdaKonpeitoSpecial = true;
     player.resolve = 100;
@@ -5579,6 +6329,15 @@ function startGame() {
   bernCompanion.parryVx = 0;
   bernCompanion.parryVz = 0;
   bernCompanion.parryFade = 0;
+  shannonCompanion.active = false;
+  shannonCompanion.summoned = false;
+  shannonCompanion.anim = 0;
+  shannonCompanion.state = "idle";
+  shannonCompanion.moveSettle = 0;
+  shannonCompanion.wallCharge = 100;
+  shannonCompanion.wallTimer = 0;
+  shannonCompanion.wallCastFacing = 1;
+  shannonCompanion.wallCastSpawned = false;
   pickups.length = 0;
   absorbingPickups.length = 0;
   crystalShards.length = 0;
@@ -5592,6 +6351,7 @@ function startGame() {
   konpeitoDomeBursts.length = 0;
   lambdaSpecialKonpeitos.length = 0;
   lambdaSpecialShrapnel.length = 0;
+  shannonWalls.length = 0;
   messageBottles.length = 0;
   summonPillars.length = 0;
   screenFlashTimer = 0;
@@ -5604,6 +6364,9 @@ function startGame() {
   lambdaGameOverDialogue.timer = 0;
   lambdaGameOverDialogue.skipCooldown = 0;
   score = 0;
+  displayedScore = 0;
+  scoreTick.timer = 0;
+  perfectFlourishes.length = 0;
   resetScoreProgression();
   wave = 1;
   waveMode = currentWaveMode();
@@ -5611,6 +6374,7 @@ function startGame() {
   state = "playing";
   debugGrantStartingKonpeito();
   debugGrantStartingPlumTea();
+  debugGrantStartingGoldenBroochRight();
   spawnWave();
 }
 
@@ -5631,10 +6395,10 @@ function setAction(name, lock = 0) {
 }
 
 function triggerBernRevive() {
-  if ((player.blessings.miracleRevival || 0) > 0 && player.plumTeaActive && !player.plumTeaBurned) {
+  if ((player.blessings.miracleRevival || 0) > 0) {
     player.blessings.miracleRevival -= 1;
     runStats.revivedByBernkastel += 1;
-    player.hp = 100;
+    fullHealPlayer();
     player.resolve = 100;
     player.attackLock = 0;
     player.attackLungeRemaining = 0;
@@ -5661,7 +6425,7 @@ function triggerBernRevive() {
   }
   if (!bernCompanion.summoned || !player.plumTeaActive || player.plumTeaBurned) return false;
   runStats.revivedByBernkastel += 1;
-  player.hp = 100;
+  fullHealPlayer();
   player.resolve = 100;
   player.attackLock = 0;
   player.attackLungeRemaining = 0;
@@ -5684,6 +6448,7 @@ function triggerBernRevive() {
   setAction("idle");
   player.plumTeaActive = false;
   player.plumTeaBurned = true;
+  releaseCompanionSlot("bern");
   player.bernHazardTimer = bernHazardInterval();
   player.bernHazardAmuseKills = 0;
   bernCompanion.active = true;
@@ -5725,7 +6490,7 @@ function defeatPlayer() {
   player.runState = "none";
   player.runTimer = 0;
   player.runCharge = 0;
-  player.dashCooldown = 0;
+  resetDashCooldowns();
   player.brakeDrift = 0;
   player.brakeBurstTimer = 0;
   screenShakeTimer = 0;
@@ -5901,6 +6666,7 @@ function applyAttackHit(kind, data) {
     defeatedTarget = defeatedTarget || shockwaveResult.defeated;
   }
   if (hit && data.stage === 3) {
+    triggerShannonWallFollowup();
     const followupTarget = [...directEnemyHits].find((enemy) => !enemy.dead && enemy.hp > 0);
     scheduleMiracleCrystalFollowup(followupTarget);
   }
@@ -6335,6 +7101,44 @@ function burst(x, y, kind) {
       life: 0.42 + Math.random() * 0.22,
       max: 0.64,
       color
+    });
+  }
+}
+
+function spawnShannonWallShatter(x, y, direction = 1) {
+  for (let i = 0; i < 34; i++) {
+    const spread = (Math.random() - 0.5) * Math.PI * 0.95;
+    const angle = (direction > 0 ? 0 : Math.PI) + spread;
+    const speed = 110 + Math.random() * 360;
+    particles.push({
+      x: x + (Math.random() - 0.5) * 34,
+      y: y + (Math.random() - 0.5) * 92,
+      vx: Math.cos(angle) * speed + (Math.random() - 0.5) * 90,
+      vy: Math.sin(angle) * speed - 60 - Math.random() * 120,
+      life: 0.34 + Math.random() * 0.24,
+      max: 0.58,
+      color: Math.random() < 0.55 ? "#e7c9ff" : Math.random() < 0.5 ? "#b05cff" : "#7c3cff",
+      size: 3 + Math.random() * 8,
+      gravity: 180,
+      shard: true,
+      angle: angle + (Math.random() - 0.5) * 0.8,
+      spin: (Math.random() - 0.5) * 12
+    });
+  }
+  for (let i = 0; i < 10; i++) {
+    particles.push({
+      x: x + (Math.random() - 0.5) * 42,
+      y: y + (Math.random() - 0.5) * 112,
+      vx: direction * (160 + Math.random() * 280),
+      vy: (Math.random() - 0.5) * 180,
+      life: 0.18 + Math.random() * 0.14,
+      max: 0.32,
+      color: "#f5e7ff",
+      size: 2 + Math.random() * 4,
+      gravity: 70,
+      shard: true,
+      angle: (Math.random() - 0.5) * Math.PI,
+      spin: (Math.random() - 0.5) * 10
     });
   }
 }
@@ -7372,7 +8176,8 @@ function spawnBeamContactSparks(x, y, dt) {
 function updatePlayer(dt) {
   player.attackLock = Math.max(0, player.attackLock - dt);
   player.invuln = Math.max(0, player.invuln - dt);
-  player.dashCooldown = Math.max(0, player.dashCooldown - dt);
+  player.dashInvulnTimer = Math.max(0, (player.dashInvulnTimer || 0) - dt);
+  updateDashCooldowns(dt);
   if (!player.konpeitoGlowPending) {
     player.konpeitoGlowTimer = Math.max(0, player.konpeitoGlowTimer - dt);
   }
@@ -7569,26 +8374,36 @@ function updatePlayer(dt) {
       }
     }
     const wantsRunInput = Boolean(moving && inputRunHeld());
-    const wantsRun = wantsRunInput && (player.runState === "starting" || player.runState === "running" || player.dashCooldown <= 0);
+    const wantsRun = wantsRunInput && (player.runState === "starting" || player.runState === "running" || availableDashStocks() > 0);
     let moveSpeed = 240;
     let laneSpeed = 150;
     let action = moving ? "walk" : "idle";
 
     if (wantsRun) {
       if (player.runState === "none" || player.runState === "braking") {
-        player.runState = "starting";
-        player.runLocked = false;
-        if (touchControls.runLatched) {
-          touchControls.runLatched = false;
-          syncTouchRunButtonState();
+        if (!consumeDashStock()) {
+          player.runState = "none";
+          player.runLocked = false;
+          if (touchControls.runLatched) {
+            touchControls.runLatched = false;
+            syncTouchRunButtonState();
+          }
+          setAction(moving ? "walk" : "idle");
+        } else {
+          player.runState = "starting";
+          player.runLocked = false;
+          if (touchControls.runLatched) {
+            touchControls.runLatched = false;
+            syncTouchRunButtonState();
+          }
+          player.runTimer = 0;
+          player.runCharge = 0;
+          player.invuln = Math.max(player.invuln, DASH_START_INVULN);
+          player.dashInvulnTimer = Math.max(player.dashInvulnTimer || 0, DASH_START_INVULN);
+          player.brakeDrift = 0;
+          player.brakeBurstTimer = DASH_TAP_DODGE_BRAKE_DURATION;
+          setAction("runStart");
         }
-        player.runTimer = 0;
-        player.runCharge = 0;
-        player.dashCooldown = DASH_COOLDOWN;
-        player.invuln = Math.max(player.invuln, DASH_START_INVULN);
-        player.brakeDrift = 0;
-        player.brakeBurstTimer = DASH_TAP_DODGE_BRAKE_DURATION;
-        setAction("runStart");
       }
       if (player.runState === "starting") {
         player.runTimer += dt;
@@ -7628,7 +8443,10 @@ function updatePlayer(dt) {
       }
       player.runTimer = DASH_BRAKE_DURATION;
       player.brakeDrift = burstRelease ? DASH_TAP_DODGE_DRIFT : 46 + 42 * player.runCharge;
-      if (burstRelease) player.invuln = Math.max(player.invuln, DASH_BRAKE_DURATION);
+      if (burstRelease) {
+        player.invuln = Math.max(player.invuln, DASH_BRAKE_DURATION);
+        player.dashInvulnTimer = Math.max(player.dashInvulnTimer || 0, DASH_BRAKE_DURATION);
+      }
       player.runCharge = 0;
       setAction("runBrake");
     }
@@ -7922,7 +8740,7 @@ function updateEnemies(dt) {
     if (state !== "playing") return;
     wave += 1;
     runStats.wavesCompleted = Math.max(runStats.wavesCompleted, wave - 1);
-    player.hp = clamp(player.hp + 16, 0, 100);
+    healPlayer(16);
     player.resolve = clamp(player.resolve + 34 * RESOLVE_GAIN_MULTIPLIER, 0, 100);
     spawnWave();
   }
@@ -7935,6 +8753,7 @@ function updateParticles(dt) {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.vy += (p.gravity ?? 420) * dt;
+    if (p.spin) p.angle = (p.angle || 0) + p.spin * dt;
     if (p.life <= 0) particles.splice(i, 1);
   }
 }
@@ -8193,6 +9012,71 @@ function updateKonpeito(dt) {
     }
     wave.life -= dt;
     if (wave.life <= 0) konpeitoShockwaves.splice(i, 1);
+  }
+}
+
+function updateShannonWalls(dt) {
+  for (let i = shannonWalls.length - 1; i >= 0; i--) {
+    const wall = shannonWalls[i];
+    if (!wall.hitCooldowns) wall.hitCooldowns = new Map();
+    for (const [target, cooldown] of wall.hitCooldowns) {
+      const next = cooldown - dt;
+      if (next <= 0) wall.hitCooldowns.delete(target);
+      else wall.hitCooldowns.set(target, next);
+    }
+    const nearPlayer = Math.abs(wall.x - player.x) <= SHANNON_WALL_SLOW_RANGE && Math.abs(wall.y - player.y) <= SHANNON_WALL_DEPTH;
+    const speed = nearPlayer ? SHANNON_WALL_SLOW_SPEED : SHANNON_WALL_SPEED;
+    wall.trailTimer = (wall.trailTimer || 0) - dt;
+    if (wall.trailTimer <= 0) {
+      wall.trailTimer = nearPlayer ? 0.075 : 0.035;
+      particles.push({
+        x: wall.x - wall.direction * (SHANNON_WALL_WIDTH * 0.68 + Math.random() * 34),
+        y: wall.y - 74 + (Math.random() - 0.5) * SHANNON_WALL_HEIGHT * 0.72,
+        vx: -wall.direction * (50 + Math.random() * 115),
+        vy: (Math.random() - 0.5) * 72,
+        life: 0.18 + Math.random() * 0.12,
+        max: 0.3,
+        color: Math.random() < 0.5 ? "#d8b9ff" : "#8d49ff",
+        size: 8 + Math.random() * 16,
+        gravity: 0,
+        glow: true
+      });
+    }
+    wall.x += wall.direction * speed * dt;
+    wall.life -= dt;
+    const hitbox = {
+      x: wall.x - SHANNON_WALL_WIDTH * 0.5 - SHANNON_WALL_AOE_PAD_X,
+      y: wall.y - SHANNON_WALL_DEPTH * 0.5 - SHANNON_WALL_AOE_PAD_Y,
+      w: SHANNON_WALL_WIDTH + SHANNON_WALL_AOE_PAD_X * 2,
+      h: SHANNON_WALL_DEPTH + SHANNON_WALL_AOE_PAD_Y * 2
+    };
+    for (const enemy of enemies) {
+      if (wall.hitsRemaining <= 0) break;
+      if (enemy.dead || enemy.spawnGrace > 0) continue;
+      if (wall.hitCooldowns.get(enemy) > 0) continue;
+      if (!rectsTouch(hitbox, enemyHurtbox(enemy))) continue;
+      const direction = Math.sign(player.x - enemy.x) || -wall.direction || player.facing;
+      damageEnemy(enemy, SHANNON_WALL_DAMAGE);
+      launchEnemyUnprorated(enemy, direction, "shannon:purpleWall", SHANNON_WALL_LAUNCH_LIFT, SHANNON_WALL_LAUNCH_DRIFT);
+      if (enemy.hp <= 0) defeatEnemy(enemy);
+      spawnShannonWallShatter(wall.x, enemy.y - 88, wall.direction);
+      wall.hitCooldowns.set(enemy, SHANNON_WALL_HIT_COOLDOWN);
+      wall.hitsRemaining -= 1;
+    }
+    if (wall.hitsRemaining > 0 && beatriceCanBeDamaged() && !(wall.hitCooldowns.get("beatrice") > 0) && rectsTouch(hitbox, beatriceHurtbox())) {
+      const direction = Math.sign(player.x - beatriceBoss.x) || -wall.direction || player.facing;
+      const dealt = damageBeatrice(SHANNON_WALL_DAMAGE, direction);
+      if (dealt > 0) {
+        launchBeatrice(direction, BEATRICE_LAUNCH_LIFT, BEATRICE_LAUNCH_DRIFT, "shannon:purpleWall");
+        if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
+        spawnShannonWallShatter(wall.x, beatriceBoss.y - 118, wall.direction);
+        wall.hitCooldowns.set("beatrice", SHANNON_WALL_HIT_COOLDOWN);
+        wall.hitsRemaining -= 1;
+      }
+    }
+    if (wall.hitsRemaining <= 0 || wall.life <= 0 || wall.x < -120 || wall.x > STAGE_W + 120) {
+      shannonWalls.splice(i, 1);
+    }
   }
 }
 
@@ -8561,7 +9445,7 @@ function beatriceStakeGroundShockwaveHitsPlayer(stake) {
 function beatriceStakeParryReady(stake) {
   return stake.mode === "launch"
     && playerInBeatriceStakeReticle(stake)
-    && beatriceStakeDistanceToImpact(stake) <= BEATRICE_STAKE_PARRY_DISTANCE;
+    && beatriceStakeDistanceToImpact(stake) <= beatriceStakeParryDistanceWithReflex();
 }
 
 function updateBeatriceStakes(dt) {
@@ -8662,10 +9546,16 @@ function updateBeatriceStakes(dt) {
   for (let i = beatriceStakeSparkles.length - 1; i >= 0; i--) {
     const sparkle = beatriceStakeSparkles[i];
     sparkle.life -= dt;
+    if (sparkle.homeToTarget) {
+      const targetT = 1 - clamp(sparkle.life / sparkle.max, 0, 1);
+      const pull = Math.min(1, dt * (3.4 + targetT * 8));
+      sparkle.vx = (sparkle.vx || 0) * 0.88 + (sparkle.targetX - sparkle.x) * pull;
+      sparkle.vy = (sparkle.vy || 0) * 0.88 + (sparkle.targetY - sparkle.y) * pull;
+    }
     sparkle.x += sparkle.vx * dt;
     sparkle.y += sparkle.vy * dt;
     sparkle.angle = (sparkle.angle || 0) + (sparkle.spin || 0) * dt;
-    sparkle.vy += 420 * dt;
+    if (!sparkle.homeToTarget) sparkle.vy += 420 * dt;
     if (sparkle.life <= 0) beatriceStakeSparkles.splice(i, 1);
   }
   for (let i = beatriceAfterimages.length - 1; i >= 0; i--) {
@@ -8878,8 +9768,9 @@ function updateLambda(dt) {
   } else {
     updateLambdaKonpeitoCharge(dt);
     if ((lambdaCompanion.konpeitoCharge || 0) >= 100 && startLambdaKonpeitoCast()) return;
-    const followX = clamp(player.x - player.facing * 104, 90, STAGE_W - 130);
-    const followY = clampPlayY(player.y + 22);
+    const follow = companionFollowTarget("lambda");
+    const followX = follow.x;
+    const followY = follow.y;
     const nearest = nearestEnemyTo(lambdaCompanion.x, lambdaCompanion.y);
     const enemyFacing = nearest ? (nearest.x >= lambdaCompanion.x ? 1 : -1) : player.facing;
     const dx = followX - lambdaCompanion.x;
@@ -9089,8 +9980,9 @@ function updateBernkastel(dt) {
   } else {
     updateBernCrystalGauge(dt);
     if ((bernCompanion.crystalChargeGauge || 0) >= 100 && startBernCrystalAttack()) return;
-    const followX = clamp(player.x - player.facing * 132, 90, STAGE_W - 130);
-    const followY = clampBackgroundCompanionY(player.y - 56);
+    const follow = companionFollowTarget("bern");
+    const followX = follow.x;
+    const followY = follow.y;
     const dx = followX - bernCompanion.x;
     const dy = followY - bernCompanion.y;
     const dist = Math.hypot(dx, dy);
@@ -9122,6 +10014,113 @@ function updateBernkastel(dt) {
   }
 }
 
+function updateShannon(dt) {
+  if (!shannonCompanion.active) return;
+  if (shannonCompanion.state === "summon") {
+    shannonCompanion.anim += dt * 7;
+    if (shannonCompanion.anim >= shannonFrames.summon.length) {
+      shannonCompanion.state = "idle";
+      shannonCompanion.anim = 0;
+    }
+    return;
+  }
+  updateShannonWallGauge(dt);
+  if (shannonCompanion.state === "wallCast") {
+    const previousFrame = Math.floor(shannonCompanion.anim);
+    shannonCompanion.anim += dt * 10;
+    const currentFrame = Math.floor(shannonCompanion.anim);
+    const wallFrameIndex = shannonFrames.wallCast.indexOf(630);
+    if (!shannonCompanion.wallCastSpawned && previousFrame < wallFrameIndex && currentFrame >= wallFrameIndex) {
+      spawnShannonWallFromCast();
+      shannonCompanion.wallCastSpawned = true;
+    }
+    if (shannonCompanion.anim >= shannonFrames.wallCast.length) {
+      shannonCompanion.state = "idle";
+      shannonCompanion.anim = 0;
+      shannonCompanion.wallCastSpawned = false;
+    }
+    return;
+  }
+  const follow = companionFollowTarget("shannon");
+  const followX = follow.x;
+  const followY = follow.y;
+  const dx = followX - shannonCompanion.x;
+  const dy = followY - shannonCompanion.y;
+  const dist = Math.hypot(dx, dy);
+  const wasWalking = shannonCompanion.state === "move" || shannonCompanion.state === "moveBackStart" || shannonCompanion.state === "moveBack";
+  const wasRunning = shannonCompanion.state === "runStart" || shannonCompanion.state === "run" || shannonCompanion.state === "runBrake";
+  const playerDx = player.x - shannonCompanion.x;
+  const playerDy = player.y - shannonCompanion.y;
+  const playerDist = Math.hypot(playerDx, playerDy);
+  const target = nearestEnemyTo(player.x, player.y);
+  if (wasRunning) {
+    shannonCompanion.facing = playerDx >= 0 ? 1 : -1;
+  } else {
+    shannonCompanion.facing = target ? (target.x >= shannonCompanion.x ? 1 : -1) : player.facing;
+  }
+  if (dist > (wasWalking || wasRunning ? 7 : 16)) {
+    const moveDir = dx >= 0 ? 1 : -1;
+    const shouldStartRun = playerDist >= SHANNON_RUN_START_DISTANCE;
+    const shouldKeepRunning = (shannonCompanion.state === "runStart" || shannonCompanion.state === "run") && playerDist > SHANNON_RUN_STOP_DISTANCE;
+    const shouldRun = shouldStartRun || shouldKeepRunning;
+    if (shouldRun) {
+      if (shannonCompanion.state !== "runStart" && shannonCompanion.state !== "run") {
+        shannonCompanion.state = "runStart";
+        shannonCompanion.anim = 0;
+      }
+      shannonCompanion.facing = playerDx >= 0 ? 1 : -1;
+      const rate = shannonCompanion.state === "runStart" ? SHANNON_RUN_START_RATE : SHANNON_RUN_LOOP_RATE;
+      const step = Math.min(dist, SHANNON_RUN_SPEED * dt);
+      shannonCompanion.x += (dx / dist) * step;
+      shannonCompanion.y += (dy / dist) * step;
+      shannonCompanion.moveSettle = 0;
+      shannonCompanion.anim += dt * rate;
+      if (shannonCompanion.state === "runStart" && shannonCompanion.anim >= shannonFrames.runStart.length) {
+        shannonCompanion.state = "run";
+        shannonCompanion.anim = 0;
+      }
+      return;
+    }
+    if (wasRunning) {
+      shannonCompanion.facing = target ? (target.x >= shannonCompanion.x ? 1 : -1) : player.facing;
+      shannonCompanion.state = "move";
+      shannonCompanion.anim = 0;
+      shannonCompanion.moveSettle = 0;
+    }
+    const step = Math.min(dist, SHANNON_WALK_SPEED * dt);
+    const nextState = moveDir === shannonCompanion.facing ? "move" : shannonCompanion.state === "moveBackStart" || shannonCompanion.state === "moveBack" ? shannonCompanion.state : "moveBackStart";
+    if (shannonCompanion.state !== nextState) shannonCompanion.anim = 0;
+    shannonCompanion.x += (dx / dist) * step;
+    shannonCompanion.y += (dy / dist) * step;
+    shannonCompanion.state = nextState;
+    shannonCompanion.moveSettle = 0;
+    shannonCompanion.anim += dt * 8;
+    if (shannonCompanion.state === "moveBackStart" && shannonCompanion.anim >= shannonFrames.moveBackStart.length) {
+      shannonCompanion.state = "moveBack";
+      shannonCompanion.anim = 0;
+    }
+  } else if (shannonCompanion.state === "runStart" || shannonCompanion.state === "run" || shannonCompanion.state === "runBrake") {
+    if (shannonCompanion.state !== "runBrake") {
+      shannonCompanion.state = "runBrake";
+      shannonCompanion.anim = 0;
+    }
+    shannonCompanion.anim += dt * SHANNON_RUN_BRAKE_RATE;
+    if (shannonCompanion.anim >= shannonFrames.runBrake.length) {
+      shannonCompanion.state = "idle";
+      shannonCompanion.anim = 0;
+      shannonCompanion.moveSettle = 0;
+    }
+  } else if (wasWalking && shannonCompanion.moveSettle < 0.12) {
+    shannonCompanion.moveSettle += dt;
+    shannonCompanion.anim += dt * 8;
+  } else {
+    if (shannonCompanion.state !== "idle") shannonCompanion.anim = 0;
+    shannonCompanion.state = "idle";
+    shannonCompanion.moveSettle = 0;
+    shannonCompanion.anim += dt * 4;
+  }
+}
+
 function updateKonpeitoGeysers(dt) {
   for (let i = konpeitoGeysers.length - 1; i >= 0; i--) {
     const geyser = konpeitoGeysers[i];
@@ -9149,6 +10148,11 @@ function updateBernReviveHazard(dt) {
 
 function update(dt) {
   updateParryTipAlert();
+  updateDisplayedScore(dt);
+  updatePerfectFlourishes(dt);
+  if (scoreBlessingWaitingForPerfectFlourish && perfectFlourishes.length === 0) {
+    maybeStartScoreBlessingChoice();
+  }
   if (state === "lost") {
     resetAttackHolds();
     player.duoCharge = 0;
@@ -9166,6 +10170,7 @@ function update(dt) {
     updateBeatriceStakes(dt);
     updateBeatriceStakeParryLine(dt);
     updateLambda(dt);
+    updateShannon(dt);
     updateBernkastel(dt);
     updateKonpeitoGeysers(dt);
     updateKonpeitoDomeBursts(dt);
@@ -9173,14 +10178,15 @@ function update(dt) {
     updateLambdaGameOverDialogue(dt);
     screenShakeTimer = Math.max(0, screenShakeTimer - dt);
     screenFlashTimer = Math.max(0, screenFlashTimer - dt);
-    healthBar.style.width = `${player.hp}%`;
+    healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
-    scoreLabel.textContent = `Score ${score}`;
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
     return;
   }
   if (state === "lambdaChoice") {
     resetAttackHolds();
     updateLambda(dt);
+    updateShannon(dt);
     updateParticles(dt);
     updateAbsorbingPickups(dt);
     updateCrystalTrails(dt);
@@ -9191,10 +10197,10 @@ function update(dt) {
     screenFlashTimer = Math.max(0, screenFlashTimer - dt);
     screenShakeTimer = Math.max(0, screenShakeTimer - dt);
     updateResolveDuoOutline();
-    healthBar.style.width = `${player.hp}%`;
+    healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
     waveLabel.textContent = currentWaveLabel();
-    scoreLabel.textContent = `Score ${score}`;
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
     return;
   }
   if (state === "lambdaRetaliation") {
@@ -9207,12 +10213,13 @@ function update(dt) {
       lambdaRetaliation.laughTimer += lambdaRetaliation.laughDelay;
     }
     updateLambda(dt);
+    updateShannon(dt);
     screenShakeTimer = Math.max(0, screenShakeTimer - dt);
     updateResolveDuoOutline();
-    healthBar.style.width = `${player.hp}%`;
+    healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
     waveLabel.textContent = currentWaveLabel();
-    scoreLabel.textContent = `Score ${score}`;
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
     if (lambdaRetaliation.timer <= 0) startGame();
     return;
   }
@@ -9225,10 +10232,10 @@ function update(dt) {
     screenFlashTimer = Math.max(0, screenFlashTimer - dt);
     screenShakeTimer = Math.max(0, screenShakeTimer - dt);
     messageTimer = Math.max(0, messageTimer - dt);
-    healthBar.style.width = `${player.hp}%`;
+    healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
     waveLabel.textContent = currentWaveLabel();
-    scoreLabel.textContent = `Score ${score}`;
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
     updateResolveDuoOutline();
     return;
   }
@@ -9248,10 +10255,10 @@ function update(dt) {
     screenFlashTimer = Math.max(0, screenFlashTimer - dt);
     screenShakeTimer = Math.max(0, screenShakeTimer - dt);
     messageTimer = Math.max(0, messageTimer - dt);
-    healthBar.style.width = `${player.hp}%`;
+    healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
     waveLabel.textContent = currentWaveLabel();
-    scoreLabel.textContent = `Score ${score}`;
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
     updateResolveDuoOutline();
     return;
   }
@@ -9266,10 +10273,10 @@ function update(dt) {
     itemTutorial.dismissDelay = Math.max(0, itemTutorial.dismissDelay - dt);
     screenFlashTimer = Math.max(0, screenFlashTimer - dt);
     updateResolveDuoOutline();
-    healthBar.style.width = `${player.hp}%`;
+    healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
     waveLabel.textContent = currentWaveLabel();
-    scoreLabel.textContent = `Score ${score}`;
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
     return;
   }
   if (state !== "playing") {
@@ -9288,10 +10295,10 @@ function update(dt) {
     bernParryOverlayTimer = Math.max(0, bernParryOverlayTimer - dt);
     updateParticles(dt);
     messageTimer = Math.max(0, messageTimer - dt);
-    healthBar.style.width = `${player.hp}%`;
+    healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
     waveLabel.textContent = currentWaveLabel();
-    scoreLabel.textContent = `Score ${score}`;
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
     updateResolveDuoOutline();
     return;
   }
@@ -9323,6 +10330,7 @@ function update(dt) {
     drawKonpeitoDomeBursts(true);
     drawLambdaSpecialKonpeitos();
     drawLambdaSpecialShrapnel();
+    drawShannonWalls();
     drawBeatriceStakeShockwaves();
     drawKonpeitoShots();
     drawBeatriceTowerVolleyMissiles();
@@ -9352,10 +10360,10 @@ function update(dt) {
     screenShakeTimer = Math.max(0, screenShakeTimer - dt);
     updateParticles(dt);
     messageTimer = Math.max(0, messageTimer - dt);
-    healthBar.style.width = `${player.hp}%`;
+    healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
     waveLabel.textContent = currentWaveLabel();
-    scoreLabel.textContent = `Score ${score}`;
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
     updateResolveDuoOutline();
     return;
   }
@@ -9379,10 +10387,10 @@ function update(dt) {
     bernParryOverlayTimer = Math.max(0, bernParryOverlayTimer - dt);
     updateParticles(dt);
     messageTimer = Math.max(0, messageTimer - dt);
-    healthBar.style.width = `${player.hp}%`;
+    healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
     waveLabel.textContent = currentWaveLabel();
-    scoreLabel.textContent = `Score ${score}`;
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
     updateResolveDuoOutline();
     updateParryTipAlert();
     if (beatriceStakeParryFreezeTimer <= 0) resolveBeatriceStakeParryPendingHit();
@@ -9400,26 +10408,28 @@ function update(dt) {
   updateKonpeito(dt);
   updateLambdaSpecialKonpeitos(dt);
   updateLambdaSpecialShrapnel(dt);
+  updateShannonWalls(dt);
   updateBeatrice(dt);
   if (startBeatriceBarrierTutorial()) {
-    healthBar.style.width = `${player.hp}%`;
+    healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
     waveLabel.textContent = currentWaveLabel();
-    scoreLabel.textContent = `Score ${score}`;
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
     updateResolveDuoOutline();
     return;
   }
   updateBeatriceStakes(dt);
   updateBeatriceStakeParryLine(dt);
   if (maybeStartBeatriceStakeTutorial() || maybeStartBeatriceStakeParryPrompt()) {
-    healthBar.style.width = `${player.hp}%`;
+    healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
     waveLabel.textContent = currentWaveLabel();
-    scoreLabel.textContent = `Score ${score}`;
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
     updateResolveDuoOutline();
     return;
   }
   updateLambda(dt);
+  updateShannon(dt);
   updateBernReviveHazard(dt);
   updateBernkastel(dt);
   updateKonpeitoGeysers(dt);
@@ -9430,10 +10440,10 @@ function update(dt) {
   bernParryOverlayTimer = Math.max(0, bernParryOverlayTimer - dt);
   updateParticles(dt);
   messageTimer = Math.max(0, messageTimer - dt);
-  healthBar.style.width = `${player.hp}%`;
+  healthBar.style.width = `${playerHealthPercent()}%`;
   updateResolveHud(dt);
   waveLabel.textContent = currentWaveLabel();
-  scoreLabel.textContent = `Score ${score}`;
+  scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
   updateResolveDuoOutline();
   updateParryTipAlert();
 }
@@ -9605,6 +10615,7 @@ function drawBernHazardParryRings(x, y) {
   ctx.save();
   ctx.globalAlpha = failFade;
   ctx.globalCompositeOperation = "lighter";
+  if (!failed) drawReflexParryGraceRing(x, y - 72, BERN_HAZARD_PARRY_RING_RADIUS, BERN_HAZARD_PARRY_WINDOW, failFade);
   ctx.lineWidth = 3;
   ctx.strokeStyle = failed ? "rgba(175, 175, 175, 0.62)" : ready ? `rgba(255, 255, 255, ${0.9 + pulse * 0.1})` : "rgba(82, 239, 255, 0.72)";
   ctx.beginPath();
@@ -9646,6 +10657,7 @@ function drawBeatriceMeleeKickParryRings(x, y) {
   ctx.save();
   ctx.globalAlpha = alpha * failFade;
   ctx.globalCompositeOperation = "lighter";
+  if (!failed) drawReflexParryGraceRing(x, y - 74, BEATRICE_MELEE_KICK_PARRY_RING_RADIUS, BEATRICE_MELEE_KICK_PARRY_WINDOW, alpha * failFade);
   ctx.lineWidth = 3;
   ctx.strokeStyle = failed ? "rgba(176, 176, 176, 0.64)" : ready ? "rgba(255, 235, 92, 0.95)" : "rgba(255, 255, 255, 0.76)";
   ctx.beginPath();
@@ -9735,6 +10747,7 @@ function drawGoatPoundParryRings(enemy, fade = 1) {
   ctx.save();
   ctx.globalAlpha = fade * failFade;
   ctx.globalCompositeOperation = "lighter";
+  if (!failed) drawReflexParryGraceRing(x, y, GOAT_POUND_PARRY_RING_RADIUS, GOAT_POUND_PARRY_WINDOW, fade * failFade);
   ctx.lineWidth = ready ? 5 : 3;
   ctx.strokeStyle = failed ? "rgba(175, 175, 175, 0.62)" : ready ? `rgba(255, 232, 74, ${0.88 + pulse * 0.12})` : "rgba(255, 255, 255, 0.78)";
   ctx.beginPath();
@@ -9767,6 +10780,32 @@ function drawGoatPoundParryRings(enemy, fade = 1) {
 
 function pulseValue(speed = 7) {
   return 0.5 + Math.sin(performance.now() / 1000 * speed) * 0.5;
+}
+
+function drawReflexParryGraceRing(x, y, radius, baseWindow = 0, fade = 1, multiplier = 1) {
+  const reflex = playerReflexBonus();
+  if (reflex <= 0) return;
+  const pulse = pulseValue(12);
+  const innerRadius = radius + Math.max(0, baseWindow);
+  const outerRadius = innerRadius + reflexParryOuterBonus(radius, multiplier);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = fade;
+  const gradient = ctx.createRadialGradient(x, y, innerRadius, x, y, outerRadius);
+  gradient.addColorStop(0, "rgba(60, 255, 118, 0)");
+  gradient.addColorStop(0.35, `rgba(74, 255, 118, ${0.08 + reflex * 0.16})`);
+  gradient.addColorStop(1, `rgba(74, 255, 118, ${0.2 + pulse * 0.1})`);
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(x, y, outerRadius, 0, Math.PI * 2);
+  ctx.arc(x, y, innerRadius, Math.PI * 2, 0, true);
+  ctx.fill("evenodd");
+  ctx.strokeStyle = `rgba(80, 255, 118, ${0.38 + pulse * 0.22})`;
+  ctx.lineWidth = 2.5 + reflex * 5;
+  ctx.beginPath();
+  ctx.arc(x, y, outerRadius, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawSpecialWindupGlow() {
@@ -10088,11 +11127,22 @@ function drawBeatriceGoatTrialObjective() {
 }
 
 function drawBeatriceRingTelegraphs() {
-  if (!beatriceBoss.active || beatriceBoss.mechanic !== "ringAttack") return;
+  if (!beatriceBoss.active) return;
+  let rings = [];
+  let elapsedForRing = (ring) => ring.timer;
+  if (beatriceBoss.mechanic === "ringAttack") {
+    rings = beatriceBoss.rings;
+  } else if (beatriceBoss.mechanic === "towerVolley" && beatriceTowerVolley.active && beatriceTowerVolley.phase === "fire") {
+    rings = beatriceTowerVolley.leviathanRings.filter((ring) => ring.wave === beatriceTowerVolley.wave);
+    elapsedForRing = () => beatriceTowerVolley.timer;
+  } else {
+    return;
+  }
   const pulse = pulseValue(12);
-  for (const ring of beatriceBoss.rings) {
-    if (ring.timer < ring.appearAt || ring.detonated) continue;
-    const visibleT = clamp((ring.timer - ring.appearAt) / Math.max(0.001, ring.detonateAt - ring.appearAt), 0, 1);
+  for (const ring of rings) {
+    const elapsed = elapsedForRing(ring);
+    if (elapsed < ring.appearAt || ring.detonated) continue;
+    const visibleT = clamp((elapsed - ring.appearAt) / Math.max(0.001, ring.detonateAt - ring.appearAt), 0, 1);
     const x = ring.x - cameraX;
     const y = ring.y;
     const radiusY = ring.radius * 0.42;
@@ -10507,6 +11557,24 @@ function drawBernkastel() {
   }
 }
 
+function drawShannon() {
+  if (!shannonCompanion.active) return;
+  drawActorShadow(shannonCompanion, 52);
+  const list = shannonFrames[shannonCompanion.state] || shannonFrames.idle;
+  const frame = list[Math.min(list.length - 1, Math.floor(shannonCompanion.anim) % list.length)];
+  const img = shannonImages[frame];
+  if (!img) return;
+  const anchor = shannonFrameAnchors[frame] || { x: img.width * 0.5, y: img.height };
+  const scale = 1.31;
+  const x = Math.round(shannonCompanion.x - cameraX);
+  const y = Math.round(shannonCompanion.y + 12);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(-shannonCompanion.facing, 1);
+  ctx.drawImage(img, -anchor.x * scale, -anchor.y * scale, img.width * scale, img.height * scale);
+  ctx.restore();
+}
+
 function beatriceFrameListForFlavor(flavor) {
   if (flavor === "stakeCast") return beatriceFrames.stakeCast;
   if (flavor === "puff") return beatriceFrames.puff;
@@ -10721,8 +11789,9 @@ function drawActors(options = {}) {
     ...satanAttacks.map((attack) => ({ type: "satan", y: attack.y + 0.58, attack })),
     ...belphegorAttacks.map((attack) => ({ type: "belphegor", y: attack.y + 0.59, attack })),
     ...(beatriceBoss.active ? [{ type: "beatrice", y: beatriceBoss.y }] : []),
-    ...(lambdaCompanion.active ? [{ type: "lambda", y: lambdaCompanion.y }] : []),
-    ...(bernCompanion.active ? [{ type: "bern", y: bernCompanion.y }] : []),
+    ...(lambdaCompanion.active ? [{ type: "lambda", y: companionDrawSortY("lambda", lambdaCompanion.y) }] : []),
+    ...(bernCompanion.active ? [{ type: "bern", y: companionDrawSortY("bern", bernCompanion.y) }] : []),
+    ...(shannonCompanion.active ? [{ type: "shannon", y: companionDrawSortY("shannon", shannonCompanion.y) }] : []),
     ...enemies
       .filter((enemy) => !enemy.dead || enemy.fall > 0)
       .map((enemy) => ({ type: "enemy", y: enemy.y, enemy }))
@@ -10740,6 +11809,9 @@ function drawActors(options = {}) {
     } else if (actor.type === "bern") {
       if (skipCompanions) continue;
       drawBernkastel();
+    } else if (actor.type === "shannon") {
+      if (skipCompanions) continue;
+      drawShannon();
     } else if (actor.type === "beatrice") {
       if (skipBeatrice) continue;
       drawBeatrice();
@@ -11275,6 +12347,7 @@ function drawBeatriceStakeParryRings(stake) {
   const pulse = pulseValue(15);
   ctx.save();
   ctx.globalCompositeOperation = "lighter";
+  drawReflexParryGraceRing(x, y, BEATRICE_STAKE_PARRY_RING_RADIUS, 0, 1, BEATRICE_STAKE_REFLEX_MULTIPLIER);
   ctx.lineWidth = ready ? 5 : 3;
   ctx.strokeStyle = ready ? `rgba(255, 232, 74, ${0.88 + pulse * 0.12})` : "rgba(255, 255, 255, 0.78)";
   ctx.beginPath();
@@ -11466,6 +12539,30 @@ function drawPlumTeaIcon(x, y, size = 28, alpha = 1) {
   ctx.restore();
 }
 
+function drawGoldenBroochRightIcon(x, y, size = 28, alpha = 1) {
+  const img = effectImages.goldenBroochRight;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = alpha;
+  ctx.globalCompositeOperation = "screen";
+  ctx.shadowColor = "rgba(255, 214, 94, 0.88)";
+  ctx.shadowBlur = 18;
+  if (img) {
+    const ratio = img.width / Math.max(1, img.height);
+    const h = size * 1.9;
+    const w = h * ratio;
+    ctx.drawImage(img, -w * 0.5, -h * 0.5, w, h);
+  } else {
+    ctx.strokeStyle = "#ffd76a";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-size * 0.35, -size);
+    ctx.bezierCurveTo(size * 1.1, -size * 0.75, size * 1.05, size * 0.75, -size * 0.35, size);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 function drawOneWingedEagleCrest(x, y, height = EAGLE_CREST_PICKUP_SIZE, alpha = 1, mirror = false, active = false, width = null) {
   const img = effectImages.oneWingedEagle;
   const glowImg = effectImages.oneWingedEagleGlow;
@@ -11515,6 +12612,8 @@ function drawPickupIcon(type, x, y, bob, pulse, alpha = 1, scale = 1) {
     drawKonpeitoCandy(x, y - 42 * scale, (26 + pulse * 4) * scale, Math.floor(bob * 3) % KONPEITO_FRAME_COUNT, bob * 0.28, alpha);
   } else if (type === "plumTea") {
     drawPlumTeaIcon(x, y - 42 * scale, (28 + pulse * 4) * scale, alpha * 0.92);
+  } else if (type === "goldenBroochRight") {
+    drawGoldenBroochRightIcon(x, y - 42 * scale, (28 + pulse * 5) * scale, alpha * 0.95);
   } else if (type === "oneWingedEagle") {
     drawOneWingedEagleCrest(x, y - 42 * scale, (EAGLE_CREST_PICKUP_SIZE + pulse * 7) * scale, alpha * (0.9 + pulse * 0.1), false, pulse > 0.62);
   } else {
@@ -11920,6 +13019,39 @@ function drawLambdaSpecialShrapnel() {
   }
 }
 
+function drawShannonWalls() {
+  for (const wall of shannonWalls) {
+    const x = wall.x - cameraX;
+    const y = wall.y - 78;
+    const t = 1 - wall.life / wall.max;
+    const fade = clamp(Math.min(wall.life * 5, 1), 0, 1);
+    const pulse = 0.5 + Math.sin(performance.now() / 70 + wall.pulse) * 0.5;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const glow = ctx.createLinearGradient(x - SHANNON_WALL_WIDTH, y - SHANNON_WALL_HEIGHT * 0.5, x + SHANNON_WALL_WIDTH, y + SHANNON_WALL_HEIGHT * 0.5);
+    glow.addColorStop(0, `rgba(118, 52, 255, ${0.1 * fade})`);
+    glow.addColorStop(0.48, `rgba(198, 108, 255, ${0.44 * fade})`);
+    glow.addColorStop(1, `rgba(88, 42, 196, ${0.12 * fade})`);
+    ctx.fillStyle = glow;
+    ctx.strokeStyle = `rgba(238, 212, 255, ${(0.65 + pulse * 0.2) * fade})`;
+    ctx.lineWidth = 4 + pulse * 2;
+    ctx.beginPath();
+    ctx.rect(x - SHANNON_WALL_WIDTH * 0.55, y - SHANNON_WALL_HEIGHT * 0.5, SHANNON_WALL_WIDTH * 1.1, SHANNON_WALL_HEIGHT);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.34 * fade})`;
+    ctx.lineWidth = 1.5;
+    for (let i = 0; i < 4; i++) {
+      const yy = y - SHANNON_WALL_HEIGHT * 0.38 + i * SHANNON_WALL_HEIGHT * 0.25 + Math.sin(t * 9 + i) * 5;
+      ctx.beginPath();
+      ctx.moveTo(x - SHANNON_WALL_WIDTH * 0.42, yy);
+      ctx.quadraticCurveTo(x, yy - 18, x + SHANNON_WALL_WIDTH * 0.42, yy);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
 function drawKonpeitoShockwaves() {
   for (const wave of konpeitoShockwaves) {
     const t = 1 - wave.life / wave.max;
@@ -12051,7 +13183,7 @@ function drawBernParryOverlay() {
   ctx.restore();
 }
 
-function drawItemBox(x, y, active, label, drawIcon, cooldown = 0, cooldownMax = 1, count = 0, showCooldown = false) {
+function drawItemBox(x, y, active, label, drawIcon, cooldown = 0, cooldownMax = 1, count = 0, showCooldown = false, alwaysShowCount = false) {
   ctx.save();
   ctx.globalAlpha = active ? 1 : 0.42;
   ctx.fillStyle = "rgba(7, 12, 19, 0.72)";
@@ -12085,7 +13217,7 @@ function drawItemBox(x, y, active, label, drawIcon, cooldown = 0, cooldownMax = 
       ctx.fillRect(barX + 1, barY + 1, Math.max(1, (barW - 2) * ready), barH - 2);
     }
   }
-  if (active && count > 1) {
+  if (active && count > 0 && (count > 1 || alwaysShowCount)) {
     ctx.fillStyle = "rgba(5, 14, 22, 0.82)";
     ctx.strokeStyle = "rgba(166, 250, 255, 0.88)";
     ctx.lineWidth = 1.5;
@@ -12137,27 +13269,30 @@ function drawCrystalShardStackIcon(x, y) {
   ctx.restore();
 }
 
-function drawMiracleRevivalBadge(x, y) {
+function drawMiracleRevivalIcon(x, y) {
   const charges = player.blessings.miracleRevival || 0;
-  if (!player.plumTeaActive || player.plumTeaBurned || charges <= 0) return;
   const pulse = pulseValue(4);
   ctx.save();
+  ctx.translate(x, y);
   ctx.globalCompositeOperation = "lighter";
-  ctx.fillStyle = `rgba(156, 88, 255, ${0.76 + pulse * 0.16})`;
-  ctx.strokeStyle = `rgba(236, 212, 255, ${0.82 + pulse * 0.16})`;
+  ctx.fillStyle = `rgba(156, 88, 255, ${0.54 + pulse * 0.16})`;
+  ctx.strokeStyle = `rgba(236, 212, 255, ${0.8 + pulse * 0.16})`;
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.arc(x + 27, y + 60, 8 + pulse * 1.4, 0, Math.PI * 2);
+  ctx.arc(0, 0, 18 + pulse * 2, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+  ctx.strokeStyle = `rgba(255, 255, 255, ${0.62 + pulse * 0.18})`;
+  ctx.beginPath();
+  ctx.arc(0, 0, 10, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(0, -11);
+  ctx.lineTo(0, 11);
+  ctx.moveTo(-11, 0);
+  ctx.lineTo(11, 0);
+  ctx.stroke();
   ctx.globalCompositeOperation = "source-over";
-  if (charges > 1) {
-    ctx.fillStyle = "#f7eaff";
-    ctx.font = "800 10px Segoe UI, Arial";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(String(charges), x + 27, y + 60);
-  }
   ctx.restore();
 }
 
@@ -12187,6 +13322,14 @@ function itemHudDrawers() {
       showCooldown: true,
       icon: (x, y) => drawPlumTeaIcon(x, y, 19, 0.95)
     },
+    goldenBroochRight: {
+      label: ITEM_TUTORIALS.goldenBroochRight.label,
+      active: player.goldenBroochRightActive,
+      cooldown: shannonCompanion.summoned ? companionChargeCooldown(shannonCompanion.wallCharge || 0, SHANNON_WALL_INTERVAL) : 0,
+      cooldownMax: SHANNON_WALL_INTERVAL,
+      showCooldown: true,
+      icon: (x, y) => drawGoldenBroochRightIcon(x, y, 24, 0.95)
+    },
     oneWingedEagle: {
       label: ITEM_TUTORIALS.oneWingedEagle.label,
       active: player.oneWingedEagleActive,
@@ -12194,6 +13337,15 @@ function itemHudDrawers() {
       cooldownMax: 1,
       count: player.oneWingedEagleLevel || 0,
       icon: (x, y) => drawOneWingedEagleCrest(x, y, 28, 0.95, false, true)
+    },
+    miracleRevival: {
+      label: ITEM_TUTORIALS.miracleRevival.label,
+      active: (player.blessings.miracleRevival || 0) > 0,
+      cooldown: 0,
+      cooldownMax: 1,
+      count: player.blessings.miracleRevival || 0,
+      alwaysShowCount: true,
+      icon: (x, y) => drawMiracleRevivalIcon(x, y)
     }
   };
 }
@@ -12206,6 +13358,26 @@ function drawItemTutorialIcon(type, x, y, scale = 1) {
   ctx.translate(x, y);
   ctx.scale(scale, scale);
   item.icon(0, 0);
+  ctx.restore();
+}
+
+function drawHealthRewardIcon(x, y, scale = 1) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.globalCompositeOperation = "lighter";
+  const pulse = pulseValue(3.2);
+  ctx.fillStyle = `rgba(255, 84, 124, ${0.62 + pulse * 0.18})`;
+  ctx.strokeStyle = `rgba(255, 231, 236, ${0.78 + pulse * 0.16})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, 19 + pulse * 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = "#ffe9ef";
+  ctx.fillRect(-4, -13, 8, 26);
+  ctx.fillRect(-13, -4, 26, 8);
   ctx.restore();
 }
 
@@ -12316,14 +13488,17 @@ function drawItemHud() {
   let hoverType = "";
   let hoverX = 0;
   let hoverY = 0;
+  const displayItems = [...player.itemOrder];
+  if ((player.blessings.miracleRevival || 0) > 0 && !displayItems.includes("miracleRevival")) {
+    displayItems.push("miracleRevival");
+  }
 
-  player.itemOrder.forEach((type, index) => {
+  displayItems.forEach((type, index) => {
     const item = itemDrawers[type];
     if (!item) return;
     const x = 20 + index * 66;
     const y = 18;
-    drawItemBox(x, y, item.active, item.label, item.icon, item.cooldown, item.cooldownMax, item.count || 0, item.showCooldown);
-    if (type === "plumTea") drawMiracleRevivalBadge(x, y);
+    drawItemBox(x, y, item.active, item.label, item.icon, item.cooldown, item.cooldownMax, item.count || 0, item.showCooldown, item.alwaysShowCount);
     if (mouse.inside && mouse.x >= x && mouse.x <= x + 54 && mouse.y >= y && mouse.y <= y + 76) {
       hoverType = type;
       hoverX = x;
@@ -12334,13 +13509,15 @@ function drawItemHud() {
 }
 
 function drawScoreComboHud() {
-  if (!scoreComboHasValue()) return;
-  const itemCount = Math.max(1, player.itemOrder.length);
+  if (!waveStats.active && !scoreComboHasValue()) return;
+  const itemCount = Math.max(1, player.itemOrder.length + ((player.blessings.miracleRevival || 0) > 0 ? 1 : 0));
   const x = 20;
   const y = 102;
   const w = clamp(itemCount * 66 - 12, 216, 430);
   const h = 44;
   const pulse = Math.min(1, scoreCombo.hits / 20);
+  const starX = x + w - 15;
+  const starY = y + 14;
   ctx.save();
   ctx.fillStyle = "rgba(4, 7, 13, 0.58)";
   ctx.strokeStyle = `rgba(105, 244, 255, ${0.34 + pulse * 0.28})`;
@@ -12358,6 +13535,83 @@ function drawScoreComboHud() {
   ctx.fillStyle = scoreCombo.defeats > 0 ? "#ffd06a" : "#d7cfba";
   ctx.font = "800 14px Segoe UI, Arial";
   ctx.fillText(`${scoreCombo.defeats} defeated`, x + w - 12, y + 36);
+  drawPerfectEligibilityStar(starX, starY, scoreCombo.perfectEligible);
+  ctx.restore();
+}
+
+function drawPerfectEligibilityStar(x, y, perfect) {
+  const points = 5;
+  const outer = 8.5;
+  const inner = 3.9;
+  const pulse = perfect ? pulseValue(8) : 0;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-Math.PI / 2);
+  ctx.beginPath();
+  for (let i = 0; i < points * 2; i += 1) {
+    const radius = i % 2 === 0 ? outer + pulse * 1.8 : inner;
+    const angle = (i / (points * 2)) * Math.PI * 2;
+    const px = Math.cos(angle) * radius;
+    const py = Math.sin(angle) * radius;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.rotate(Math.PI / 2);
+  ctx.shadowColor = perfect ? "rgba(255, 218, 72, 0.9)" : "rgba(160, 160, 170, 0.35)";
+  ctx.shadowBlur = perfect ? 10 + pulse * 10 : 2;
+  ctx.fillStyle = perfect ? "#ffe76a" : "#888a94";
+  ctx.strokeStyle = perfect ? "#fff8c8" : "#b4b6bf";
+  ctx.lineWidth = 1.4;
+  ctx.fill();
+  ctx.stroke();
+  if (perfect) {
+    ctx.rotate(Math.PI / 2);
+    ctx.globalAlpha = 0.48 + pulse * 0.36;
+    ctx.strokeStyle = "#fffdf0";
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(-outer - 4, 0);
+    ctx.lineTo(outer + 4, 0);
+    ctx.moveTo(0, -outer - 4);
+    ctx.lineTo(0, outer + 4);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawPerfectFlourishes() {
+  if (!perfectFlourishes.length) return;
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  for (const flourish of perfectFlourishes) {
+    const t = 1 - clamp(flourish.life / flourish.max, 0, 1);
+    const appear = clamp(t / 0.18, 0, 1);
+    const fade = clamp(flourish.life / 0.42, 0, 1);
+    const alpha = Math.min(appear, fade);
+    const scale = 0.78 + appear * 0.22 + t * 0.08;
+    if (flourish.flash > 0) {
+      ctx.fillStyle = `rgba(255, 245, 178, ${0.28 * (flourish.flash / 0.22)})`;
+      ctx.fillRect(0, 0, W, H);
+    }
+    ctx.save();
+    ctx.translate(W / 2, H / 2 - 14 - t * 28);
+    ctx.scale(scale, scale);
+    ctx.shadowColor = "rgba(255, 207, 50, 0.95)";
+    ctx.shadowBlur = 28 + 18 * Math.sin(t * Math.PI);
+    ctx.lineWidth = 7;
+    ctx.strokeStyle = `rgba(88, 48, 0, ${0.62 * alpha})`;
+    ctx.font = "700 112px Tangerine, Segoe UI, Arial, cursive";
+    ctx.strokeText("Perfect", 0, 0);
+    const grad = ctx.createLinearGradient(-180, -42, 180, 42);
+    grad.addColorStop(0, `rgba(255, 248, 183, ${alpha})`);
+    grad.addColorStop(0.48, `rgba(255, 206, 51, ${alpha})`);
+    grad.addColorStop(1, `rgba(255, 142, 32, ${alpha})`);
+    ctx.fillStyle = grad;
+    ctx.fillText("Perfect", 0, 0);
+    ctx.restore();
+  }
   ctx.restore();
 }
 
@@ -12367,7 +13621,7 @@ function drawCanvasMobileHud() {
   const panelH = 68;
   const x = W - panelW - 18;
   const y = 14;
-  const healthT = clamp(player.hp / 100, 0, 1);
+  const healthT = clamp(player.hp / Math.max(1, playerMaxHp()), 0, 1);
   const resolveT = clamp(player.resolve / 100, 0, 1);
   ctx.save();
   ctx.fillStyle = "rgba(5, 8, 14, 0.62)";
@@ -12383,7 +13637,8 @@ function drawCanvasMobileHud() {
   ctx.fillText(currentWaveLabel(), W / 2, labelY);
   ctx.fillStyle = "#d8d0ba";
   ctx.font = "800 14px Segoe UI, Arial";
-  ctx.fillText(`Score ${formatStatNumber(score)}`, W / 2, labelY + 18);
+  ctx.fillText(`Score ${formatStatNumber(displayedScoreValue())}`, W / 2, labelY + 18);
+  drawScoreBlessingProgressBar(W / 2 - 74, labelY + 25, 148, 7);
 
   function drawMiniMeter(label, t, rowY, gradientStops) {
     const barX = x + 84;
@@ -12412,6 +13667,62 @@ function drawCanvasMobileHud() {
       ? [[0, "#74e9ff"], [0.5, "#1557da"], [1, "#74e9ff"]]
       : [[0, "#45d76f"], [1, "#45d76f"]];
   drawMiniMeter("RES", resolveT, 42, resolveStops);
+  ctx.restore();
+}
+
+function drawScoreBlessingProgressBar(x, y, w, h) {
+  const progress = scoreBlessingProgress();
+  const glow = 8 + progress * 22;
+  ctx.save();
+  ctx.fillStyle = "rgba(18, 12, 4, 0.84)";
+  ctx.strokeStyle = `rgba(255, 226, 120, ${0.3 + progress * 0.42})`;
+  ctx.lineWidth = 1;
+  ctx.fillRect(x, y, w, h);
+  if (progress > 0) {
+    const grad = ctx.createLinearGradient(x, y, x + w, y);
+    grad.addColorStop(0, "#6b3f00");
+    grad.addColorStop(0.36, "#d89b24");
+    grad.addColorStop(0.72, "#ffe78c");
+    grad.addColorStop(1, "#fff8cf");
+    ctx.shadowColor = `rgba(255, 205, 67, ${0.24 + progress * 0.56})`;
+    ctx.shadowBlur = glow;
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, w * progress, h);
+  }
+  ctx.shadowBlur = 0;
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.restore();
+}
+
+function drawDashCooldownHud() {
+  ensureDashCooldownSlots();
+  const barW = 72;
+  const barH = 7;
+  const gap = 10;
+  const totalW = barW * DASH_STOCK_MAX + gap * (DASH_STOCK_MAX - 1);
+  const startX = W / 2 - totalW / 2;
+  const y = H - 24;
+  ctx.save();
+  for (let i = 0; i < DASH_STOCK_MAX; i++) {
+    const x = startX + i * (barW + gap);
+    const progress = 1 - clamp((player.dashCooldowns[i] || 0) / DASH_COOLDOWN, 0, 1);
+    ctx.fillStyle = "rgba(7, 14, 21, 0.72)";
+    ctx.strokeStyle = "rgba(182, 247, 255, 0.36)";
+    ctx.lineWidth = 1;
+    ctx.fillRect(x, y, barW, barH);
+    if (progress > 0) {
+      const grad = ctx.createLinearGradient(x, y, x + barW, y);
+      grad.addColorStop(0, "#38ddff");
+      grad.addColorStop(0.5, "#f6ffff");
+      grad.addColorStop(1, "#38ddff");
+      ctx.shadowColor = `rgba(104, 244, 255, ${0.24 + progress * 0.48})`;
+      ctx.shadowBlur = 5 + progress * 10;
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, y, barW * progress, barH);
+    }
+    ctx.shadowBlur = 0;
+    ctx.strokeRect(x + 0.5, y + 0.5, barW - 1, barH - 1);
+  }
   ctx.restore();
 }
 
@@ -12446,7 +13757,32 @@ function drawParticles() {
     ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
     ctx.fillStyle = p.color;
     const size = p.size || 5;
-    ctx.fillRect(p.x - cameraX - size * 0.5, p.y - size * 0.5, size, size);
+    if (p.glow) {
+      const x = p.x - cameraX;
+      const y = p.y;
+      const gradient = ctx.createRadialGradient(x, y, 1, x, y, size);
+      gradient.addColorStop(0, p.color);
+      gradient.addColorStop(1, "rgba(88, 32, 180, 0)");
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (p.shard) {
+      const x = p.x - cameraX;
+      const y = p.y;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(p.angle || 0);
+      ctx.beginPath();
+      ctx.moveTo(size * 1.35, 0);
+      ctx.lineTo(-size * 0.42, -size * 0.55);
+      ctx.lineTo(-size * 0.2, size * 0.62);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    } else {
+      ctx.fillRect(p.x - cameraX - size * 0.5, p.y - size * 0.5, size, size);
+    }
   }
   ctx.globalAlpha = 1;
 }
@@ -12799,8 +14135,10 @@ function drawOverlay() {
     drawCanvasMobileHud();
     drawItemHud();
     drawScoreComboHud();
+    if (state === "playing" || state === "paused") drawDashCooldownHud();
   }
   drawBernHazardWarning();
+  drawPerfectFlourishes();
   if (itemTutorial.active) {
     drawItemTutorialOverlay();
     return;
@@ -12819,6 +14157,7 @@ function drawOverlay() {
     ctx.font = "20px Segoe UI, Arial";
     ctx.fillStyle = "#d7cfba";
     ctx.fillText("Press P or Esc to resume", W / 2, H / 2 + 30);
+    drawRunDetailsButton(false, H / 2 + 58);
   }
   if (state === "loading" || state === "ready" || state === "lost") {
     ctx.fillStyle = "rgba(6, 7, 10, 0.62)";
@@ -12919,6 +14258,8 @@ function drawBossBlessingOverlay() {
     ctx.fillText(rect.choice.source, rect.x + 22, rect.y + 34);
     if (rect.choice.itemReward) {
       drawItemTutorialIcon(rect.choice.type, rect.x + rect.w - 48, rect.y + 58, 0.82);
+    } else if (rect.choice.healthReward) {
+      drawHealthRewardIcon(rect.x + rect.w - 48, rect.y + 58, 0.82);
     }
     ctx.fillStyle = "#fff7d6";
     ctx.font = "900 22px Segoe UI, Arial";
@@ -12931,7 +14272,7 @@ function drawBossBlessingOverlay() {
     ctx.textAlign = "right";
     ctx.fillStyle = isSelected ? "#fff2c7" : "rgba(255, 242, 199, 0.68)";
     ctx.font = "800 14px Segoe UI, Arial";
-    ctx.fillText(`Press ${index + 1}`, rect.x + rect.w - 18, rect.y + rect.h - 16);
+    ctx.fillText(`Press ${index + 1}`, rect.x + rect.w - 18, rect.y + 24);
   }
   ctx.textAlign = "center";
   ctx.fillStyle = "#d8d0ba";
@@ -12987,11 +14328,11 @@ function drawItemTutorialOverlay() {
   ctx.restore();
 }
 
-function drawRunDetailsButton(lostWithLambda) {
+function drawRunDetailsButton(lostWithLambda = false, yOverride = null) {
   const w = 176;
   const h = 42;
   const x = W - w - 30;
-  const y = lostWithLambda ? 28 : H / 2 + 54;
+  const y = yOverride ?? (lostWithLambda ? 28 : H / 2 + 54);
   runDetailsButton.x = x;
   runDetailsButton.y = y;
   runDetailsButton.w = w;
@@ -13059,6 +14400,7 @@ function draw() {
     drawKonpeitoDomeBursts(true);
     drawLambdaSpecialKonpeitos();
     drawLambdaSpecialShrapnel();
+    drawShannonWalls();
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
     drawBeatriceStakeTrails();
@@ -13072,6 +14414,7 @@ function draw() {
     drawCrystalTrails();
     drawLambda();
     drawBernkastel();
+    drawShannon();
     drawDuoAttackEffects();
     drawLambdaDuoSplash();
   } else {
@@ -13100,6 +14443,7 @@ function draw() {
     drawKonpeitoDomeBursts(true);
     drawLambdaSpecialKonpeitos();
     drawLambdaSpecialShrapnel();
+    drawShannonWalls();
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
     drawBeatriceStakeTrails();
@@ -13176,6 +14520,184 @@ function storedTouchPreference() {
   return null;
 }
 
+function touchAdjustTargetFromAction(action) {
+  if (action === "special" || action === "duo" || action === "run") return action;
+  if (action === "punch" || action === "kick" || action === "attack") return "attack";
+  return null;
+}
+
+function getTouchAdjustTargetElement(target) {
+  if (target === "attack") return document.querySelector(".touch-attack-core");
+  if (target === "special") return document.querySelector('[data-touch-action="special"]');
+  if (target === "duo") return document.querySelector('[data-touch-action="duo"]');
+  if (target === "run") return document.querySelector('[data-touch-action="run"]');
+  return null;
+}
+
+function getTouchAdjustTargets() {
+  return ["special", "duo", "run", "attack"]
+    .map((id) => ({ id, el: getTouchAdjustTargetElement(id) }))
+    .filter((target) => target.el);
+}
+
+function storedTouchLayout() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(TOUCH_LAYOUT_KEY) || "{}");
+    if (!stored || typeof stored !== "object") return {};
+    const layout = {};
+    for (const target of ["special", "duo", "run", "attack"]) {
+      const entry = stored[target];
+      if (!entry || typeof entry !== "object") continue;
+      const x = Number(entry.x);
+      const y = Number(entry.y);
+      const scale = Number(entry.scale);
+      if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(scale)) continue;
+      layout[target] = {
+        x: clamp(x, 0, 1),
+        y: clamp(y, 0, 1),
+        scale: clamp(scale, TOUCH_ADJUST_MIN_SCALE, TOUCH_ADJUST_MAX_SCALE)
+      };
+    }
+    return layout;
+  } catch (error) {
+    return {};
+  }
+}
+
+function saveTouchLayout() {
+  try {
+    localStorage.setItem(TOUCH_LAYOUT_KEY, JSON.stringify(touchControls.layout));
+  } catch (error) {
+    // Layout customization is optional; storage failures should not affect gameplay.
+  }
+}
+
+function clampedTouchLayoutEntry(target, x, y, scale) {
+  const el = getTouchAdjustTargetElement(target);
+  if (!touchControlsEl || !el) return { x: 0.5, y: 0.5, scale: 1 };
+  const overlayRect = touchControlsEl.getBoundingClientRect();
+  const width = Math.max(overlayRect.width, 1);
+  const height = Math.max(overlayRect.height, 1);
+  const nextScale = clamp(Number(scale) || 1, TOUCH_ADJUST_MIN_SCALE, TOUCH_ADJUST_MAX_SCALE);
+  const halfW = Math.min(width * 0.48, (el.offsetWidth * nextScale) / 2 + 10);
+  const halfH = Math.min(height * 0.48, (el.offsetHeight * nextScale) / 2 + 10);
+  return {
+    x: clamp(x, halfW / width, 1 - halfW / width),
+    y: clamp(y, halfH / height, 1 - halfH / height),
+    scale: nextScale
+  };
+}
+
+function currentTouchLayoutEntry(target) {
+  if (touchControls.layout[target]) return { ...touchControls.layout[target] };
+  const el = getTouchAdjustTargetElement(target);
+  if (!touchControlsEl || !el) return { x: 0.5, y: 0.5, scale: 1 };
+  const overlayRect = touchControlsEl.getBoundingClientRect();
+  const rect = el.getBoundingClientRect();
+  return clampedTouchLayoutEntry(
+    target,
+    ((rect.left + rect.width * 0.5) - overlayRect.left) / Math.max(overlayRect.width, 1),
+    ((rect.top + rect.height * 0.5) - overlayRect.top) / Math.max(overlayRect.height, 1),
+    1
+  );
+}
+
+function updateTouchAdjustSizer() {
+  const selected = touchControls.adjusting ? touchControls.selectedAdjustTarget : null;
+  if (!touchAdjustSizer || !touchAdjustSize) return;
+  touchAdjustSizer.hidden = !selected;
+  if (!selected) return;
+  const entry = currentTouchLayoutEntry(selected);
+  touchAdjustSize.value = String(Math.round(entry.scale * 100));
+}
+
+function applyTouchControlLayout() {
+  for (const { id, el } of getTouchAdjustTargets()) {
+    const entry = touchControls.layout[id];
+    el.classList.toggle("touch-control-custom", Boolean(entry));
+    el.classList.toggle("touch-control-selected", touchControls.adjusting && touchControls.selectedAdjustTarget === id);
+    if (entry) {
+      el.style.setProperty("--touch-x", `${entry.x * 100}%`);
+      el.style.setProperty("--touch-y", `${entry.y * 100}%`);
+      el.style.setProperty("--touch-scale", String(entry.scale));
+    } else {
+      el.style.removeProperty("--touch-x");
+      el.style.removeProperty("--touch-y");
+      el.style.removeProperty("--touch-scale");
+    }
+  }
+  updateTouchAdjustSizer();
+}
+
+function setTouchAdjustSelected(target) {
+  touchControls.selectedAdjustTarget = target;
+  applyTouchControlLayout();
+}
+
+function setTouchAdjusting(enabled) {
+  touchControls.adjusting = Boolean(enabled && state === "paused" && touchControls.enabled);
+  touchControls.buttonPointers.clear();
+  document.querySelectorAll("[data-touch-action].is-held, .touch-attack-half.is-held").forEach((button) => button.classList.remove("is-held"));
+  touchControls.runHeld = false;
+  touchControls.duoHeld = false;
+  resetAttackHolds();
+  if (!touchControls.adjusting) {
+    touchControls.adjustPointer = null;
+    touchControls.selectedAdjustTarget = null;
+  }
+  if (touchAdjustToggle) touchAdjustToggle.checked = touchControls.adjusting;
+  document.body.classList.toggle("touch-ui-adjusting", touchControls.adjusting);
+  applyTouchControlLayout();
+}
+
+function startTouchAdjustPointer(event, target, captureEl) {
+  if (!target || !touchControls.adjusting || state !== "paused") return false;
+  event.preventDefault();
+  event.stopPropagation();
+  const el = getTouchAdjustTargetElement(target);
+  if (!el || !touchControlsEl) return true;
+  const entry = currentTouchLayoutEntry(target);
+  touchControls.layout[target] = entry;
+  setTouchAdjustSelected(target);
+  const overlayRect = touchControlsEl.getBoundingClientRect();
+  touchControls.adjustPointer = {
+    pointerId: event.pointerId,
+    target,
+    startX: event.clientX,
+    startY: event.clientY,
+    entry,
+    overlayWidth: Math.max(overlayRect.width, 1),
+    overlayHeight: Math.max(overlayRect.height, 1)
+  };
+  const pointerCaptureEl = captureEl || el;
+  if (pointerCaptureEl.setPointerCapture) pointerCaptureEl.setPointerCapture(event.pointerId);
+  applyTouchControlLayout();
+  return true;
+}
+
+function updateTouchAdjustPointer(event) {
+  const active = touchControls.adjustPointer;
+  if (!active || event.pointerId !== active.pointerId) return;
+  event.preventDefault();
+  const dx = (event.clientX - active.startX) / active.overlayWidth;
+  const dy = (event.clientY - active.startY) / active.overlayHeight;
+  touchControls.layout[active.target] = clampedTouchLayoutEntry(
+    active.target,
+    active.entry.x + dx,
+    active.entry.y + dy,
+    active.entry.scale
+  );
+  applyTouchControlLayout();
+}
+
+function finishTouchAdjustPointer(event) {
+  const active = touchControls.adjustPointer;
+  if (!active || event.pointerId !== active.pointerId) return;
+  event.preventDefault();
+  touchControls.adjustPointer = null;
+  saveTouchLayout();
+}
+
 function isCoarsePointerDevice() {
   return Boolean(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
 }
@@ -13212,6 +14734,7 @@ function maybeRequestTouchFullscreen() {
 
 function setTouchControlsEnabled(enabled, persist = false) {
   touchControls.enabled = Boolean(enabled);
+  if (!touchControls.enabled) setTouchAdjusting(false);
   if (persist) {
     touchControls.userPreference = touchControls.enabled;
     try {
@@ -13233,9 +14756,11 @@ function updateTouchToggleLabel() {
 }
 
 function initializeTouchControls() {
+  touchControls.layout = storedTouchLayout();
   touchControls.userPreference = storedTouchPreference();
   touchControls.touchDeviceDetected = isCoarsePointerDevice();
   setTouchControlsEnabled(touchControls.userPreference ?? isCoarsePointerDevice(), false);
+  applyTouchControlLayout();
 }
 
 function touchControlsBlockedByModalState() {
@@ -13248,10 +14773,12 @@ function touchControlsBlockedByModalState() {
 
 function syncTouchControlsVisibility() {
   syncTouchLayoutState();
+  if ((state !== "paused" || !touchControls.enabled) && touchControls.adjusting) setTouchAdjusting(false);
   const nextVisible = Boolean(touchControls.enabled && !touchControls.orientationBlocked && !touchControlsBlockedByModalState());
   if (touchControls.visible === nextVisible) {
     if (touchControlsEl) touchControlsEl.hidden = !nextVisible;
     document.body.classList.toggle("touch-controls-visible", nextVisible);
+    applyTouchControlLayout();
     return;
   }
   touchControls.visible = nextVisible;
@@ -13259,6 +14786,7 @@ function syncTouchControlsVisibility() {
   document.body.classList.toggle("touch-controls-visible", touchControls.visible);
   if (!touchControls.visible) resetTouchInput();
   updateTouchToggleLabel();
+  applyTouchControlLayout();
 }
 
 function resetTouchInput() {
@@ -13346,6 +14874,14 @@ function syncTouchRunButtonState() {
 function handleTouchActionPress(action) {
   if (!touchControls.visible && action !== "pause") return;
   maybeRequestTouchFullscreen();
+  if (state === "ready" || state === "lost") {
+    if (state === "lost" && lambdaGameOverDialogue.active) {
+      advanceLambdaGameOverDialogue(true);
+      return;
+    }
+    startGame();
+    return;
+  }
   if (action === "pause") {
     togglePause();
     return;
@@ -13534,7 +15070,7 @@ canvas.addEventListener("click", (event) => {
     dismissItemTutorial();
     return;
   }
-  if (state === "lost" && pointInRunDetailsButton(canvasPointFromEvent(event))) {
+  if ((state === "lost" || state === "paused") && pointInRunDetailsButton(canvasPointFromEvent(event))) {
     showRunDetails();
     return;
   }
@@ -13569,6 +15105,28 @@ if (touchToggle) {
   });
 }
 
+if (touchAdjustToggle) {
+  touchAdjustToggle.addEventListener("change", () => {
+    setTouchAdjusting(touchAdjustToggle.checked);
+  });
+  touchAdjustToggle.addEventListener("pointerdown", (event) => event.stopPropagation());
+}
+
+if (touchAdjustSize) {
+  const updateSelectedTouchControlSize = () => {
+    const target = touchControls.selectedAdjustTarget;
+    if (!target) return;
+    const entry = currentTouchLayoutEntry(target);
+    const nextScale = clamp(Number(touchAdjustSize.value) / 100, TOUCH_ADJUST_MIN_SCALE, TOUCH_ADJUST_MAX_SCALE);
+    touchControls.layout[target] = clampedTouchLayoutEntry(target, entry.x, entry.y, nextScale);
+    applyTouchControlLayout();
+    saveTouchLayout();
+  };
+  touchAdjustSize.addEventListener("input", updateSelectedTouchControlSize);
+  touchAdjustSize.addEventListener("change", updateSelectedTouchControlSize);
+  touchAdjustSize.addEventListener("pointerdown", (event) => event.stopPropagation());
+}
+
 if (touchStickEl) {
   touchStickEl.addEventListener("pointerdown", (event) => {
     if (!touchControls.enabled || touchControls.stickPointerId !== null) return;
@@ -13596,10 +15154,29 @@ if (touchStickEl) {
   touchStickEl.addEventListener("pointercancel", releaseStick);
 }
 
+document.addEventListener("pointermove", updateTouchAdjustPointer, { passive: false });
+document.addEventListener("pointerup", finishTouchAdjustPointer, { passive: false });
+document.addEventListener("pointercancel", finishTouchAdjustPointer, { passive: false });
+
+const touchAttackCore = document.querySelector(".touch-attack-core");
+if (touchAttackCore) {
+  touchAttackCore.addEventListener("pointerdown", (event) => {
+    if (!touchControls.enabled || !touchControls.adjusting) return;
+    startTouchAdjustPointer(event, "attack", touchAttackCore);
+  });
+}
+
 document.querySelectorAll("[data-touch-action]").forEach((button) => {
   const action = button.getAttribute("data-touch-action");
   button.addEventListener("pointerdown", (event) => {
     if (!touchControls.enabled || !action) return;
+    if (touchControls.adjusting) {
+      const adjustTarget = touchAdjustTargetFromAction(action);
+      if (adjustTarget) {
+        startTouchAdjustPointer(event, adjustTarget, button);
+        return;
+      }
+    }
     event.preventDefault();
     button.setPointerCapture(event.pointerId);
     button.classList.add("is-held");

@@ -144,6 +144,28 @@ body {
   font-size: 1rem;
 }
 
+.score-blessing-meter {
+  position: relative;
+  width: min(176px, 22vw);
+  height: 6px;
+  margin-top: 2px;
+  border: 1px solid rgba(255, 230, 135, 0.38);
+  background: rgba(19, 16, 8, 0.82);
+  overflow: hidden;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.72);
+}
+
+.score-blessing-meter span {
+  display: block;
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, #6b3f00 0%, #d89b24 36%, #ffe78c 72%, #fff8cf 100%);
+  box-shadow:
+    0 0 var(--score-blessing-glow-size, 5px) rgba(255, 205, 67, var(--score-blessing-glow-alpha, 0.24)),
+    inset 0 0 8px rgba(255, 255, 255, var(--score-blessing-inner-alpha, 0.08));
+  transition: width 160ms ease, box-shadow 160ms ease;
+}
+
 canvas {
   display: block;
   width: 100%;
@@ -253,26 +275,28 @@ body.touch-layout-active .orientation-prompt {
 
 .touch-buttons {
   position: absolute;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: max(18px, env(safe-area-inset-bottom));
-  display: grid;
-  grid-template-columns: repeat(3, clamp(62px, 9vw, 92px));
-  gap: clamp(8px, 1.2vw, 13px);
+  inset: 0;
   pointer-events: auto;
+  --touch-edge-right: max(22px, env(safe-area-inset-right));
+  --touch-edge-bottom: max(18px, env(safe-area-inset-bottom));
+  --touch-core-size: clamp(112px, 14vw, 152px);
 }
 
 .touch-button {
-  min-height: clamp(54px, 8vw, 76px);
+  display: grid;
+  place-items: center;
   border: 1px solid rgba(255, 236, 178, 0.42);
   border-radius: 999px;
   background: rgba(14, 17, 25, 0.64);
   color: #fff4c6;
-  font: 900 clamp(0.72rem, 1.4vw, 0.92rem) "Segoe UI", Arial, sans-serif;
+  font: 900 clamp(0.68rem, 1.25vw, 0.88rem) "Segoe UI", Arial, sans-serif;
   letter-spacing: 0;
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.24) inset,
     0 10px 24px rgba(0, 0, 0, 0.32);
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .touch-button.is-held {
@@ -283,28 +307,205 @@ body.touch-layout-active .orientation-prompt {
     0 0 18px rgba(255, 216, 48, 0.5);
 }
 
-.touch-button--small {
-  min-height: clamp(44px, 6.6vw, 58px);
-  font-weight: 800;
+.touch-button--pause {
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  top: max(12px, env(safe-area-inset-top));
+  width: clamp(70px, 10vw, 96px);
+  height: clamp(38px, 5.8vw, 52px);
+  border-radius: 8px;
+  background: rgba(12, 14, 20, 0.7);
+  color: #f8edcf;
 }
 
-.touch-button--start {
-  grid-column: 1 / -1;
-  min-height: clamp(42px, 6vw, 54px);
-  border-color: rgba(105, 244, 255, 0.52);
-  color: #c8f9ff;
+.touch-attack-core {
+  position: absolute;
+  right: var(--touch-edge-right);
+  bottom: var(--touch-edge-bottom);
+  width: var(--touch-core-size);
+  aspect-ratio: 1;
+  border: 3px solid rgba(255, 244, 198, 0.8);
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(8, 11, 16, 0.54);
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.42) inset,
+    0 0 24px rgba(255, 236, 178, 0.2);
+  transform-origin: center;
+}
+
+.touch-attack-core::after {
+  content: "";
+  position: absolute;
+  inset: -4px 50% -4px auto;
+  width: 4px;
+  background: rgba(255, 244, 198, 0.92);
+  transform: rotate(-38deg);
+  transform-origin: center;
+  pointer-events: none;
+  box-shadow: 0 0 8px rgba(255, 244, 198, 0.4);
+}
+
+.touch-attack-half {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  border: 0;
+  background: transparent;
+  color: #fff4c6;
+  font: 900 clamp(0.68rem, 1.2vw, 0.88rem) "Segoe UI", Arial, sans-serif;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.touch-attack-half--punch {
+  place-items: end start;
+  padding: 0 0 28% 20%;
+  clip-path: polygon(0 0, 0 100%, 100% 100%);
+}
+
+.touch-attack-half--kick {
+  place-items: start end;
+  padding: 28% 20% 0 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+
+.touch-attack-half.is-held,
+.touch-attack-half:active {
+  background: rgba(255, 236, 178, 0.22);
+  color: #fffbe0;
+  text-shadow: 0 0 10px rgba(255, 216, 48, 0.7);
+}
+
+.touch-button--orb {
+  position: absolute;
+  width: clamp(58px, 7.6vw, 78px);
+  aspect-ratio: 1;
+  min-height: 0;
+}
+
+.touch-button--duo {
+  position: absolute;
+  right: calc(var(--touch-edge-right) + var(--touch-core-size) * 0.86);
+  bottom: calc(var(--touch-edge-bottom) + var(--touch-core-size) * 0.62);
+}
+
+.touch-button--special {
+  position: absolute;
+  right: calc(var(--touch-edge-right) + var(--touch-core-size) * 1.06);
+  bottom: var(--touch-edge-bottom);
+}
+
+.touch-button--run {
+  position: absolute;
+  right: var(--touch-edge-right);
+  bottom: calc(var(--touch-edge-bottom) + var(--touch-core-size) * 1.08);
+  width: clamp(84px, 11vw, 112px);
+  height: clamp(50px, 6.8vw, 66px);
+  border-radius: 10px;
+  padding: 0 8px;
 }
 
 .touch-button--toggle {
   display: none;
-  grid-column: 1 / -1;
-  min-height: clamp(38px, 5.4vw, 48px);
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  top: calc(max(12px, env(safe-area-inset-top)) + clamp(42px, 6.2vw, 58px) + 48px);
+  width: clamp(86px, 12vw, 116px);
+  height: clamp(34px, 5vw, 44px);
+  border-radius: 8px;
   border-color: rgba(255, 139, 218, 0.46);
   color: #ffd6f1;
 }
 
+.touch-adjust-toggle {
+  display: none;
+  position: absolute;
+  right: max(18px, env(safe-area-inset-right));
+  top: calc(max(12px, env(safe-area-inset-top)) + clamp(42px, 6.2vw, 58px));
+  align-items: center;
+  gap: 6px;
+  min-width: clamp(104px, 15vw, 138px);
+  height: clamp(34px, 5vw, 44px);
+  padding: 0 10px;
+  border: 1px solid rgba(255, 236, 178, 0.42);
+  border-radius: 8px;
+  background: rgba(14, 17, 25, 0.72);
+  color: #fff4c6;
+  font: 850 clamp(0.68rem, 1.2vw, 0.84rem) "Segoe UI", Arial, sans-serif;
+  touch-action: none;
+}
+
+.touch-adjust-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #ffe169;
+}
+
+body.touch-controls-visible.game-paused .touch-adjust-toggle,
 body.touch-layout-active.game-paused .touch-button--toggle {
   display: block;
+}
+
+body.touch-controls-visible.game-paused .touch-adjust-toggle {
+  display: flex;
+}
+
+.touch-control-custom {
+  left: var(--touch-x) !important;
+  top: var(--touch-y) !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translate(-50%, -50%) scale(var(--touch-scale, 1)) !important;
+}
+
+.touch-control-selected {
+  outline: 3px solid rgba(255, 225, 105, 0.92);
+  outline-offset: 5px;
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, 0.4) inset,
+    0 0 26px rgba(255, 225, 105, 0.7) !important;
+}
+
+body.touch-ui-adjusting .touch-button--orb,
+body.touch-ui-adjusting .touch-button--run,
+body.touch-ui-adjusting .touch-attack-core,
+body.touch-ui-adjusting .touch-button--pause,
+body.touch-ui-adjusting .touch-button--toggle {
+  pointer-events: auto;
+}
+
+body.touch-ui-adjusting .touch-button--orb,
+body.touch-ui-adjusting .touch-button--run,
+body.touch-ui-adjusting .touch-attack-core {
+  cursor: grab;
+}
+
+.touch-adjust-sizer {
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right));
+  top: 50%;
+  width: 38px;
+  height: clamp(130px, 24vh, 220px);
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 225, 105, 0.58);
+  border-radius: 999px;
+  background: rgba(8, 11, 16, 0.74);
+  box-shadow: 0 0 18px rgba(255, 225, 105, 0.24);
+  pointer-events: auto;
+}
+
+.touch-adjust-sizer[hidden] {
+  display: none;
+}
+
+.touch-adjust-sizer input {
+  width: clamp(120px, 22vh, 204px);
+  transform: rotate(-90deg);
+  accent-color: #ffe169;
 }
 
 .orientation-prompt {
@@ -523,6 +724,45 @@ body.touch-layout-active.game-paused .touch-button--toggle {
   color: #c8f9ff;
   font-weight: 800;
   text-align: right;
+}
+
+.run-details__wave-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) minmax(0, 1.3fr);
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.run-details__wave-row.is-active {
+  border-color: rgba(105, 244, 255, 0.28);
+  background: rgba(105, 244, 255, 0.055);
+}
+
+.run-details__wave-row span:first-child {
+  color: #d8d0ba;
+  font-weight: 800;
+}
+
+.run-details__wave-row span:first-child b {
+  margin-right: 3px;
+  color: #d4d6de;
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.24);
+}
+
+.run-details__wave-row.is-perfect span:first-child b {
+  color: #ffe76a;
+  text-shadow: 0 0 12px rgba(255, 218, 72, 0.74);
+}
+
+.run-details__wave-row span:last-child {
+  color: #fff8df;
+  font-weight: 800;
+  text-align: right;
+  line-height: 1.35;
 }
 
 .run-details__reset {

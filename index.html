@@ -4,6 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
     <title>Golden Witch Brawl</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tangerine:wght@700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
@@ -16,6 +19,9 @@
         <div class="center-stat">
           <strong id="waveLabel">Wave 1</strong>
           <span id="scoreLabel">Score 0</span>
+          <div class="score-blessing-meter" aria-label="Score blessing progress">
+            <span id="scoreBlessingBar"></span>
+          </div>
         </div>
         <div>
           <span class="label">Resolve</span>
@@ -31,14 +37,23 @@
             <span class="touch-stick__nub"></span>
           </div>
           <div class="touch-buttons" aria-label="Actions">
-            <button type="button" class="touch-button touch-button--small" data-touch-action="pause">Pause</button>
-            <button type="button" class="touch-button touch-button--small" data-touch-action="duo">Duo</button>
-            <button type="button" class="touch-button touch-button--small" data-touch-action="run">Run</button>
-            <button type="button" class="touch-button" data-touch-action="special">Special</button>
-            <button type="button" class="touch-button" data-touch-action="punch">Punch</button>
-            <button type="button" class="touch-button" data-touch-action="kick">Kick</button>
-            <button type="button" class="touch-button touch-button--start" data-touch-action="start">Start</button>
+            <button type="button" class="touch-button touch-button--pause" data-touch-action="pause">Pause</button>
+            <label class="touch-adjust-toggle">
+              <input id="touchAdjustToggle" type="checkbox">
+              <span>Adjust UI</span>
+            </label>
             <button type="button" class="touch-button touch-button--toggle" data-touch-action="touchToggle">Touch Off</button>
+
+            <button type="button" class="touch-button touch-button--orb touch-button--duo" data-touch-action="duo">Duo</button>
+            <button type="button" class="touch-button touch-button--orb touch-button--special" data-touch-action="special">Special</button>
+            <button type="button" class="touch-button touch-button--run" data-touch-action="run">Dodge/Run</button>
+            <div class="touch-attack-core" data-touch-adjust-target="attack">
+              <button type="button" class="touch-attack-half touch-attack-half--punch" data-touch-action="punch">Punch</button>
+              <button type="button" class="touch-attack-half touch-attack-half--kick" data-touch-action="kick">Kick</button>
+            </div>
+            <div id="touchAdjustSizer" class="touch-adjust-sizer" hidden>
+              <input id="touchAdjustSize" type="range" min="75" max="135" value="100" orient="vertical" aria-label="Selected touch control size">
+            </div>
           </div>
         </div>
 
