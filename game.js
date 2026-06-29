@@ -53,6 +53,16 @@ const DUO_ABSORB_DURATION = 0.9;
 const LAMBDA_DUO_SPLASH_DURATION = 0.95;
 const ENEMY_DEFEAT_FADE_DURATION = 1.25;
 const ENEMY_SUMMON_GRACE = 1;
+const SHADOW_PORTAL_WAVE_INTERVAL = 10;
+const SHADOW_PORTAL_INACTIVITY_DELAY = 3;
+const SHADOW_PORTAL_INACTIVITY_INTERVAL = 3;
+const SHADOW_PORTAL_DAMAGE_GRACE = 10;
+const SHADOW_PORTAL_MIN_TARGET_DISTANCE = W * 0.5;
+const SHADOW_PORTAL_MAX_PLAYER_DISTANCE = 220;
+const SHADOW_PORTAL_MIN_SPAWN_SPACING = 112;
+const SHADOW_PORTAL_CRAWL_TIME = 1.35;
+const SHADOW_PORTAL_SETTLE_TIME = 0.45;
+const SHADOW_PORTAL_ENEMY_FADE_IN = 0.72;
 const MESSAGE_BOTTLE_FLIGHT_TIME = 1.15;
 const MESSAGE_BOTTLE_THROW_DELAY = 0.48;
 const ENEMY_HEALTH_FIVE_WAVE_BONUS = 8;
@@ -216,7 +226,7 @@ const CRYSTAL_SHARD_PLUS_DRIFT = 78;
 const CRYSTAL_SHARD_PLUS_EXIT_MARGIN = 170;
 const GOAT_POUND_DAMAGE = 32;
 const GOAT_POUND_DETECTION_RANGE = 210;
-const GOAT_POUND_RANGE = 203;
+const GOAT_POUND_RANGE = 138;
 const GOAT_POUND_NEAR_WIDTH = 58;
 const GOAT_POUND_FAR_WIDTH = 118;
 const GOAT_POUND_SEMICIRCLE_Y_SCALE = 0.46;
@@ -224,10 +234,18 @@ const GOAT_POUND_DEPTH = 92;
 const GOAT_POUND_SHOCKWAVE_RADIUS = 58;
 const GOAT_POUND_LIFT = 500;
 const GOAT_POUND_DRIFT = 210;
+const GOAT_POUND_QUAKE_DELAY = 0.16;
+const GOAT_POUND_QUAKE_DURATION = 0.42;
+const GOAT_POUND_QUAKE_RANGE = 260;
+const GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE = 0.58;
+const GOAT_POUND_QUAKE_MAX_LANE_ANGLE = Math.PI / 7;
+const GOAT_POUND_QUAKE_LIFT = 255;
+const GOAT_POUND_QUAKE_DRIFT = 118;
 const GOAT_POUND_PARRY_RING_RADIUS = 92;
 const GOAT_POUND_PARRY_WINDOW = 18;
 const GOAT_POUND_PARRY_START_RADIUS = 146;
 const GOAT_POUND_PARRY_FAIL_FADE = 0.42;
+const GOAT_POUND_FINAL_HOLD = 0.3;
 const GOAT_HIT_STUN_DURATION = 0.72;
 const GOAT_DEFEAT_FADE_DURATION = 0.58;
 const GOAT_CHARGE_NO_DETECT_TIME = 10;
@@ -238,6 +256,16 @@ const GOAT_CHARGE_LIFT = 380;
 const GOAT_CHARGE_DRIFT = 260;
 const GOAT_CHARGE_WIDTH = 92;
 const GOAT_CHARGE_MAX_LANE_ANGLE = Math.PI / 6;
+const GOAT_PUNCH_DAMAGE = 18;
+const GOAT_PUNCH_RANGE = 156;
+const GOAT_PUNCH_DETECTION_RANGE = 292;
+const GOAT_PUNCH_SEMICIRCLE_Y_SCALE = 0.5;
+const GOAT_PUNCH_DEPTH = GOAT_PUNCH_RANGE * GOAT_PUNCH_SEMICIRCLE_Y_SCALE;
+const GOAT_PUNCH_LIFT = 250;
+const GOAT_PUNCH_DRIFT = 126;
+const GOAT_PUNCH_SLIDE_DISTANCE = 76;
+const GOAT_PUNCH_SLIDE_SPEED = 220;
+const GOAT_PUNCH_ACTIVE_FRAMES = new Set([711, 712, 713, 714, 715, 716]);
 const STAGE3_KICK_STARTUP_TIME = 0.34;
 const STAGE3_KICK_ACTIVE_END = 0.52;
 const STAGE3_KICK_GRAVITY = 1320;
@@ -273,6 +301,9 @@ const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE = 24;
 const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_RADIUS = 46;
 const LAMBDA_SPECIAL_KONPEITO_DURATION = 1.62;
 const LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS = 52;
+const LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_DAMAGE = 250;
+const LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_DURATION = 0.58;
+const LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_RADIUS = Math.hypot(W, H) * 1.16;
 const LAMBDA_SPECIAL_KONPEITO_LAUNCH_SPEED = 760;
 const LAMBDA_SPECIAL_KONPEITO_LAUNCH_LANE_SPEED = 150;
 const LAMBDA_SPECIAL_KONPEITO_LAUNCH_UP_SPEED = -250;
@@ -367,11 +398,14 @@ const BEATRICE_TOWER_VOLLEY_EDGE_OVERHANG = 22;
 const BEATRICE_TOWER_VOLLEY_TOWER_SEPARATION = 176;
 const BEATRICE_TOWER_VOLLEY_LEVIATHAN_APPEAR_MIN = 0.32;
 const BEATRICE_TOWER_VOLLEY_LEVIATHAN_APPEAR_MAX = 0.92;
-const BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MIN = 0.58;
-const BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MAX = 0.82;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MIN = 0.95;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MAX = 1.22;
 const BEATRICE_TOWER_VOLLEY_LEVIATHAN_LEAD_TIME = 0.42;
 const BEATRICE_TOWER_VOLLEY_LEVIATHAN_STOP_SPEED = 18;
-const BEATRICE_TOWER_VOLLEY_LEVIATHAN_TRACK_RATE = 0.62;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_TRACK_RATE = 0.72;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_MIN_TRACK_RATE = 0.1;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_SHRINK_DISTANCE = 430;
+const BEATRICE_TOWER_VOLLEY_LEVIATHAN_MIN_RADIUS = 104;
 const BEATRICE_MECHANIC_CHOICES = ["goatTrial", "teleportAttack", "goatRush", "towerVolley"];
 const DEBUG_START_BEATRICE_BOSS_WAVE = false;
 const DEBUG_BEATRICE_TELEPORT_PREP_TEST = false;
@@ -496,8 +530,8 @@ const BERN_CAT_FORM_CHANCE = 0.18;
 const DEBUG_FORCE_BERN_CAT_FORM = false;
 const DEBUG_START_WITH_PLUM_TEA = false;
 const DEBUG_START_WITH_KONPEITO = false;
-const DEBUG_START_WITH_GOLDEN_BROOCH_RIGHT = true;
-const DEBUG_START_WITH_50_REFLEX = true;
+const DEBUG_START_WITH_GOLDEN_BROOCH_RIGHT = false;
+const DEBUG_START_WITH_50_REFLEX = false;
 const DEBUG_START_WITH_CANDY_CATACLYSM = false;
 const DEBUG_START_WITH_CRYSTAL_FOLLOWUP = false;
 const DEBUG_START_WITH_CRYSTAL_SHARD_PLUS = false;
@@ -507,13 +541,27 @@ const BERN_CAT_SHEET_COLS = 6;
 const BERN_CAT_WALK_FRAMES = Array.from({ length: 24 }, (_, i) => i).filter((i) => i !== 23);
 const DASH_START_INVULN = 0.5;
 const DASH_COOLDOWN = 1.5;
-const DASH_STOCK_MAX = 2;
+const DASH_STOCK_MAX = 1;
 const DASH_START_DURATION = 0.24;
 const DASH_RUN_ACCEL_TIME = 0.78;
 const DASH_TAP_DODGE_BRAKE_DURATION = 0.32;
 const DASH_BRAKE_DURATION = 0.36;
 const DASH_TAP_DODGE_DRIFT = 122;
 const DASH_TAP_DODGE_DRIFT_SPEED = 520;
+const DASH_ATTACK_FLASH_START = 0.72;
+const DASH_ATTACK_FLASH_END = 1.08;
+const DASH_ATTACK_MISS_FADE = 0.45;
+const DASH_ATTACK_MARKER_RADIUS = 62;
+const DASH_ATTACK_MARKER_START_RADIUS = 118;
+const RUN_STUMBLE_STUN_TIME = 1.5;
+const RUN_STUMBLE_KNOCKBACK = 58;
+const RUN_STUMBLE_LAUNCH_LIFT = 260;
+const RUN_STUMBLE_LAUNCH_DRIFT = 96;
+const RUN_STUMBLE_DOWN_TIME = 0.72;
+const RUN_STUMBLE_TRIP_DURATION = 0.72;
+const RUN_STUMBLE_PRONE_HOLD = 0.3;
+const RUN_STUMBLE_TRIP_SLIDE = 148;
+const GET_UP_DURATION = 0.58;
 const EXPERIMENTAL_JUGGLE_LAMBDA_KONPEITO = true;
 const DEBUG_JUGGLED_KONPEITO_TARGETS_LAMBDA = false;
 const LAMBDA_KONPEITO_JUGGLE_DURATION = 0.56;
@@ -608,7 +656,10 @@ const frames = {
   duoCharge: [326, 327, 328, 329, 330, 331, 332],
   duoBeamPose: [333, 334, 335],
   hurt: [118, 119, 120, 121, 122, 123],
+  runTrip: [136, 137, 138, 139, 140, 141],
+  runDizzy: [460, 461, 462, 463, 464, 465, 466, 467],
   down: [152, 153, 154, 155, 156, 157, 158],
+  getUp: [182, 183, 184, 185],
   win: [500, 520, 540]
 };
 const lambdaFrames = {
@@ -671,7 +722,7 @@ const attackData = {
   kick2: { kind: "kick", stage: 2, lock: 0.58, range: 190, depth: 70, damage: 22, gain: 15, activeFrames: [213, 214] },
   punch3: { kind: "punch", stage: 3, lock: 0.72, range: 220, depth: 78, damage: 24, gain: 18, activeFrames: [340, 342, 341], knockdown: true, launch: true, lunge: 118 },
   kick3: { kind: "kick", stage: 3, lock: 1.15, range: 250, depth: 88, damage: 28, gain: 20, activeFrames: [296], knockdown: true, groundBounce: true, launchLift: STAGE3_KICK_BOUNCE_LIFT, launchDrift: STAGE3_KICK_BOUNCE_DRIFT },
-  dashPunch: { kind: "dashPunch", lock: 0.34, range: 260, depth: 72, damage: 26, gain: 16, activeFrames: [348, 349], knockdown: true, launch: true, launchLift: 500, launchDrift: 260, lunge: 150 },
+  dashPunch: { kind: "dashPunch", lock: 0.34, range: 260, depth: 72, damage: 8, gain: 16, activeFrames: [348, 349], knockdown: true, launch: true, launchLift: 500, launchDrift: 260, lunge: 150 },
   special: { lock: 0.7, activeFrames: [] }
 };
 const enemyAttackData = {
@@ -679,6 +730,7 @@ const enemyAttackData = {
   kick: { lock: 0.58, range: 128, depth: 62, damage: 10, activeFrames: [213, 214] }
 };
 const ENEMY_ATTACK_TELEGRAPH_TIME = 0.22;
+const ENEMY_ATTACK_START_RANGE = 165;
 const ENEMY_PUNCH_TELEGRAPH_RANGE = 112;
 const ENEMY_PUNCH_TELEGRAPH_DEPTH = 58;
 const ENEMY_KICK_TELEGRAPH_RADIUS = 104;
@@ -692,6 +744,7 @@ const goatFrames = {
   chargeWindup: [690, 691, 692, 693, 694, 695, 696, 697, 698],
   charge: [699, 700],
   chargeRecover: [701, 702, 703],
+  punch: [704, 705, 706, 707, 708, 709, 710, 711, 712, 713, 714, 715, 716, 717, 718],
   hurt: [725, 726, 727, 728, 729, 730, 731],
   defeat: [755, 756, 757, 758]
 };
@@ -793,6 +846,30 @@ const actionFrameOffsets = {
     109: [6, 0],
     110: [-1, 0]
   },
+  runDizzy: {
+    460: [-1, 0],
+    461: [0, 20],
+    462: [0, 18],
+    463: [0, 13],
+    464: [0, 8],
+    465: [0, 0],
+    466: [0, 2],
+    467: [0, 5]
+  },
+  runTrip: {
+    136: [0, 0],
+    137: [-103, 0],
+    138: [159, 0],
+    139: [208, 0],
+    140: [206, 0],
+    141: [186, 0]
+  },
+    getUp: {
+      182: [-2, 0],
+      183: [16, 0],
+      184: [21, 0],
+      185: [-2, 0]
+    },
   kick1: {
     199: [33, 0],
     200: [-2, 0],
@@ -1191,6 +1268,7 @@ const bernFrameBounds = {
 };
 const particles = [];
 const enemies = [];
+const shadowPortalEvents = [];
 
 let state = "loading";
 let cameraX = 0;
@@ -1206,6 +1284,9 @@ let screenShakeTimer = 0;
 let enemyFreezeTimer = 0;
 let beatriceStakeParryFreezeTimer = 0;
 let bernParryOverlayTimer = 0;
+let shadowPortalWaveTimer = SHADOW_PORTAL_WAVE_INTERVAL;
+let shadowPortalNoDamageTimer = 0;
+let shadowPortalInactivityTimer = SHADOW_PORTAL_INACTIVITY_INTERVAL;
 const bossBlessingChoice = {
   active: false,
   choices: [],
@@ -1235,6 +1316,7 @@ const perfectFlourishes = [];
 const beatriceTutorial = {
   active: false,
   seen: false,
+  stakeParried: false,
   index: 0,
   skipCooldown: 0,
   scroll: 0
@@ -1261,7 +1343,9 @@ const konpeitoGeysers = [];
 const konpeitoDomeBursts = [];
 const lambdaSpecialKonpeitos = [];
 const lambdaSpecialShrapnel = [];
+const lambdaSpecialFinalBursts = [];
 const shannonWalls = [];
+const goatPoundQuakes = [];
 const beatriceStakes = [];
 const beatriceStakeTrails = [];
 const beatriceStakeShockwaves = [];
@@ -1744,14 +1828,39 @@ function breakPerfectAndBankCombo() {
   if (waveStats.active) waveStats.active.perfect = false;
 }
 
-function damageEnemy(enemy, amount) {
+function notePlayerEnemyDamage() {
+  shadowPortalNoDamageTimer = 0;
+  shadowPortalInactivityTimer = SHADOW_PORTAL_DAMAGE_GRACE;
+}
+
+function damageEnemy(enemy, amount, options = {}) {
   if (!enemy || amount <= 0) return 0;
   const scaledAmount = amount * playerOutgoingDamageMultiplier();
   const actual = Math.max(0, Math.min(enemy.hp, scaledAmount));
   enemy.hp -= scaledAmount;
   runStats.damageDealt += actual;
   addScoreComboDamage(actual);
+  if (actual > 0 && options.playerDamage !== false) notePlayerEnemyDamage();
   return actual;
+}
+
+function isUninterruptibleBeatriceRushGoat(enemy) {
+  return Boolean(enemy && enemy.type === "goat" && enemy.bossMechanic === "beatriceGoatRush" && !enemy.dead);
+}
+
+function cancelInterruptibleGoatCharge(enemy) {
+  if (!enemy || enemy.type !== "goat" || isUninterruptibleBeatriceRushGoat(enemy)) return;
+  if (enemy.goatAction !== "chargeWindup" && enemy.goatAction !== "charge") return;
+  enemy.goatAction = "idle";
+  enemy.goatHasHit = false;
+  enemy.goatParryFailed = false;
+  enemy.goatParryFailFade = 0;
+  enemy.goatChargeDx = 0;
+  enemy.goatChargeDy = 0;
+  enemy.goatChargeDistance = 0;
+  enemy.goatChargeLimit = 0;
+  enemy.goatChargeSpeed = 0;
+  enemy.cooldown = Math.max(enemy.cooldown || 0, 0.55);
 }
 
 function beatriceCanBeDamaged() {
@@ -1816,10 +1925,19 @@ function damageBeatrice(amount, direction = 0) {
 
 function damagePlayer(amount) {
   if (amount <= 0) return 0;
+  if (player.action === "getUp" || player.getUpTimer > 0) return 0;
   const scaledAmount = player.blessings.miracleRisk ? amount * 1.5 : amount;
   const actual = Math.max(0, Math.min(player.hp, scaledAmount));
   player.hp -= scaledAmount;
   if (actual > 0) {
+    if (player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0 || player.runStumblePendingDizzy) {
+      player.runStumbleTimer = 0;
+      player.runStumbleTripTimer = 0;
+      player.runStumbleProneTimer = 0;
+      player.runStumbleTripVx = 0;
+      player.runStumblePendingDizzy = false;
+      player.getUpIntoDizzy = false;
+    }
     runStats.damageReceived += actual;
     runStats.hitsReceived += 1;
     breakPerfectAndBankCombo();
@@ -2195,6 +2313,13 @@ const player = {
   dashInvulnTimer: 0,
   brakeDrift: 0,
   brakeBurstTimer: 0,
+  runStumbleTimer: 0,
+  runStumblePendingDizzy: false,
+  runStumbleTripTimer: 0,
+  runStumbleProneTimer: 0,
+  runStumbleTripVx: 0,
+  getUpTimer: 0,
+  getUpIntoDizzy: false,
   invuln: 0,
   duoCharge: 0,
   konpeitoGlowTimer: 0,
@@ -2670,9 +2795,18 @@ function resetDashCooldowns() {
   player.dashInvulnTimer = 0;
 }
 
+function drainDashStocksForRunStumble() {
+  ensureDashCooldownSlots();
+  for (let i = 0; i < player.dashCooldowns.length; i++) {
+    player.dashCooldowns[i] = DASH_COOLDOWN;
+  }
+  player.dashCooldown = DASH_COOLDOWN;
+  player.heldDashCooldownIndex = -1;
+}
+
 function updateDashCooldowns(dt) {
   ensureDashCooldownSlots();
-  const pauseDashRefill = player.runState === "starting" || player.runState === "running" || player.runState === "braking" || player.dashInvulnTimer > 0;
+  const pauseDashRefill = player.runState === "starting" || player.runState === "running" || player.runState === "braking" || player.dashInvulnTimer > 0 || player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0 || player.getUpTimer > 0 || player.runStumblePendingDizzy;
   for (let i = 0; i < player.dashCooldowns.length; i++) {
     if (pauseDashRefill) continue;
     player.dashCooldowns[i] = Math.max(0, player.dashCooldowns[i] - dt);
@@ -2793,6 +2927,7 @@ function companionFollowTarget(id) {
 }
 
 function companionDrawSortY(id, y) {
+  if (id === "shannon") return y;
   const slot = companionSlotIndex(id);
   if (slot === 0) return player.y - 0.35;
   if (slot === 1) return y - 40;
@@ -2830,6 +2965,58 @@ function isPlayerComboAttack(action) {
 
 function isPlayerAtTopRunSpeed() {
   return player.runState === "running" && player.runCharge >= 0.98;
+}
+
+function dashAttackTimingState() {
+  if (player.runState !== "running") return "none";
+  if (player.runTimer < DASH_ATTACK_FLASH_START) return "early";
+  if (player.runTimer <= DASH_ATTACK_FLASH_END) return "flash";
+  if (player.runTimer <= DASH_ATTACK_FLASH_END + DASH_ATTACK_MISS_FADE) return "late";
+  return "expired";
+}
+
+function dashAttackFlashProgress() {
+  if (player.runState !== "running") return 0;
+  if (player.runTimer <= DASH_ATTACK_FLASH_START) {
+    return clamp(player.runTimer / DASH_ATTACK_FLASH_START, 0, 1) * 0.82;
+  }
+  if (player.runTimer <= DASH_ATTACK_FLASH_END) return 1;
+  return Math.max(0, 1 - (player.runTimer - DASH_ATTACK_FLASH_END) / DASH_ATTACK_MISS_FADE);
+}
+
+function dashAttackMarkerState() {
+  if (player.runState !== "running") return null;
+  const ready = player.runTimer >= DASH_ATTACK_FLASH_START && player.runTimer <= DASH_ATTACK_FLASH_END;
+  const lateFade = player.runTimer > DASH_ATTACK_FLASH_END
+    ? Math.max(0, 1 - (player.runTimer - DASH_ATTACK_FLASH_END) / DASH_ATTACK_MISS_FADE)
+    : 1;
+  if (player.runTimer > DASH_ATTACK_FLASH_END && lateFade <= 0) return null;
+  const chargeT = clamp(player.runTimer / DASH_ATTACK_FLASH_START, 0, 1);
+  const easedCharge = 1 - Math.pow(1 - chargeT, 3);
+  const timingRadius = ready
+    ? DASH_ATTACK_MARKER_RADIUS
+    : DASH_ATTACK_MARKER_START_RADIUS + (DASH_ATTACK_MARKER_RADIUS - DASH_ATTACK_MARKER_START_RADIUS) * easedCharge;
+  return { ready, late: player.runTimer > DASH_ATTACK_FLASH_END, lateFade, timingRadius, chargeT };
+}
+
+function stopRunMomentumForAttack() {
+  player.runState = "none";
+  player.runLocked = false;
+  player.runTimer = 0;
+  player.runCharge = 0;
+  player.brakeDrift = 0;
+  player.brakeBurstTimer = 0;
+  player.vx = 0;
+  player.vy = 0;
+  if (touchControls.runLatched) {
+    touchControls.runLatched = false;
+    syncTouchRunButtonState();
+  }
+}
+
+function startMistimedDashAttackTrip() {
+  const contactX = player.x + (player.facing || 1) * 48;
+  startPlayerRunStumble(player.facing || 1, contactX, player.y - 96);
 }
 
 function nextComboAction(kind) {
@@ -4103,7 +4290,7 @@ function goatPoundParryReady(enemy) {
   if (enemy.type !== "goat" || enemy.dead || enemy.spawnGrace > 0) return false;
   if (enemy.goatAction !== "pound" || enemy.goatHasHit || enemy.goatParryFailed) return false;
   if (player.airborne || player.knockedDown) return false;
-  if (!pointInGoatPoundCone(enemy, player.x, player.y)) return false;
+  if (!pointInGoatPoundSlam(enemy, player.x, player.y)) return false;
   return goatPoundParryTimingReady(enemy);
 }
 
@@ -4146,7 +4333,7 @@ function tryGoatPoundParry(kind) {
   for (const enemy of enemies) {
     if (enemy.type !== "goat" || enemy.dead || enemy.spawnGrace > 0) continue;
     if (enemy.goatAction !== "pound" || enemy.goatHasHit || enemy.goatParryFailed) continue;
-    if (player.airborne || player.knockedDown || !pointInGoatPoundCone(enemy, player.x, player.y)) continue;
+    if (player.airborne || player.knockedDown || !pointInGoatPoundSlam(enemy, player.x, player.y)) continue;
     if (!goatPoundParryTimingReady(enemy)) {
       enemy.goatParryFailed = true;
       enemy.goatParryFailFade = GOAT_POUND_PARRY_FAIL_FADE;
@@ -4567,7 +4754,7 @@ function impactKonpeito(shot) {
     if (enemy.dead || enemy.spawnGrace > 0) continue;
     const dist = Math.hypot(enemy.x - shot.targetX, enemy.y - shot.targetY);
     if (dist > KONPEITO_RADIUS) continue;
-    damageEnemy(enemy, KONPEITO_DAMAGE);
+    damageEnemy(enemy, KONPEITO_DAMAGE, { playerDamage: shot.source !== "lambda" });
     damagedIds.add(i);
     launchEnemyFromKonpeito(enemy, shot.targetX, `${shot.source || "player"}:konpeito`);
     if (enemy.hp <= 0) defeatEnemy(enemy);
@@ -4712,6 +4899,8 @@ function spendBattlerExtraLaunchExtension(target) {
 }
 
 function proratedEnemyJuggle(enemy, direction, source, lift = 260, drift = 90) {
+  if (isUninterruptibleBeatriceRushGoat(enemy)) return false;
+  cancelInterruptibleGoatCharge(enemy);
   const scale = juggleScaleFor(enemy);
   enemy.airborne = true;
   enemy.knockedDown = false;
@@ -4748,6 +4937,8 @@ function groundBounceEnemyByBattlerRules(enemy, direction, source, lift = STAGE3
 }
 
 function launchEnemy(enemy, direction, lift = 470, drift = 170, source = "unknown") {
+  if (isUninterruptibleBeatriceRushGoat(enemy)) return false;
+  cancelInterruptibleGoatCharge(enemy);
   if (enemy.airborne) {
     if (enemy.launchSource === source) {
       const scale = juggleScaleFor(enemy);
@@ -4771,6 +4962,8 @@ function launchEnemy(enemy, direction, lift = 470, drift = 170, source = "unknow
 }
 
 function launchEnemyUnprorated(enemy, direction, source, lift = 360, drift = 100) {
+  if (isUninterruptibleBeatriceRushGoat(enemy)) return false;
+  cancelInterruptibleGoatCharge(enemy);
   if (enemy.airborne) {
     enemy.vz = Math.max(enemy.vz || 0, lift);
     enemy.airVx = (enemy.airVx || 0) * 0.38 + direction * drift * 0.62;
@@ -4817,6 +5010,8 @@ function spawnShannonWallFromCast() {
 }
 
 function extendEnemyLaunch(enemy, direction, source, lift = 260, drift = 90) {
+  if (isUninterruptibleBeatriceRushGoat(enemy)) return false;
+  cancelInterruptibleGoatCharge(enemy);
   if (!enemy.airborne || enemy.launchSource === source) return false;
   const scale = juggleScaleFor(enemy);
   enemy.vz = Math.max(enemy.vz, lift * scale);
@@ -4830,6 +5025,8 @@ function extendEnemyLaunch(enemy, direction, source, lift = 260, drift = 90) {
 }
 
 function groundBounceEnemy(enemy, direction, source, lift = STAGE3_KICK_BOUNCE_LIFT, drift = STAGE3_KICK_BOUNCE_DRIFT) {
+  if (isUninterruptibleBeatriceRushGoat(enemy)) return false;
+  cancelInterruptibleGoatCharge(enemy);
   enemy.airborne = true;
   enemy.knockedDown = false;
   const pickupHeight = enemy.type === "goat" ? STAGE3_KICK_BOUNCE_FALL_HEIGHT * 1.12 : STAGE3_KICK_BOUNCE_FALL_HEIGHT;
@@ -4866,6 +5063,7 @@ function canGroundBounceTarget(enemy) {
 }
 
 function landLaunchedActor(actor, downTime = 0.85) {
+  cancelInterruptibleGoatCharge(actor);
   actor.z = 0;
   actor.airborne = false;
   actor.launchSource = "";
@@ -4875,6 +5073,41 @@ function landLaunchedActor(actor, downTime = 0.85) {
   actor.anim = actor.type === "goat" ? 1 : 4;
   actor.airVx = 0;
   actor.vz = 0;
+}
+
+function startPlayerGetUp(intoDizzy = false) {
+  player.knockedDown = false;
+  player.downTime = 0;
+  player.airborne = false;
+  player.z = 0;
+  player.vz = 0;
+  player.airVx = 0;
+  player.vx = 0;
+  player.vy = 0;
+  player.attackLungeRemaining = 0;
+  player.attackLock = GET_UP_DURATION;
+  player.getUpTimer = GET_UP_DURATION;
+  player.getUpIntoDizzy = intoDizzy;
+  player.invuln = Math.max(player.invuln, GET_UP_DURATION + 0.08);
+  setAction("getUp");
+}
+
+function finishPlayerGetUp() {
+  player.getUpTimer = 0;
+  player.attackLock = 0;
+  player.anim = 0;
+  if (player.getUpIntoDizzy) {
+    player.getUpIntoDizzy = false;
+    player.runStumblePendingDizzy = false;
+    player.runStumbleTimer = RUN_STUMBLE_STUN_TIME;
+    setAction("runDizzy");
+    return;
+  }
+  setAction("idle");
+  if (player.konpeitoGlowPending) {
+    player.konpeitoGlowPending = false;
+    player.konpeitoGlowTimer = 1;
+  }
 }
 
 function updateEnemyGroundBounce(enemy, dt) {
@@ -4942,7 +5175,7 @@ function makeEnemy(x, y, index = 0, typeOverride = "") {
     y,
     hp: type === "goat" ? Math.round(maxHp * 1.25) : maxHp,
     maxHp: type === "goat" ? Math.round(maxHp * 1.25) : maxHp,
-    speed: type === "goat" ? 0 : 72 + wave * 6 + Math.random() * 20,
+    speed: type === "goat" ? 0 : 92 + wave * 7 + Math.random() * 24,
     facing: type === "goat" ? (player.x >= x ? 1 : -1) : -1,
     hurt: 0,
     attack: 0,
@@ -4958,9 +5191,13 @@ function makeEnemy(x, y, index = 0, typeOverride = "") {
     goatParryFailed: false,
     goatParryFailFade: 0,
     goatNoDetectTimer: 0,
+    goatNextAttack: "pound",
     goatChargeDx: 0,
     goatChargeDy: 0,
     goatChargeDistance: 0,
+    goatPoundDx: type === "goat" ? (player.x >= x ? 1 : -1) : 0,
+    goatPoundDy: 0,
+    goatPunchSlideDistance: 0,
     airborne: false,
     z: 0,
     vz: 0,
@@ -4985,12 +5222,189 @@ function makeEnemy(x, y, index = 0, typeOverride = "") {
     anim: Math.random() * (type === "goat" ? goatFrames.idle.length : frames.walk.length),
     cooldown: 0,
     spawnGrace: ENEMY_SUMMON_GRACE,
+    shadowFadeIn: 0,
     dead: false,
     knockedDown: false,
     downTime: 0,
     fall: 0,
     tint: index % 2 ? "#7a1f2d" : "#34404e"
   };
+}
+
+function resetShadowPortalTimers() {
+  shadowPortalWaveTimer = SHADOW_PORTAL_WAVE_INTERVAL;
+  shadowPortalNoDamageTimer = 0;
+  shadowPortalInactivityTimer = 0;
+  shadowPortalEvents.length = 0;
+}
+
+function shadowPortalSpawnSpacing(a, b) {
+  return Math.hypot(a.x - b.x, (a.y - b.y) * 1.6);
+}
+
+function randomShadowPortalPoint(index, total, placed = []) {
+  const spread = Math.PI * 2 / Math.max(1, total);
+  const baseAngle = Math.random() * Math.PI * 2 + index * spread;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const angle = baseAngle + (Math.random() - 0.5) * spread * 0.9 + attempt * 0.19;
+    const radius = 26 + Math.random() * (SHADOW_PORTAL_MAX_PLAYER_DISTANCE - 26);
+    const point = {
+      x: clamp(player.x + Math.cos(angle) * radius, 80, STAGE_W - 120),
+      y: clampPlayY(player.y + Math.sin(angle) * radius * 0.5)
+    };
+    if (placed.every((other) => shadowPortalSpawnSpacing(point, other) >= SHADOW_PORTAL_MIN_SPAWN_SPACING)) {
+      return point;
+    }
+  }
+  const fallbackAngle = baseAngle + index * 0.55;
+  const fallbackRadius = Math.min(SHADOW_PORTAL_MAX_PLAYER_DISTANCE, SHADOW_PORTAL_MIN_SPAWN_SPACING + (index % 2) * 48);
+  return {
+    x: clamp(player.x + Math.cos(fallbackAngle) * fallbackRadius, 80, STAGE_W - 120),
+    y: clampPlayY(player.y + Math.sin(fallbackAngle) * fallbackRadius * 0.5)
+  };
+}
+
+function shadowPortalCandidates() {
+  return enemies
+    .filter((enemy) => {
+      if (enemy.dead || enemy.hp <= 0 || enemy.spawnGrace > 0 || enemy.duoAbsorb) return false;
+      return Math.abs(enemy.x - player.x) >= SHADOW_PORTAL_MIN_TARGET_DISTANCE;
+    })
+    .sort((a, b) => b.hp - a.hp)
+    .slice(0, 3);
+}
+
+function resetEnemyAfterShadowPortalTeleport(enemy) {
+  enemy.z = 0;
+  enemy.vz = 0;
+  enemy.airVx = 0;
+  enemy.airborne = false;
+  enemy.knockedDown = false;
+  enemy.downTime = 0;
+  enemy.groundBouncePending = false;
+  enemy.groundBounceTimer = 0;
+  enemy.hurt = 0;
+  enemy.attack = 0;
+  enemy.attackHasHit = false;
+  enemy.attackTelegraph = 0;
+  enemy.attackFacing = 0;
+  enemy.anim = 0;
+  enemy.cooldown = Math.max(enemy.cooldown || 0, 0.35);
+  if (enemy.type === "goat") {
+    enemy.goatAction = "idle";
+    enemy.goatHasHit = false;
+    enemy.goatParryFailed = false;
+    enemy.goatParryFailFade = 0;
+    enemy.goatPoundFinalHold = 0;
+    enemy.goatPunchSlideDistance = 0;
+    enemy.goatChargeDistance = 0;
+    enemy.goatNoDetectTimer = 0;
+  }
+}
+
+function startShadowPortalEvent(reason = "wave") {
+  if (waveMode !== "normal" || state !== "playing") return false;
+  const targets = shadowPortalCandidates();
+  if (!targets.length) return false;
+  const count = 2 + Math.floor(Math.random() * 3);
+  const shadows = [];
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const radius = 70 + Math.random() * 92;
+    shadows.push({
+      x: clamp(player.x + Math.cos(angle) * radius + (Math.random() - 0.5) * 80, 80, STAGE_W - 120),
+      y: clampPlayY(player.y + Math.sin(angle) * radius * 0.45),
+      finalX: 0,
+      finalY: 0,
+      angle,
+      radius,
+      speed: (Math.random() < 0.5 ? -1 : 1) * (2.6 + Math.random() * 2.2),
+      wobble: Math.random() * Math.PI * 2
+    });
+  }
+  const placedPoints = [];
+  shadows.forEach((shadow, i) => {
+    const point = randomShadowPortalPoint(i, shadows.length, placedPoints);
+    placedPoints.push(point);
+    shadow.finalX = point.x;
+    shadow.finalY = point.y;
+  });
+  shadowPortalEvents.push({
+    reason,
+    timer: 0,
+    triggered: false,
+    targets,
+    shadows
+  });
+  return true;
+}
+
+function updateShadowPortals(dt) {
+  for (let i = shadowPortalEvents.length - 1; i >= 0; i--) {
+    const event = shadowPortalEvents[i];
+    event.timer += dt;
+    const crawlT = clamp(event.timer / SHADOW_PORTAL_CRAWL_TIME, 0, 1);
+    for (const shadow of event.shadows) {
+      if (event.timer < SHADOW_PORTAL_CRAWL_TIME) {
+        shadow.angle += shadow.speed * dt;
+        const wobble = Math.sin(event.timer * 8 + shadow.wobble) * 22;
+        const targetX = player.x + Math.cos(shadow.angle) * (shadow.radius + wobble);
+        const targetY = player.y + Math.sin(shadow.angle * 1.35) * (shadow.radius * 0.46);
+        shadow.x += (targetX - shadow.x) * Math.min(1, dt * 4.6);
+        shadow.y += (clampPlayY(targetY) - shadow.y) * Math.min(1, dt * 4.2);
+      } else {
+        const settleT = clamp((event.timer - SHADOW_PORTAL_CRAWL_TIME) / SHADOW_PORTAL_SETTLE_TIME, 0, 1);
+        shadow.x += (shadow.finalX - shadow.x) * Math.min(1, dt * (5 + settleT * 12));
+        shadow.y += (shadow.finalY - shadow.y) * Math.min(1, dt * (5 + settleT * 12));
+      }
+    }
+
+    if (!event.triggered && event.timer >= SHADOW_PORTAL_CRAWL_TIME + SHADOW_PORTAL_SETTLE_TIME) {
+      event.triggered = true;
+      const shadows = event.shadows.length ? event.shadows : [{ x: player.x, y: player.y }];
+      event.targets.forEach((enemy, index) => {
+        if (!enemy || enemy.dead || enemy.hp <= 0) return;
+        const shadow = shadows[index % shadows.length];
+        enemy.x = clamp(shadow.finalX || shadow.x, 80, STAGE_W - 120);
+        enemy.y = clampPlayY(shadow.finalY || shadow.y);
+        resetEnemyAfterShadowPortalTeleport(enemy);
+        enemy.shadowFadeIn = SHADOW_PORTAL_ENEMY_FADE_IN;
+        enemy.facing = player.x >= enemy.x ? 1 : -1;
+        burst(enemy.x, enemy.y - 36, "special");
+      });
+      screenShakeTimer = Math.max(screenShakeTimer, 0.08);
+    }
+
+    if (event.timer >= SHADOW_PORTAL_CRAWL_TIME + SHADOW_PORTAL_SETTLE_TIME + SHADOW_PORTAL_ENEMY_FADE_IN) {
+      shadowPortalEvents.splice(i, 1);
+    }
+  }
+
+  for (const enemy of enemies) {
+    if (enemy.shadowFadeIn > 0) enemy.shadowFadeIn = Math.max(0, enemy.shadowFadeIn - dt);
+  }
+
+  if (state !== "playing" || waveMode !== "normal") return;
+  if (!shadowPortalCandidates().length) return;
+
+  shadowPortalWaveTimer -= dt;
+  if (shadowPortalWaveTimer <= 0) {
+    if (startShadowPortalEvent("wave")) {
+      shadowPortalWaveTimer = SHADOW_PORTAL_WAVE_INTERVAL;
+    } else {
+      shadowPortalWaveTimer = 1;
+    }
+  }
+
+  shadowPortalNoDamageTimer += dt;
+  shadowPortalInactivityTimer = Math.max(0, shadowPortalInactivityTimer - dt);
+  if (shadowPortalNoDamageTimer >= SHADOW_PORTAL_INACTIVITY_DELAY && shadowPortalInactivityTimer <= 0) {
+    if (startShadowPortalEvent("inactivity")) {
+      shadowPortalInactivityTimer = SHADOW_PORTAL_INACTIVITY_INTERVAL;
+    } else {
+      shadowPortalInactivityTimer = 0.5;
+    }
+  }
 }
 
 function spawnEnemyBottle(targetX, targetY, index) {
@@ -5639,6 +6053,8 @@ function setupBeatriceTowerVolleyWave(waveIndex, side, fresh = false) {
     x: clamp(player.x + (Math.random() - 0.5) * 130, 90, STAGE_W - 90),
     y: clamp(laneYs[leviathanLaneIndex] + (Math.random() - 0.5) * 34, PLAY_AREA_TOP, PLAY_AREA_BOTTOM),
     radius: BEATRICE_RING_ATTACK_RADIUS,
+    baseRadius: BEATRICE_RING_ATTACK_RADIUS,
+    travel: 0,
     appearAt: leviathanAppearAt,
     detonateAt: leviathanAppearAt + BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MIN
       + Math.random() * (BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MAX - BEATRICE_TOWER_VOLLEY_LEVIATHAN_DELAY_MIN),
@@ -5727,11 +6143,20 @@ function updateTrackingLeviathanRing(ring, elapsed) {
   const leadTime = BEATRICE_TOWER_VOLLEY_LEVIATHAN_LEAD_TIME * (0.85 + leadScale * 0.25);
   const targetX = clamp(player.x + (player.vx || 0) * leadTime, 90, STAGE_W - 90);
   const targetY = clampPlayY(player.y + (player.vy || 0) * leadTime);
+  const travelT = clamp((ring.travel || 0) / BEATRICE_TOWER_VOLLEY_LEVIATHAN_SHRINK_DISTANCE, 0, 1);
+  const fatigueT = Math.max(leadScale, travelT);
   const trackRate = elapsed >= ring.detonateAt
     ? 1
-    : BEATRICE_TOWER_VOLLEY_LEVIATHAN_TRACK_RATE;
+    : BEATRICE_TOWER_VOLLEY_LEVIATHAN_MIN_TRACK_RATE
+      + (BEATRICE_TOWER_VOLLEY_LEVIATHAN_TRACK_RATE - BEATRICE_TOWER_VOLLEY_LEVIATHAN_MIN_TRACK_RATE) * (1 - fatigueT) * (1 - fatigueT);
+  const prevX = ring.x;
+  const prevY = ring.y;
   ring.x += (targetX - ring.x) * trackRate;
   ring.y += (targetY - ring.y) * trackRate;
+  ring.travel = (ring.travel || 0) + Math.hypot(ring.x - prevX, ring.y - prevY);
+  const shrinkT = clamp((ring.travel || 0) / BEATRICE_TOWER_VOLLEY_LEVIATHAN_SHRINK_DISTANCE, 0, 1);
+  const baseRadius = ring.baseRadius || BEATRICE_RING_ATTACK_RADIUS;
+  ring.radius = baseRadius + (BEATRICE_TOWER_VOLLEY_LEVIATHAN_MIN_RADIUS - baseRadius) * shrinkT;
   if (speed <= BEATRICE_TOWER_VOLLEY_LEVIATHAN_STOP_SPEED || elapsed >= ring.detonateAt) {
     ring.locked = true;
     ring.x = targetX;
@@ -5858,6 +6283,7 @@ function beatriceIdleHoverPoint() {
 
 function canStartBeatriceTutorial() {
   if (state !== "playing" || beatriceTutorial.seen || beatriceTutorial.active) return false;
+  if (beatriceTutorial.stakeParried) return false;
   if (!beatriceBoss.active || !beatriceBoss.barrierActive || beatriceBoss.vulnerable) return false;
   if (beatriceBoss.flavor !== "idle" && beatriceBoss.flavor !== "puff") return false;
   const dx = Math.abs(player.x - beatriceBoss.x);
@@ -6085,6 +6511,7 @@ function spawnWave() {
     if (!enemies[i].dead) enemies.splice(i, 1);
   }
   messageBottles.length = 0;
+  resetShadowPortalTimers();
   resetScoreCombo(true);
   waveMode = currentWaveMode();
   startWaveStats();
@@ -6110,6 +6537,7 @@ function spawnWave() {
 function startGame() {
   hideRunDetails();
   resetAttackHolds();
+  resetShadowPortalTimers();
   latestRunRecord = null;
   latestRunRankInfo = null;
   resetRunStats();
@@ -6151,6 +6579,13 @@ function startGame() {
   resetDashCooldowns();
   player.brakeDrift = 0;
   player.brakeBurstTimer = 0;
+  player.runStumbleTimer = 0;
+  player.runStumblePendingDizzy = false;
+  player.runStumbleTripTimer = 0;
+  player.runStumbleProneTimer = 0;
+  player.runStumbleTripVx = 0;
+  player.getUpTimer = 0;
+  player.getUpIntoDizzy = false;
   resetPlayerCombo();
   player.invuln = 0;
   player.duoCharge = 0;
@@ -6213,6 +6648,7 @@ function startGame() {
   bossBlessingChoice.context = "boss";
   beatriceTutorial.active = false;
   beatriceTutorial.seen = false;
+  beatriceTutorial.stakeParried = false;
   beatriceTutorial.index = 0;
   beatriceTutorial.skipCooldown = 0;
   beatriceTutorial.scroll = 0;
@@ -6351,7 +6787,9 @@ function startGame() {
   konpeitoDomeBursts.length = 0;
   lambdaSpecialKonpeitos.length = 0;
   lambdaSpecialShrapnel.length = 0;
+  lambdaSpecialFinalBursts.length = 0;
   shannonWalls.length = 0;
+  goatPoundQuakes.length = 0;
   messageBottles.length = 0;
   summonPillars.length = 0;
   screenFlashTimer = 0;
@@ -6416,6 +6854,13 @@ function triggerBernRevive() {
     player.runCharge = 0;
     player.brakeDrift = 0;
     player.brakeBurstTimer = 0;
+    player.runStumbleTimer = 0;
+    player.runStumblePendingDizzy = false;
+    player.runStumbleTripTimer = 0;
+    player.runStumbleProneTimer = 0;
+    player.runStumbleTripVx = 0;
+    player.getUpTimer = 0;
+    player.getUpIntoDizzy = false;
     player.invuln = 1.2;
     resetPlayerCombo();
     setAction("idle");
@@ -6443,6 +6888,13 @@ function triggerBernRevive() {
   player.runCharge = 0;
   player.brakeDrift = 0;
   player.brakeBurstTimer = 0;
+  player.runStumbleTimer = 0;
+  player.runStumblePendingDizzy = false;
+  player.runStumbleTripTimer = 0;
+  player.runStumbleProneTimer = 0;
+  player.runStumbleTripVx = 0;
+  player.getUpTimer = 0;
+  player.getUpIntoDizzy = false;
   player.invuln = 1.2;
   resetPlayerCombo();
   setAction("idle");
@@ -6493,6 +6945,13 @@ function defeatPlayer() {
   resetDashCooldowns();
   player.brakeDrift = 0;
   player.brakeBurstTimer = 0;
+  player.runStumbleTimer = 0;
+  player.runStumblePendingDizzy = false;
+  player.runStumbleTripTimer = 0;
+  player.runStumbleProneTimer = 0;
+  player.runStumbleTripVx = 0;
+  player.getUpTimer = 0;
+  player.getUpIntoDizzy = false;
   screenShakeTimer = 0;
   setAction("down");
   startLambdaGameOver();
@@ -6584,10 +7043,13 @@ function applyAttackHit(kind, data) {
       const groundBounceReady = data.groundBounce && canGroundBounceTarget(enemy);
       damageEnemy(enemy, attackDamage);
       const forceLaunch = player.goatParryCounter && (kind === "punch3" || kind === "kick3");
-      const goatArmoredHit = enemy.type === "goat" && !enemy.airborne && enemy.goatArmorHits < 1 && (data.stage || 1) < 2;
+      const uninterruptibleRushGoat = isUninterruptibleBeatriceRushGoat(enemy);
+      const goatArmoredHit = !uninterruptibleRushGoat && enemy.type === "goat" && !enemy.airborne && enemy.goatArmorHits < 1 && (data.stage || 1) < 2;
       if (goatArmoredHit) {
         enemy.goatArmorHits = 1;
         enemy.goatArmorFlash = 0.28;
+      } else if (uninterruptibleRushGoat) {
+        enemy.goatArmorFlash = 0.18;
       } else {
         enemy.anim = 0;
         if (enemy.type === "goat") {
@@ -6606,7 +7068,9 @@ function applyAttackHit(kind, data) {
       hit = true;
       if (enemy.hp <= 0) {
         defeatedTarget = true;
-        if (groundBounceReady && !forceLaunch) {
+        if (uninterruptibleRushGoat) {
+          // Beatrice's lane-charge goats only stop if defeated outright.
+        } else if (groundBounceReady && !forceLaunch) {
           groundBounceEnemyByBattlerRules(enemy, player.facing, source, data.launchLift, data.launchDrift);
         } else if (data.launch || forceLaunch) {
           launchEnemyByBattlerRules(enemy, player.facing, source, data.launchLift || 470, data.launchDrift || 170);
@@ -6614,6 +7078,8 @@ function applyAttackHit(kind, data) {
           extendEnemyLaunch(enemy, player.facing, source);
         }
         defeatEnemy(enemy);
+      } else if (uninterruptibleRushGoat) {
+        // No flinch, knockdown, launch, or action reset while the boss mechanic charge is active.
       } else if (goatArmoredHit) {
         // Goat shrugs off the first hit without flinching.
       } else if (groundBounceReady && !forceLaunch) {
@@ -6623,6 +7089,7 @@ function applyAttackHit(kind, data) {
       } else if (enemy.airborne) {
         extendEnemyLaunch(enemy, player.facing, source);
       } else if (data.knockdown) {
+        cancelInterruptibleGoatCharge(enemy);
         enemy.knockedDown = true;
         enemy.downTime = 1.1;
         enemy.hurt = 0;
@@ -6708,13 +7175,16 @@ function applyCrestEchoHit(kind, data) {
     const source = `battlerCrest:${kind}`;
     const forceLaunch = player.goatParryCounter && (kind === "punch3" || kind === "kick3");
     const groundBounceReady = data.groundBounce && canGroundBounceTarget(enemy);
-    const goatArmoredHit = enemy.type === "goat" && !enemy.airborne && enemy.goatArmorHits < 1 && (data.stage || 1) < 2;
+    const uninterruptibleRushGoat = isUninterruptibleBeatriceRushGoat(enemy);
+    const goatArmoredHit = !uninterruptibleRushGoat && enemy.type === "goat" && !enemy.airborne && enemy.goatArmorHits < 1 && (data.stage || 1) < 2;
     damageEnemy(enemy, data.damage * EAGLE_CREST_DAMAGE_MULTIPLIER);
     burst(enemy.x, enemy.y - (enemy.type === "goat" ? 180 : 82), "special");
 
     if (goatArmoredHit) {
       enemy.goatArmorHits = 1;
       enemy.goatArmorFlash = 0.28;
+    } else if (uninterruptibleRushGoat) {
+      enemy.goatArmorFlash = 0.18;
     } else {
       enemy.anim = 0;
       if (enemy.type === "goat") {
@@ -6732,7 +7202,9 @@ function applyCrestEchoHit(kind, data) {
     if (enemy.type !== "goat") enemy.facing = -direction;
     hit = true;
     if (enemy.hp <= 0) {
-      if (groundBounceReady && !forceLaunch) {
+      if (uninterruptibleRushGoat) {
+        // Beatrice's lane-charge goats only stop if defeated outright.
+      } else if (groundBounceReady && !forceLaunch) {
         groundBounceEnemyByBattlerRules(enemy, direction, source, data.launchLift, data.launchDrift);
       } else if (data.launch || forceLaunch) {
         launchEnemyByBattlerRules(enemy, direction, source, data.launchLift || 470, data.launchDrift || 170);
@@ -6740,6 +7212,8 @@ function applyCrestEchoHit(kind, data) {
         extendEnemyLaunch(enemy, direction, source);
       }
       defeatEnemy(enemy);
+    } else if (uninterruptibleRushGoat) {
+      // No flinch, knockdown, launch, or action reset while the boss mechanic charge is active.
     } else if (goatArmoredHit) {
       // Goat shrugs off the first light echo hit without flinching.
     } else if (groundBounceReady && !forceLaunch) {
@@ -6749,6 +7223,7 @@ function applyCrestEchoHit(kind, data) {
     } else if (enemy.airborne) {
       extendEnemyLaunch(enemy, direction, source);
     } else if (data.knockdown) {
+      cancelInterruptibleGoatCharge(enemy);
       enemy.knockedDown = true;
       enemy.downTime = 1.1;
       enemy.hurt = 0;
@@ -6789,12 +7264,18 @@ function applyEnemyAttackHit(enemy) {
   }
   if (!hit) return false;
   const contactY = player.y - 148;
+  const wasRunning = player.runState === "running";
 
   const damage = data.damage + Math.floor(wave / 2);
   damagePlayer(damage);
   if (absorbPlayerPoise(damage, false)) {
     player.invuln = Math.max(player.invuln, 0.12);
     burst(contactX, contactY, "enemy");
+    if (player.hp <= 0) defeatPlayer();
+    return true;
+  }
+  if (wasRunning) {
+    startPlayerRunStumble(enemy.facing, contactX, contactY);
     if (player.hp <= 0) defeatPlayer();
     return true;
   }
@@ -6820,19 +7301,127 @@ function applyEnemyAttackHit(enemy) {
   return true;
 }
 
-function pointInGoatPoundCone(enemy, x, y) {
-  const startX = enemy.x + enemy.facing * 46;
-  const forward = (x - startX) * enemy.facing;
-  if (forward < 0 || forward > GOAT_POUND_RANGE) return false;
-  const scaledY = (y - enemy.y) / GOAT_POUND_SEMICIRCLE_Y_SCALE;
-  return Math.hypot(forward, scaledY) <= GOAT_POUND_RANGE;
+function startPlayerRunStumble(direction = -player.facing, contactX = player.x, contactY = player.y - 96) {
+  const tripDir = Math.sign(player.facing || player.vx || direction) || 1;
+  player.runStumbleTimer = 0;
+  player.runStumblePendingDizzy = true;
+  player.runStumbleTripTimer = RUN_STUMBLE_TRIP_DURATION;
+  player.runStumbleTripVx = tripDir * (RUN_STUMBLE_TRIP_SLIDE / RUN_STUMBLE_TRIP_DURATION);
+  player.attackLock = 0;
+  player.attackLungeRemaining = 0;
+  player.attackHasHit = false;
+  player.crestAttackHasHit = false;
+  player.currentAttack = "";
+  player.stage3KickAir = false;
+  player.stage3KickTimer = 0;
+  player.stage3KickVz = 0;
+  player.vx = 0;
+  player.vy = 0;
+  player.runState = "none";
+  player.runLocked = false;
+  player.runTimer = 0;
+  player.runCharge = 0;
+  player.brakeDrift = 0;
+  player.brakeBurstTimer = 0;
+  if (touchControls.runLatched) {
+    touchControls.runLatched = false;
+    syncTouchRunButtonState();
+  }
+  touchControls.runHeld = false;
+  syncTouchRunButtonState();
+  drainDashStocksForRunStumble();
+  resetPlayerCombo();
+  player.facing = tripDir;
+  player.z = 0;
+  player.airVx = 0;
+  player.vz = 0;
+  player.airborne = false;
+  player.knockedDown = false;
+  player.downTime = 0;
+  setAction("runTrip", RUN_STUMBLE_TRIP_DURATION);
+  burst(contactX, contactY, "enemy");
 }
 
-function goatDetectsPlayer(enemy) {
-  const inFront = (player.x - enemy.x) * enemy.facing > 0;
-  const closeX = Math.abs(player.x - enemy.x) <= GOAT_POUND_DETECTION_RANGE;
-  const closeY = Math.abs(player.y - enemy.y) <= GOAT_POUND_DEPTH;
-  return inFront && closeX && closeY && !player.airborne && !player.knockedDown;
+function checkPlayerRunBodyCollision() {
+  if (player.runState !== "running" || player.airborne || player.knockedDown || player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0) return false;
+  const playerBox = { x: player.x - 30, y: player.y - 68, w: 60, h: 96 };
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0 || enemy.airborne || enemy.knockedDown) continue;
+    if (enemy.type === "goat" && enemy.goatAction === "defeat") continue;
+    if (!rectsTouch(playerBox, enemyHurtbox(enemy))) continue;
+    const direction = Math.sign(player.x - enemy.x) || -player.facing || 1;
+    startPlayerRunStumble(direction, (player.x + enemy.x) * 0.5, player.y - 98);
+    return true;
+  }
+  return false;
+}
+
+function goatPoundBasis(enemy) {
+  const dirX = enemy.goatPoundDx || enemy.facing || 1;
+  const dirY = enemy.goatPoundDy || 0;
+  return {
+    dirX,
+    dirY,
+    startX: enemy.x + dirX * 46,
+    startY: enemy.y + dirY * 12
+  };
+}
+
+function pointInGoatPoundSlam(enemy, x, y) {
+  const { dirX, dirY, startX, startY } = goatPoundBasis(enemy);
+  const relX = x - startX;
+  const relY = y - startY;
+  const along = relX * dirX + relY * dirY;
+  const side = Math.abs(relX * -dirY + relY * dirX);
+  if (along < 0) return false;
+  return Math.hypot(along, side / GOAT_POUND_SEMICIRCLE_Y_SCALE) <= GOAT_POUND_RANGE;
+}
+
+function pointInGoatPoundQuake(enemy, x, y) {
+  const { dirX, dirY, startX, startY } = goatPoundBasis(enemy);
+  const relX = x - startX;
+  const relY = y - startY;
+  const along = relX * dirX + relY * dirY;
+  const side = Math.abs(relX * -dirY + relY * dirX);
+  if (along < 0) return false;
+  return Math.hypot(along, side / GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE) <= GOAT_POUND_QUAKE_RANGE;
+}
+
+function pointInGoatPoundThreat(enemy, x, y) {
+  return pointInGoatPoundSlam(enemy, x, y) || pointInGoatPoundQuake(enemy, x, y);
+}
+
+function pointInGoatPoundCone(enemy, x, y) {
+  return pointInGoatPoundThreat(enemy, x, y);
+}
+
+function goatPlayerNearbyForPunch(enemy) {
+  const closeX = Math.abs(player.x - enemy.x) <= GOAT_PUNCH_DETECTION_RANGE;
+  const closeY = Math.abs(player.y - enemy.y) <= GOAT_PUNCH_DEPTH + 28;
+  return closeX && closeY && !player.airborne && !player.knockedDown;
+}
+
+function aimGoatPoundAtPlayer(enemy) {
+  const facing = player.x >= enemy.x ? 1 : -1;
+  const dx = Math.max(1, Math.abs(player.x - enemy.x));
+  const maxSlope = Math.tan(GOAT_POUND_QUAKE_MAX_LANE_ANGLE);
+  const slope = clamp((player.y - enemy.y) / dx, -maxSlope, maxSlope);
+  const norm = Math.hypot(1, slope);
+  enemy.facing = facing;
+  enemy.goatPoundDx = facing / norm;
+  enemy.goatPoundDy = slope / norm;
+}
+
+function startGoatPound(enemy) {
+  aimGoatPoundAtPlayer(enemy);
+  enemy.goatAction = "pound";
+  enemy.goatHasHit = false;
+  enemy.goatParryFailed = false;
+  enemy.goatParryFailFade = 0;
+  enemy.goatNoDetectTimer = 0;
+  enemy.goatPoundFinalHold = 0;
+  enemy.anim = 0;
+  enemy.cooldown = 0;
 }
 
 function startGoatShoulderCharge(enemy) {
@@ -6854,6 +7443,18 @@ function startGoatShoulderCharge(enemy) {
   enemy.cooldown = 0;
 }
 
+function startGoatPunch(enemy) {
+  enemy.facing = player.x >= enemy.x ? 1 : -1;
+  enemy.goatAction = "punch";
+  enemy.goatHasHit = false;
+  enemy.goatParryFailed = false;
+  enemy.goatParryFailFade = 0;
+  enemy.goatNoDetectTimer = 0;
+  enemy.goatPunchSlideDistance = 0;
+  enemy.anim = 0;
+  enemy.cooldown = 0;
+}
+
 function pointInGoatChargePath(enemy, x, y, distance = GOAT_CHARGE_DISTANCE) {
   const startX = enemy.x + enemy.facing * 42;
   const startY = enemy.y;
@@ -6867,11 +7468,25 @@ function pointInGoatChargePath(enemy, x, y, distance = GOAT_CHARGE_DISTANCE) {
   return side <= GOAT_CHARGE_WIDTH * 0.5;
 }
 
+function pointInGoatPunch(enemy, x, y) {
+  const startX = enemy.x + enemy.facing * 38;
+  const forward = (x - startX) * enemy.facing;
+  if (forward < 0 || forward > GOAT_PUNCH_RANGE) return false;
+  const scaledY = (y - enemy.y) / GOAT_PUNCH_SEMICIRCLE_Y_SCALE;
+  return Math.hypot(forward, scaledY) <= GOAT_PUNCH_RANGE;
+}
+
 function applyGoatChargeHit(enemy) {
   if (enemy.spawnGrace > 0 || player.airborne || player.knockedDown || state !== "playing") return false;
   if (!pointInGoatChargePath(enemy, player.x, player.y, 96)) return false;
   if (isPlayerInvulnerable()) return true;
+  const wasRunning = player.runState === "running";
   damagePlayer(GOAT_CHARGE_DAMAGE + Math.floor(wave / 3));
+  if (wasRunning) {
+    startPlayerRunStumble(Math.sign(enemy.goatChargeDx || enemy.facing) || enemy.facing, player.x, player.y - 110);
+    if (player.hp <= 0) defeatPlayer();
+    return true;
+  }
   player.invuln = 0.35;
   player.attackLock = 0;
   player.attackLungeRemaining = 0;
@@ -6890,23 +7505,58 @@ function applyGoatChargeHit(enemy) {
   return true;
 }
 
-function applyGoatPoundHit(enemy) {
+function applyGoatPunchHit(enemy) {
   if (enemy.spawnGrace > 0 || player.airborne || player.knockedDown || state !== "playing") return false;
-  const impactX = enemy.x + enemy.facing * (46 + GOAT_POUND_RANGE * 0.72);
-  const impactY = enemy.y;
-  crystalShockwaves.push({
-    x: impactX,
-    y: impactY,
-    life: 0.32,
-    max: 0.32,
-    radius: GOAT_POUND_SHOCKWAVE_RADIUS,
-    touched: new Set(),
-    shockwaveDamage: 0,
-    dome: true
-  });
-  if (!pointInGoatPoundCone(enemy, player.x, player.y)) return false;
+  if (!pointInGoatPunch(enemy, player.x, player.y)) return false;
   if (isPlayerInvulnerable()) return false;
-  damagePlayer(GOAT_POUND_DAMAGE + Math.floor(wave / 2));
+  const wasRunning = player.runState === "running";
+  damagePlayer(GOAT_PUNCH_DAMAGE + Math.floor(wave / 4));
+  if (wasRunning) {
+    startPlayerRunStumble(enemy.facing, player.x, player.y - 92);
+    if (player.hp <= 0) defeatPlayer();
+    return true;
+  }
+  player.invuln = 0.28;
+  player.attackLock = 0;
+  player.attackLungeRemaining = 0;
+  player.attackHasHit = false;
+  player.currentAttack = "";
+  player.runState = "none";
+  player.runTimer = 0;
+  player.runCharge = 0;
+  player.brakeDrift = 0;
+  player.brakeBurstTimer = 0;
+  resetPlayerCombo();
+  launchActor(player, enemy.facing, GOAT_PUNCH_LIFT, GOAT_PUNCH_DRIFT);
+  burst(player.x, player.y - 92, "enemy");
+  screenShakeTimer = Math.max(screenShakeTimer, 0.18);
+  if (player.hp <= 0) defeatPlayer();
+  return true;
+}
+
+function pointInGoatPoundSemicircle(startX, startY, dirX, dirY, radius, yScale, x, y) {
+  const relX = x - startX;
+  const relY = y - startY;
+  const along = relX * dirX + relY * dirY;
+  const side = Math.abs(relX * -dirY + relY * dirX);
+  if (along < 0) return false;
+  return Math.hypot(along, side / yScale) <= radius;
+}
+
+function queueGoatPoundQuake(enemy) {
+  const { dirX, dirY, startX, startY } = goatPoundBasis(enemy);
+  goatPoundQuakes.push({
+    x: startX,
+    y: startY,
+    dirX,
+    dirY,
+    timer: 0,
+    rockTimer: 0,
+    hit: false
+  });
+}
+
+function resetPlayerForGoatHit() {
   player.invuln = 0.35;
   player.attackLock = 0;
   player.attackLungeRemaining = 0;
@@ -6918,19 +7568,118 @@ function applyGoatPoundHit(enemy) {
   player.brakeDrift = 0;
   player.brakeBurstTimer = 0;
   resetPlayerCombo();
-  launchActor(player, enemy.facing, GOAT_POUND_LIFT, GOAT_POUND_DRIFT);
+}
+
+function applyGoatPoundHit(enemy) {
+  if (enemy.spawnGrace > 0 || player.airborne || player.knockedDown || state !== "playing") return false;
+  const dirX = enemy.goatPoundDx || enemy.facing || 1;
+  const dirY = enemy.goatPoundDy || 0;
+  const { startX, startY } = goatPoundBasis(enemy);
+  queueGoatPoundQuake(enemy);
+  crystalShockwaves.push({
+    x: startX,
+    y: startY,
+    life: 0.32,
+    max: 0.32,
+    radius: GOAT_POUND_SHOCKWAVE_RADIUS,
+    touched: new Set(),
+    shockwaveDamage: 0,
+    dome: true
+  });
+  const inSlam = pointInGoatPoundSlam(enemy, player.x, player.y);
+  if (!inSlam) return false;
+  if (isPlayerInvulnerable()) return false;
+  const wasRunning = player.runState === "running";
+  damagePlayer(GOAT_POUND_DAMAGE + Math.floor(wave / 2));
+  if (wasRunning) {
+    startPlayerRunStumble(Math.sign(dirX) || enemy.facing, player.x, player.y - 96);
+    if (player.hp <= 0) defeatPlayer();
+    return true;
+  }
+  resetPlayerForGoatHit();
+  player.runStumblePendingDizzy = false;
+  launchActor(player, Math.sign(dirX) || enemy.facing, GOAT_POUND_LIFT, GOAT_POUND_DRIFT);
   burst(player.x, player.y - 96, "enemy");
-  burst(impactX, impactY - 38, "special");
+  burst(startX, startY - 38, "special");
   screenShakeTimer = Math.max(screenShakeTimer, 0.42);
+  if (player.hp <= 0) defeatPlayer();
+  return true;
+}
+
+function spawnGoatQuakeRocks(quake, radius) {
+  const count = 5 + Math.floor(Math.random() * 4);
+  for (let i = 0; i < count; i++) {
+    const local = (Math.random() - 0.5) * Math.PI;
+    const distance = GOAT_POUND_RANGE + Math.random() * Math.max(1, radius - GOAT_POUND_RANGE);
+    const along = Math.cos(local) * distance;
+    const side = Math.sin(local) * distance * GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE;
+    const x = quake.x + quake.dirX * along + -quake.dirY * side;
+    const y = quake.y + quake.dirY * along + quake.dirX * side;
+    particles.push({
+      x,
+      y,
+      vx: quake.dirX * (18 + Math.random() * 80) + (Math.random() - 0.5) * 135,
+      vy: -250 - Math.random() * 210,
+      life: 0.44 + Math.random() * 0.28,
+      max: 0.72,
+      color: Math.random() < 0.5 ? "#8b5a35" : Math.random() < 0.5 ? "#5a3a25" : "#b1743a",
+      size: 5 + Math.random() * 10,
+      gravity: 620,
+      shard: true,
+      angle: Math.random() * Math.PI,
+      spin: (Math.random() - 0.5) * 9
+    });
+  }
+}
+
+function applyGoatDelayedQuakeHit(quake, radius) {
+  if (quake.hit || state !== "playing" || player.airborne || player.knockedDown) return false;
+  const inOuter = pointInGoatPoundSemicircle(
+    quake.x,
+    quake.y,
+    quake.dirX,
+    quake.dirY,
+    radius,
+    GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE,
+    player.x,
+    player.y
+  );
+  const inSlam = pointInGoatPoundSemicircle(
+    quake.x,
+    quake.y,
+    quake.dirX,
+    quake.dirY,
+    GOAT_POUND_RANGE,
+    GOAT_POUND_SEMICIRCLE_Y_SCALE,
+    player.x,
+    player.y
+  );
+  if (!inOuter || inSlam) return false;
+  quake.hit = true;
+  if (isPlayerInvulnerable()) return false;
+  const direction = Math.sign(quake.dirX) || player.facing || 1;
+  const wasRunning = player.runState === "running";
+  damagePlayer(Math.max(12, Math.round(GOAT_POUND_DAMAGE * 0.55) + Math.floor(wave / 3)));
+  if (wasRunning) {
+    startPlayerRunStumble(direction, player.x, player.y - 96);
+    if (player.hp <= 0) defeatPlayer();
+    return true;
+  }
+  resetPlayerForGoatHit();
+  player.runStumblePendingDizzy = true;
+  launchActor(player, direction, GOAT_POUND_QUAKE_LIFT, GOAT_POUND_QUAKE_DRIFT);
+  burst(player.x, player.y - 96, "enemy");
+  screenShakeTimer = Math.max(screenShakeTimer, 0.28);
   if (player.hp <= 0) defeatPlayer();
   return true;
 }
 
 function attack(kind) {
   if (state !== "playing") return false;
+  if (player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0 || player.action === "getUp") return false;
   if ((kind === "punch" || kind === "kick") && tryGoatPoundParry(kind)) return true;
   if (kind === "special") {
-    if (player.resolve < 100 || player.airborne || player.knockedDown || player.action === "hurt" || player.action === "special" || player.action === "specialBeam" || player.action === "duoCharge" || duoAttack.active) {
+    if (player.resolve < 100 || player.airborne || player.knockedDown || player.action === "hurt" || player.action === "runTrip" || player.action === "getUp" || player.action === "special" || player.action === "specialBeam" || player.action === "duoCharge" || duoAttack.active) {
       return false;
     }
     player.comboTimer = 0;
@@ -6960,7 +7709,21 @@ function attack(kind) {
     return true;
   }
   if (player.attackLock > 0) return false;
-  const action = kind === "punch" && isPlayerAtTopRunSpeed() ? "dashPunch" : kind === "punch" || kind === "kick" ? nextComboAction(kind) : kind;
+  let action = kind === "punch" || kind === "kick" ? nextComboAction(kind) : kind;
+  if (kind === "punch" || kind === "kick") {
+    const dashTiming = dashAttackTimingState();
+    if (dashTiming === "flash") {
+      action = "dashPunch";
+    } else if (dashTiming === "late") {
+      startMistimedDashAttackTrip();
+      resetAttackHolds();
+      return true;
+    } else if (dashTiming === "early" || dashTiming === "expired") {
+      resetPlayerCombo();
+      stopRunMomentumForAttack();
+      action = `${kind}1`;
+    }
+  }
   const data = attackData[action];
   if (!data) return false;
   if (action === "dashPunch" && touchControls.runLatched) {
@@ -7015,6 +7778,9 @@ function canStartChargedAttack() {
     && player.attackLock <= 0
     && !player.airborne
     && !player.knockedDown
+    && player.runStumbleProneTimer <= 0
+    && player.action !== "runTrip"
+    && player.action !== "getUp"
     && player.action !== "special"
     && player.action !== "specialBeam"
     && player.action !== "duoCharge"
@@ -7081,6 +7847,7 @@ function updateAttackHolds(dt) {
 
 function attackChargeProgress() {
   if (state !== "playing") return 0;
+  if (player.resolve < chargedAttackResolveCost()) return 0;
   let progress = 0;
   for (const hold of Object.values(attackHolds)) {
     if (!hold.down || hold.triggered) continue;
@@ -7842,14 +8609,18 @@ function applySpecialBeam(dt) {
     const contactY = (Math.max(beam.y, hurtbox.y) + Math.min(beam.y + beam.h, hurtbox.y + hurtbox.h)) * 0.5;
     spawnBeamContactSparks(contactX, contactY, dt);
     damageEnemy(enemy, SPECIAL_BEAM_DAMAGE * dt);
-    enemy.hurt = 0.12;
-    enemy.attack = 0;
-    enemy.attackHasHit = false;
-    enemy.attackTelegraph = 0;
-    enemy.facing = -player.facing;
-    if (enemy.airborne) {
-      extendEnemyLaunch(enemy, player.facing, "battler:specialBeam", 230, 75);
+    if (isUninterruptibleBeatriceRushGoat(enemy)) {
+      enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.08);
     } else {
+      enemy.hurt = 0.12;
+      enemy.attack = 0;
+      enemy.attackHasHit = false;
+      enemy.attackTelegraph = 0;
+      enemy.facing = -player.facing;
+    }
+    if (enemy.airborne && !isUninterruptibleBeatriceRushGoat(enemy)) {
+      extendEnemyLaunch(enemy, player.facing, "battler:specialBeam", 230, 75);
+    } else if (!isUninterruptibleBeatriceRushGoat(enemy)) {
       enemy.x = clamp(enemy.x + player.facing * 120 * dt, 80, STAGE_W - 120);
     }
     if (enemy.hp <= 0) {
@@ -7868,12 +8639,19 @@ function damageLambdaSpecialArea(x, y, radius, damage, source, options = {}) {
     const dist = Math.hypot(enemy.x - x, (enemy.y - y) * 1.15);
     if (dist > radius) continue;
     damageEnemy(enemy, damage);
-    enemy.hurt = Math.max(enemy.hurt || 0, 0.16);
-    enemy.attack = 0;
-    enemy.attackHasHit = false;
-    enemy.attackTelegraph = 0;
+    const uninterruptibleRushGoat = isUninterruptibleBeatriceRushGoat(enemy);
+    if (uninterruptibleRushGoat) {
+      enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
+    } else {
+      enemy.hurt = Math.max(enemy.hurt || 0, 0.16);
+      enemy.attack = 0;
+      enemy.attackHasHit = false;
+      enemy.attackTelegraph = 0;
+    }
     const direction = Math.sign(enemy.x - x) || player.facing || 1;
-    if (launchMode === "unprorated") {
+    if (uninterruptibleRushGoat) {
+      // Beatrice rush goats ignore combo interruption while crossing the lane.
+    } else if (launchMode === "unprorated") {
       launchEnemyUnprorated(enemy, direction, source, launchLift, launchDrift);
     } else if (pulseLaunchedEnemies && !pulseLaunchedEnemies.has(enemy)) {
       pulseLaunchedEnemies.add(enemy);
@@ -7948,8 +8726,22 @@ function applyLambdaSpecialSuction(effect, dt) {
   }
 }
 
+function spawnLambdaSpecialFinalBurst(x, y) {
+  lambdaSpecialFinalBursts.push({
+    x,
+    y,
+    life: LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_DURATION,
+    max: LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_DURATION,
+    radius: LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_RADIUS,
+    damage: LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_DAMAGE,
+    touched: new Set(),
+    hitBeatrice: false
+  });
+}
+
 function explodeLambdaSpecialKonpeito(effect) {
   spawnLambdaSpecialPulseVisual(effect.x, effect.y, 0.58, LAMBDA_SPECIAL_KONPEITO_GROUND_BOUNCE_RADIUS);
+  spawnLambdaSpecialFinalBurst(effect.x, effect.y);
   damageLambdaSpecialArea(
     effect.x,
     effect.y,
@@ -8122,6 +8914,51 @@ function updateLambdaSpecialKonpeitos(dt) {
   }
 }
 
+function updateLambdaSpecialFinalBursts(dt) {
+  for (let i = lambdaSpecialFinalBursts.length - 1; i >= 0; i--) {
+    const wave = lambdaSpecialFinalBursts[i];
+    const t = 1 - wave.life / wave.max;
+    const radius = wave.radius * Math.pow(clamp(t, 0, 1), 0.82);
+    for (let enemyIndex = 0; enemyIndex < enemies.length; enemyIndex++) {
+      if (wave.touched.has(enemyIndex)) continue;
+      const enemy = enemies[enemyIndex];
+      if (enemy.dead || enemy.spawnGrace > 0) continue;
+      const hurtY = enemy.y - (enemy.z || 0) - 74;
+      const dist = Math.hypot(enemy.x - wave.x, (hurtY - (wave.y - 72)) * 0.78);
+      if (dist > radius) continue;
+      wave.touched.add(enemyIndex);
+      damageEnemy(enemy, wave.damage);
+      if (isUninterruptibleBeatriceRushGoat(enemy)) {
+        enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.22);
+      } else {
+        enemy.hurt = Math.max(enemy.hurt || 0, 0.34);
+        enemy.attack = 0;
+        enemy.attackHasHit = false;
+        enemy.attackTelegraph = 0;
+        const direction = Math.sign(enemy.x - wave.x) || player.facing || 1;
+        if (enemy.airborne) {
+          extendEnemyLaunch(enemy, direction, "battler:lambdaKonpeitoSpecialFinalBurst", 230, 78);
+        } else {
+          enemy.x = clamp(enemy.x + direction * 58, 80, STAGE_W - 120);
+        }
+      }
+      if (enemy.hp <= 0) defeatEnemy(enemy);
+    }
+    if (!wave.hitBeatrice && beatriceCanBeDamaged()) {
+      const box = beatriceHurtbox();
+      const centerX = box.x + box.w * 0.5;
+      const centerY = box.y + box.h * 0.5;
+      if (Math.hypot(centerX - wave.x, (centerY - (wave.y - 72)) * 0.78) <= radius) {
+        wave.hitBeatrice = true;
+        damageBeatrice(wave.damage, Math.sign(beatriceBoss.x - wave.x) || player.facing || 1);
+        if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
+      }
+    }
+    wave.life -= dt;
+    if (wave.life <= 0) lambdaSpecialFinalBursts.splice(i, 1);
+  }
+}
+
 function updateLambdaSpecialShrapnel(dt) {
   for (let i = lambdaSpecialShrapnel.length - 1; i >= 0; i--) {
     const shard = lambdaSpecialShrapnel[i];
@@ -8136,8 +8973,12 @@ function updateLambdaSpecialShrapnel(dt) {
       if (Math.hypot(enemy.x - pos.x, (hurtY - pos.y) * 0.82) > LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_RADIUS) continue;
       shard.hitEnemies.add(enemyIndex);
       damageEnemy(enemy, LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE);
-      enemy.hurt = Math.max(enemy.hurt || 0, 0.12);
-      enemy.attack = 0;
+      if (isUninterruptibleBeatriceRushGoat(enemy)) {
+        enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
+      } else {
+        enemy.hurt = Math.max(enemy.hurt || 0, 0.12);
+        enemy.attack = 0;
+      }
       if (enemy.hp <= 0) defeatEnemy(enemy);
     }
     if (!shard.hitBeatrice && beatriceCanBeDamaged()) {
@@ -8208,6 +9049,105 @@ function updatePlayer(dt) {
     cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
     return;
   }
+  if (player.runStumbleTripTimer > 0) {
+    player.runStumbleTripTimer = Math.max(0, player.runStumbleTripTimer - dt);
+    player.runState = "none";
+    player.runLocked = false;
+    player.runTimer = 0;
+    player.runCharge = 0;
+    player.brakeDrift = 0;
+    player.brakeBurstTimer = 0;
+    player.attackLock = Math.max(player.attackLock, player.runStumbleTripTimer);
+    player.attackLungeRemaining = 0;
+    player.vx = player.runStumbleTripVx || 0;
+    player.vy = 0;
+    player.x = clamp(player.x + player.vx * dt, 80, STAGE_W - 120);
+    player.z = 0;
+    player.airborne = false;
+    player.knockedDown = false;
+    player.anim = Math.min(frames.runTrip.length - 0.01, player.anim + dt * (frames.runTrip.length / RUN_STUMBLE_TRIP_DURATION));
+    if (player.action !== "runTrip") setAction("runTrip");
+    if (player.runStumbleTripTimer <= 0) {
+      player.runStumbleTripTimer = 0;
+      player.runStumbleTripVx = 0;
+      player.vx = 0;
+      player.runStumbleProneTimer = RUN_STUMBLE_PRONE_HOLD;
+      player.attackLock = RUN_STUMBLE_PRONE_HOLD;
+      player.anim = frames.runTrip.length - 0.01;
+    }
+    cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+    return;
+  }
+  if (player.runStumbleProneTimer > 0) {
+    player.runStumbleProneTimer = Math.max(0, player.runStumbleProneTimer - dt);
+    player.runState = "none";
+    player.runLocked = false;
+    player.runTimer = 0;
+    player.runCharge = 0;
+    player.brakeDrift = 0;
+    player.brakeBurstTimer = 0;
+    player.attackLock = Math.max(player.attackLock, player.runStumbleProneTimer);
+    player.attackLungeRemaining = 0;
+    player.vx = 0;
+    player.vy = 0;
+    player.z = 0;
+    player.airborne = false;
+    player.knockedDown = false;
+    if (player.action !== "runTrip") setAction("runTrip");
+    player.anim = frames.runTrip.length - 0.01;
+    if (player.runStumbleProneTimer <= 0) {
+      player.runStumbleProneTimer = 0;
+      startPlayerGetUp(player.runStumblePendingDizzy);
+    }
+    cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+    return;
+  }
+  if (player.runStumbleTimer > 0) {
+    player.runStumbleTimer = Math.max(0, player.runStumbleTimer - dt);
+    player.runState = "none";
+    player.runLocked = false;
+    player.runTimer = 0;
+    player.runCharge = 0;
+    player.brakeDrift = 0;
+    player.brakeBurstTimer = 0;
+    player.attackLock = 0;
+    player.attackLungeRemaining = 0;
+    player.vx = 0;
+    player.vy = 0;
+    player.z = 0;
+    player.airborne = false;
+    player.knockedDown = false;
+    player.anim += dt * 9.5;
+    setAction("runDizzy");
+    if (player.runStumbleTimer <= 0) {
+      player.runStumbleTimer = 0;
+      player.runStumblePendingDizzy = false;
+      setAction("idle");
+    }
+    cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+    return;
+  }
+  if (player.action === "getUp" || player.getUpTimer > 0) {
+    player.getUpTimer = Math.max(0, player.getUpTimer - dt);
+    player.invuln = Math.max(player.invuln, 0.12);
+    player.runState = "none";
+    player.runLocked = false;
+    player.runTimer = 0;
+    player.runCharge = 0;
+    player.brakeDrift = 0;
+    player.brakeBurstTimer = 0;
+    player.attackLock = Math.max(player.attackLock, player.getUpTimer);
+    player.attackLungeRemaining = 0;
+    player.vx = 0;
+    player.vy = 0;
+    player.z = 0;
+    player.airborne = false;
+    player.knockedDown = false;
+    player.anim = Math.min(frames.getUp.length - 0.01, player.anim + dt * (frames.getUp.length / GET_UP_DURATION));
+    if (player.getUpTimer <= 0) finishPlayerGetUp();
+    cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+    return;
+  }
   if (player.airborne) {
     player.vx = player.airVx;
     player.vy = 0;
@@ -8217,6 +9157,9 @@ function updatePlayer(dt) {
     player.anim = player.vz > 0 ? 0 : player.anim + dt * 8;
     if (player.z <= 0) {
       landLaunchedActor(player, player.konpeitoGlowPending ? 0.35 : 0.55);
+      if (player.runStumblePendingDizzy) {
+        player.downTime = Math.max(player.downTime, RUN_STUMBLE_DOWN_TIME);
+      }
       player.action = "down";
       player.attackLock = player.downTime;
       if (player.beatriceDropKickBouncePending) {
@@ -8250,14 +9193,12 @@ function updatePlayer(dt) {
     player.downTime -= dt;
     player.anim = Math.min(frames.down.length - 0.01, player.anim + dt * 8);
     if (player.downTime <= 0) {
-      player.knockedDown = false;
-      player.anim = 0;
-      player.attackLock = 0;
-      setAction("idle");
-      if (player.konpeitoGlowPending) {
-        player.konpeitoGlowPending = false;
-        player.konpeitoGlowTimer = 1;
+      if (player.runStumblePendingDizzy) {
+        startPlayerGetUp(true);
+        cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+        return;
       }
+      startPlayerGetUp();
     }
     cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
     return;
@@ -8362,6 +9303,9 @@ function updatePlayer(dt) {
   let my = 0;
   mx = inputAxisX();
   my = inputAxisY();
+  if (!mx && inputHorizontalOpposed() && (player.runState === "starting" || player.runState === "running")) {
+    mx = player.facing || 1;
+  }
 
   if (player.attackLock <= 0) {
     const moving = mx || my;
@@ -8373,7 +9317,22 @@ function updatePlayer(dt) {
         syncTouchRunButtonState();
       }
     }
-    const wantsRunInput = Boolean(moving && inputRunHeld());
+    const reversedRunDirection = (player.runState === "starting" || player.runState === "running") && mx && Math.sign(mx) !== player.facing;
+    if (reversedRunDirection) {
+      const burstRelease = player.runState === "starting" || player.brakeBurstTimer > 0;
+      player.runState = "braking";
+      player.runLocked = false;
+      player.runTimer = DASH_BRAKE_DURATION;
+      player.brakeDrift = burstRelease ? DASH_TAP_DODGE_DRIFT : 46 + 42 * player.runCharge;
+      player.brakeBurstTimer = burstRelease ? Math.max(player.brakeBurstTimer, DASH_TAP_DODGE_BRAKE_DURATION * 0.45) : 0;
+      player.runCharge = 0;
+      if (touchControls.runLatched) {
+        touchControls.runLatched = false;
+        syncTouchRunButtonState();
+      }
+      setAction("runBrake");
+    }
+    const wantsRunInput = Boolean(inputRunHeld() && !reversedRunDirection);
     const wantsRun = wantsRunInput && (player.runState === "starting" || player.runState === "running" || availableDashStocks() > 0);
     let moveSpeed = 240;
     let laneSpeed = 150;
@@ -8487,7 +9446,7 @@ function updatePlayer(dt) {
     }
     player.x = clamp(player.x, 80, STAGE_W - 120);
     player.y = constrainLaneToBeatriceWalls(clampPlayY(player.y));
-    if (mx) player.facing = Math.sign(mx);
+    if (mx && player.runState !== "braking") player.facing = Math.sign(mx);
     setAction(action);
   } else {
     player.vx = 0;
@@ -8608,6 +9567,16 @@ function updateEnemies(dt) {
         continue;
       }
       if (enemy.goatAction === "pound") {
+        if ((enemy.goatPoundFinalHold || 0) > 0) {
+          enemy.goatPoundFinalHold = Math.max(0, enemy.goatPoundFinalHold - dt);
+          enemy.anim = goatFrames.pound.length - 0.01;
+          if (enemy.goatPoundFinalHold > 0) continue;
+          enemy.goatPoundFinalHold = 0;
+          enemy.goatAction = "recover";
+          enemy.goatHasHit = false;
+          enemy.anim = 0;
+          continue;
+        }
         enemy.anim += dt * 8.5;
         const frame = goatFrames.pound[Math.min(goatFrames.pound.length - 1, Math.floor(enemy.anim))];
         if (!enemy.goatHasHit && frame >= 684) {
@@ -8615,9 +9584,8 @@ function updateEnemies(dt) {
           applyGoatPoundHit(enemy);
         }
         if (enemy.anim >= goatFrames.pound.length) {
-          enemy.goatAction = "recover";
-          enemy.goatHasHit = false;
-          enemy.anim = 0;
+          enemy.goatPoundFinalHold = GOAT_POUND_FINAL_HOLD;
+          enemy.anim = goatFrames.pound.length - 0.01;
         }
       } else if (enemy.goatAction === "recover") {
         enemy.anim += dt * 7.5;
@@ -8627,6 +9595,24 @@ function updateEnemies(dt) {
           enemy.goatParryFailFade = 0;
           enemy.anim = 0;
           enemy.cooldown = 1.25;
+        }
+      } else if (enemy.goatAction === "punch") {
+        enemy.anim += dt * 9.5;
+        const slideRemaining = GOAT_PUNCH_SLIDE_DISTANCE - (enemy.goatPunchSlideDistance || 0);
+        if (slideRemaining > 0 && !enemy.goatHasHit) {
+          const slideStep = Math.min(slideRemaining, GOAT_PUNCH_SLIDE_SPEED * dt);
+          enemy.x = clamp(enemy.x + enemy.facing * slideStep, 80, STAGE_W - 80);
+          enemy.goatPunchSlideDistance = (enemy.goatPunchSlideDistance || 0) + slideStep;
+        }
+        const frame = goatFrames.punch[Math.min(goatFrames.punch.length - 1, Math.floor(enemy.anim))];
+        if (!enemy.goatHasHit && GOAT_PUNCH_ACTIVE_FRAMES.has(frame)) {
+          enemy.goatHasHit = applyGoatPunchHit(enemy);
+        }
+        if (enemy.anim >= goatFrames.punch.length) {
+          enemy.goatAction = "idle";
+          enemy.goatHasHit = false;
+          enemy.anim = 0;
+          enemy.cooldown = 1.05;
         }
       } else if (enemy.goatAction === "chargeWindup") {
         enemy.anim += dt * 8.5;
@@ -8665,16 +9651,20 @@ function updateEnemies(dt) {
           enemy.cooldown = 1.1;
         }
       } else {
-        const detectsPlayer = goatDetectsPlayer(enemy);
-        enemy.goatNoDetectTimer = detectsPlayer ? 0 : (enemy.goatNoDetectTimer || 0) + dt;
-        if (enemy.cooldown <= 0 && enemy.goatNoDetectTimer >= GOAT_CHARGE_NO_DETECT_TIME) {
-          startGoatShoulderCharge(enemy);
-        } else if (enemy.cooldown <= 0 && detectsPlayer) {
-          enemy.goatAction = "pound";
-          enemy.goatHasHit = false;
-          enemy.goatParryFailed = false;
-          enemy.goatParryFailFade = 0;
-          enemy.anim = 0;
+        const nearbyForPunch = goatPlayerNearbyForPunch(enemy);
+        enemy.goatNoDetectTimer = nearbyForPunch ? 0 : (enemy.goatNoDetectTimer || 0) + dt;
+        if (enemy.cooldown <= 0 && enemy.bossMechanic === "beatriceGoatTrial") {
+          startGoatPound(enemy);
+        } else if (enemy.cooldown <= 0 && nearbyForPunch) {
+          startGoatPunch(enemy);
+        } else if (enemy.cooldown <= 0 && !nearbyForPunch) {
+          if ((enemy.goatNextAttack || "pound") === "charge") {
+            startGoatShoulderCharge(enemy);
+            enemy.goatNextAttack = "pound";
+          } else {
+            startGoatPound(enemy);
+            enemy.goatNextAttack = "charge";
+          }
         } else {
           enemy.anim += dt * (enemy.hurt > 0 ? 5.5 : 3.6);
         }
@@ -8692,7 +9682,6 @@ function updateEnemies(dt) {
     enemy.attackTelegraph = Math.max(0, (enemy.attackTelegraph || 0) - dt);
     enemy.attack = Math.max(0, enemy.attack - (enemy.attackTelegraph > 0 ? 0 : dt));
     if (enemy.attack > 0) {
-      if (enemy.attackFacing) enemy.facing = enemy.attackFacing;
       if (enemy.attackTelegraph > 0) {
         enemy.anim = 0;
       } else {
@@ -8709,19 +9698,15 @@ function updateEnemies(dt) {
     }
     const dx = player.x - enemy.x;
     const dy = player.y - enemy.y;
-    if (enemy.attack > 0 && enemy.attackFacing) {
-      enemy.facing = enemy.attackFacing;
-    } else {
-      enemy.attackFacing = 0;
-      enemy.facing = dx >= 0 ? 1 : -1;
-    }
+    enemy.attackFacing = 0;
+    enemy.facing = dx >= 0 ? 1 : -1;
     const dist = Math.hypot(dx, dy);
 
     if (enemy.attack > 0) {
       continue;
     }
 
-    if (enemy.hurt <= 0 && dist > 72) {
+    if (enemy.hurt <= 0 && dist > ENEMY_ATTACK_START_RANGE) {
       enemy.x += (dx / dist) * enemy.speed * dt;
       enemy.y += (dy / dist) * enemy.speed * 0.55 * dt;
       enemy.anim += dt * 12;
@@ -8730,7 +9715,6 @@ function updateEnemies(dt) {
       enemy.attack = enemyAttackData[enemy.attackKind].lock;
       enemy.attackHasHit = false;
       enemy.attackTelegraph = ENEMY_ATTACK_TELEGRAPH_TIME;
-      enemy.attackFacing = enemy.facing;
       enemy.anim = 0;
       enemy.cooldown = 0.92 + Math.random() * 0.5;
     }
@@ -8755,6 +9739,26 @@ function updateParticles(dt) {
     p.vy += (p.gravity ?? 420) * dt;
     if (p.spin) p.angle = (p.angle || 0) + p.spin * dt;
     if (p.life <= 0) particles.splice(i, 1);
+  }
+}
+
+function updateGoatPoundQuakes(dt) {
+  for (let i = goatPoundQuakes.length - 1; i >= 0; i--) {
+    const quake = goatPoundQuakes[i];
+    quake.timer += dt;
+    if (quake.timer >= GOAT_POUND_QUAKE_DELAY) {
+      const expandT = clamp((quake.timer - GOAT_POUND_QUAKE_DELAY) / GOAT_POUND_QUAKE_DURATION, 0, 1);
+      const radius = GOAT_POUND_RANGE + (GOAT_POUND_QUAKE_RANGE - GOAT_POUND_RANGE) * expandT;
+      quake.rockTimer -= dt;
+      while (quake.rockTimer <= 0 && expandT < 1) {
+        spawnGoatQuakeRocks(quake, radius);
+        quake.rockTimer += 0.055;
+      }
+      applyGoatDelayedQuakeHit(quake, radius);
+    }
+    if (quake.timer >= GOAT_POUND_QUAKE_DELAY + GOAT_POUND_QUAKE_DURATION + 0.18) {
+      goatPoundQuakes.splice(i, 1);
+    }
   }
 }
 
@@ -8857,14 +9861,18 @@ function updateCrystalShards(dt) {
       const dist = Math.hypot(enemy.x - shard.x, (hurtY - (shard.y - shard.z)) * 0.75);
       if (dist > radius) continue;
       shard.touched.add(enemyIndex);
-      damageEnemy(enemy, CRYSTAL_SHARD_PLUS_DAMAGE);
-      enemy.hurt = Math.max(enemy.hurt || 0, 0.18);
-      enemy.attack = 0;
+      damageEnemy(enemy, CRYSTAL_SHARD_PLUS_DAMAGE, { playerDamage: !String(shard.source || "").startsWith("bern") });
       const direction = Math.sign(enemy.x - shard.x) || 1;
-      if (enemy.airborne) {
-        extendEnemyLaunch(enemy, direction, "bern:crystalShardPlus", CRYSTAL_SHARD_PLUS_LIFT, CRYSTAL_SHARD_PLUS_DRIFT);
+      if (isUninterruptibleBeatriceRushGoat(enemy)) {
+        enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
       } else {
-        launchEnemy(enemy, direction, CRYSTAL_SHARD_PLUS_LIFT, CRYSTAL_SHARD_PLUS_DRIFT, "bern:crystalShardPlus");
+        enemy.hurt = Math.max(enemy.hurt || 0, 0.18);
+        enemy.attack = 0;
+        if (enemy.airborne) {
+          extendEnemyLaunch(enemy, direction, "bern:crystalShardPlus", CRYSTAL_SHARD_PLUS_LIFT, CRYSTAL_SHARD_PLUS_DRIFT);
+        } else {
+          launchEnemy(enemy, direction, CRYSTAL_SHARD_PLUS_LIFT, CRYSTAL_SHARD_PLUS_DRIFT, "bern:crystalShardPlus");
+        }
       }
       if (enemy.hp <= 0) defeatEnemy(enemy);
     }
@@ -8925,15 +9933,19 @@ function updateCrystalShards(dt) {
         const lift = enemy.z || 0;
         const dist = Math.hypot(enemy.x - shard.targetX, enemy.y - shard.targetY);
         if (dist > CRYSTAL_SHARD_RADIUS) continue;
-        damageEnemy(enemy, CRYSTAL_SHARD_DAMAGE);
-        enemy.hurt = 0.2;
-        enemy.attack = 0;
+        damageEnemy(enemy, CRYSTAL_SHARD_DAMAGE, { playerDamage: shard.source !== "bern" });
         const source = shard.source === "bern" ? "bern:crystal" : "crystalShard";
         const direction = Math.sign(enemy.x - shard.targetX || 1);
-        if (enemy.airborne) {
-          extendEnemyLaunch(enemy, direction, source, 250, 80);
+        if (isUninterruptibleBeatriceRushGoat(enemy)) {
+          enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
         } else {
-          enemy.x = clamp(enemy.x + direction * 38, 80, STAGE_W - 120);
+          enemy.hurt = 0.2;
+          enemy.attack = 0;
+          if (enemy.airborne) {
+            extendEnemyLaunch(enemy, direction, source, 250, 80);
+          } else {
+            enemy.x = clamp(enemy.x + direction * 38, 80, STAGE_W - 120);
+          }
         }
         if (enemy.hp <= 0) defeatEnemy(enemy);
       }
@@ -8957,12 +9969,16 @@ function updateCrystalShockwaves(dt) {
         const dist = Math.hypot(enemy.x - wave.x, enemy.y - wave.y);
         if (dist > radius) continue;
         wave.touched.add(enemyIndex);
-        damageEnemy(enemy, wave.damage);
-        enemy.hurt = Math.max(enemy.hurt || 0, 0.16);
-        enemy.attack = 0;
-        if (enemy.airborne) {
-          const direction = Math.sign(enemy.x - wave.x || 1);
-          extendEnemyLaunch(enemy, direction, wave.dome ? "bern:crystalShockwave" : "crystalShockwave", 220, 70);
+        damageEnemy(enemy, wave.damage, { playerDamage: !wave.dome });
+        if (isUninterruptibleBeatriceRushGoat(enemy)) {
+          enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
+        } else {
+          enemy.hurt = Math.max(enemy.hurt || 0, 0.16);
+          enemy.attack = 0;
+          if (enemy.airborne) {
+            const direction = Math.sign(enemy.x - wave.x || 1);
+            extendEnemyLaunch(enemy, direction, wave.dome ? "bern:crystalShockwave" : "crystalShockwave", 220, 70);
+          }
         }
         if (enemy.hp <= 0) defeatEnemy(enemy);
       }
@@ -9056,7 +10072,7 @@ function updateShannonWalls(dt) {
       if (wall.hitCooldowns.get(enemy) > 0) continue;
       if (!rectsTouch(hitbox, enemyHurtbox(enemy))) continue;
       const direction = Math.sign(player.x - enemy.x) || -wall.direction || player.facing;
-      damageEnemy(enemy, SHANNON_WALL_DAMAGE);
+      damageEnemy(enemy, SHANNON_WALL_DAMAGE, { playerDamage: false });
       launchEnemyUnprorated(enemy, direction, "shannon:purpleWall", SHANNON_WALL_LAUNCH_LIFT, SHANNON_WALL_LAUNCH_DRIFT);
       if (enemy.hp <= 0) defeatEnemy(enemy);
       spawnShannonWallShatter(wall.x, enemy.y - 88, wall.direction);
@@ -9712,6 +10728,7 @@ function tryBeatriceStakeParry() {
     beatriceStakeParryLine.y1 = lineStartY;
     beatriceStakeParryLine.x2 = targetX + (lineDx / lineLen) * 210;
     beatriceStakeParryLine.y2 = targetY + (lineDy / lineLen) * 210;
+    beatriceTutorial.stakeParried = true;
     runStats.parriesPerformed += 1;
     enemyFreezeTimer = Math.max(enemyFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
     beatriceStakeParryFreezeTimer = Math.max(beatriceStakeParryFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
@@ -10163,8 +11180,10 @@ function update(dt) {
     updateCrystalShards(dt);
     updateCrystalTrails(dt);
     updateCrystalShockwaves(dt);
+    updateGoatPoundQuakes(dt);
     updateKonpeito(dt);
     updateLambdaSpecialKonpeitos(dt);
+    updateLambdaSpecialFinalBursts(dt);
     updateLambdaSpecialShrapnel(dt);
     updateBeatrice(dt);
     updateBeatriceStakes(dt);
@@ -10191,8 +11210,10 @@ function update(dt) {
     updateAbsorbingPickups(dt);
     updateCrystalTrails(dt);
     updateCrystalShockwaves(dt);
+    updateGoatPoundQuakes(dt);
     updateKonpeitoGeysers(dt);
     updateKonpeitoDomeBursts(dt);
+    updateLambdaSpecialFinalBursts(dt);
     updateSummonPillars(dt);
     screenFlashTimer = Math.max(0, screenFlashTimer - dt);
     screenShakeTimer = Math.max(0, screenShakeTimer - dt);
@@ -10249,6 +11270,7 @@ function update(dt) {
     updateBeatriceStakeParryLine(dt);
     updateCrystalTrails(dt);
     updateCrystalShockwaves(dt);
+    updateGoatPoundQuakes(dt);
     updateKonpeitoGeysers(dt);
     updateKonpeitoDomeBursts(dt);
     updateSummonPillars(dt);
@@ -10310,6 +11332,7 @@ function update(dt) {
     drawAbsorbingPickups();
     drawMessageBottles();
     drawSummonPillars();
+    drawShadowPortals();
     drawKonpeitoGeysers(false);
     drawKonpeitoDomeBursts(false);
     drawBeatriceStakeReticles();
@@ -10325,10 +11348,12 @@ function update(dt) {
     drawSpecialBeam();
     drawCrystalTrails();
     drawCrystalShockwaves();
+    drawGoatPoundQuakes();
     drawCrystalShards();
     drawKonpeitoShockwaves();
     drawKonpeitoDomeBursts(true);
     drawLambdaSpecialKonpeitos();
+    drawLambdaSpecialFinalBursts();
     drawLambdaSpecialShrapnel();
     drawShannonWalls();
     drawBeatriceStakeShockwaves();
@@ -10353,6 +11378,7 @@ function update(dt) {
     updateDuoAttack(dt);
     updateCrystalTrails(dt);
     updateCrystalShockwaves(dt);
+    updateGoatPoundQuakes(dt);
     updateKonpeitoGeysers(dt);
     updateKonpeitoDomeBursts(dt);
     updateSummonPillars(dt);
@@ -10379,6 +11405,7 @@ function update(dt) {
     updateBeatriceStakeParryLine(dt);
     updateCrystalTrails(dt);
     updateCrystalShockwaves(dt);
+    updateGoatPoundQuakes(dt);
     updateKonpeitoGeysers(dt);
     updateKonpeitoDomeBursts(dt);
     updateSummonPillars(dt);
@@ -10401,12 +11428,15 @@ function update(dt) {
   updateAbsorbingPickups(dt);
   updateMessageBottles(dt);
   updateEnemies(dt);
+  updateShadowPortals(dt);
   updatePickups(dt);
   updateCrystalShards(dt);
   updateCrystalTrails(dt);
   updateCrystalShockwaves(dt);
+  updateGoatPoundQuakes(dt);
   updateKonpeito(dt);
   updateLambdaSpecialKonpeitos(dt);
+  updateLambdaSpecialFinalBursts(dt);
   updateLambdaSpecialShrapnel(dt);
   updateShannonWalls(dt);
   updateBeatrice(dt);
@@ -10514,13 +11544,17 @@ function drawSprite(actor, frameId, scale, enemy = false, action = "") {
   ctx.scale(-actor.facing, 1);
   if (enemy) {
     const spawning = actor.spawnGrace > 0;
+    const shadowFade = actor.shadowFadeIn > 0 ? clamp(actor.shadowFadeIn / SHADOW_PORTAL_ENEMY_FADE_IN, 0, 1) : 0;
     const telegraphing = (actor.attackTelegraph || 0) > 0;
     const tellPulse = Math.sin(performance.now() / 48) > 0;
     const alpha = spawning
       ? (Math.sin(performance.now() / 62) > 0 ? 0.28 : 0.76)
+      : shadowFade > 0 ? 0.92
       : actor.hurt > 0 ? 0.78 : telegraphing && tellPulse ? 0.7 : 0.92;
     ctx.globalAlpha *= alpha;
-    ctx.filter = actor.hurt > 0
+    ctx.filter = shadowFade > 0
+      ? `grayscale(1) brightness(${0.08 + (1 - shadowFade) * 0.66}) contrast(${1.3 + shadowFade * 0.6})`
+      : actor.hurt > 0
       ? "sepia(1) saturate(4) hue-rotate(320deg) brightness(1.35)"
       : spawning
         ? "brightness(1.45) saturate(0.55) hue-rotate(135deg)"
@@ -10730,6 +11764,50 @@ function drawBeatriceMeleeKickTelegraph() {
     ctx.strokeStyle = "rgba(255, 244, 155, 0.42)";
     ctx.lineWidth = 8;
     ctx.strokeRect(x - 3, y - 3, zone.w + 6, zone.h + 6);
+  }
+  ctx.restore();
+}
+
+function drawDashAttackTimingMarker() {
+  const marker = dashAttackMarkerState();
+  if (!marker) return;
+  const x = player.x - cameraX;
+  const y = player.y - 152;
+  const pulse = pulseValue(16);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = marker.lateFade;
+
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = marker.late
+    ? "rgba(180, 180, 180, 0.42)"
+    : marker.ready
+      ? `rgba(255, 236, 86, ${0.82 + pulse * 0.16})`
+      : "rgba(255, 255, 255, 0.68)";
+  ctx.beginPath();
+  ctx.arc(x, y, DASH_ATTACK_MARKER_RADIUS, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.lineWidth = marker.ready ? 6 : 4;
+  ctx.strokeStyle = marker.late
+    ? "rgba(96, 96, 96, 0.48)"
+    : marker.ready
+      ? `rgba(255, 255, 255, ${0.86 + pulse * 0.14})`
+      : `rgba(145, 225, 255, ${0.48 + marker.chargeT * 0.34})`;
+  ctx.beginPath();
+  ctx.arc(x, y, marker.timingRadius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  if (marker.ready) {
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.28 + pulse * 0.28})`;
+    ctx.lineWidth = 11 + pulse * 4;
+    ctx.beginPath();
+    ctx.arc(x, y, DASH_ATTACK_MARKER_RADIUS + 5, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(255, 246, 166, ${0.08 + pulse * 0.06})`;
+    ctx.beginPath();
+    ctx.arc(x, y, DASH_ATTACK_MARKER_RADIUS + 11 + pulse * 7, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.restore();
 }
@@ -10961,7 +12039,9 @@ function drawGoatEnemy(enemy) {
               ? goatFrames.charge
               : enemy.goatAction === "chargeRecover"
                 ? goatFrames.chargeRecover
-                : goatFrames.idle;
+                : enemy.goatAction === "punch"
+                  ? goatFrames.punch
+                  : goatFrames.idle;
   const frame = airborneDown
     ? goatFrames.defeat[0]
     : groundedDown && !enemy.dead
@@ -10970,7 +12050,7 @@ function drawGoatEnemy(enemy) {
       ? list[Math.min(list.length - 1, Math.floor(enemy.anim))]
       : showingHurt
         ? list[Math.min(list.length - 1, Math.floor(airborneUp ? enemy.anim : enemy.goatHurtAnim))]
-        : enemy.goatAction === "pound" || enemy.goatAction === "recover" || enemy.goatAction === "chargeWindup" || enemy.goatAction === "chargeRecover"
+        : enemy.goatAction === "pound" || enemy.goatAction === "recover" || enemy.goatAction === "chargeWindup" || enemy.goatAction === "chargeRecover" || enemy.goatAction === "punch"
           ? list[Math.min(list.length - 1, Math.floor(enemy.anim))]
           : enemy.goatAction === "charge"
             ? list[Math.floor(enemy.anim) % list.length]
@@ -10994,6 +12074,7 @@ function drawGoatEnemy(enemy) {
     : { x: 0, y: 0 };
   drawGoatPoundTelegraph(enemy, fade);
   drawGoatChargeTelegraph(enemy, fade);
+  drawGoatPunchTelegraph(enemy, fade);
   drawGoatPoundParryRings(enemy, fade);
   ctx.save();
   ctx.globalAlpha = fade;
@@ -11002,9 +12083,13 @@ function drawGoatEnemy(enemy) {
   ctx.scale((flipDownFrame ? 1 : -1) * enemy.facing, 1);
   const spawning = enemy.spawnGrace > 0;
   const armorFlash = (enemy.goatArmorFlash || 0) > 0;
+  const shadowFade = enemy.shadowFadeIn > 0 ? clamp(enemy.shadowFadeIn / SHADOW_PORTAL_ENEMY_FADE_IN, 0, 1) : 0;
   if (spawning) {
     ctx.globalAlpha *= Math.sin(performance.now() / 62) > 0 ? 0.3 : 0.76;
     ctx.filter = "brightness(1.35) saturate(0.65) hue-rotate(135deg)";
+  } else if (shadowFade > 0) {
+    ctx.globalAlpha *= 0.92;
+    ctx.filter = `grayscale(1) brightness(${0.08 + (1 - shadowFade) * 0.66}) contrast(${1.3 + shadowFade * 0.6})`;
   } else if (enemy.hurt > 0 || armorFlash) {
     ctx.globalAlpha *= armorFlash && Math.sin(performance.now() / 45) > 0 ? 0.72 : 0.9;
     ctx.filter = "sepia(1) saturate(4) hue-rotate(320deg) brightness(1.35)";
@@ -11037,12 +12122,61 @@ function drawGoatPoundTelegraph(enemy, fade = 1) {
   if (enemy.goatAction !== "pound" || enemy.goatHasHit || enemy.dead || enemy.spawnGrace > 0) return;
   const impactFrameIndex = goatFrames.pound.findIndex((frame) => frame >= 684);
   const chargeT = clamp(enemy.anim / Math.max(1, impactFrameIndex), 0, 1);
-  const startX = enemy.x - cameraX + enemy.facing * 46;
-  const y = enemy.y;
-  const radiusY = GOAT_POUND_RANGE * GOAT_POUND_SEMICIRCLE_Y_SCALE;
-  const fillRadius = GOAT_POUND_RANGE * chargeT;
-  const fillRadiusY = fillRadius * GOAT_POUND_SEMICIRCLE_Y_SCALE;
+  const dirX = enemy.goatPoundDx || enemy.facing || 1;
+  const dirY = enemy.goatPoundDy || 0;
+  const startX = enemy.x - cameraX + dirX * 46;
+  const startY = enemy.y + dirY * 12;
   const pulse = 0.5 + Math.sin(performance.now() / 80) * 0.5;
+
+  const drawPoundSemicirclePath = (radius, yScale) => {
+    const radiusY = radius * yScale;
+    ctx.save();
+    ctx.translate(startX, startY);
+    ctx.rotate(Math.atan2(dirY, dirX));
+    ctx.beginPath();
+    ctx.moveTo(0, -radiusY);
+    ctx.ellipse(0, 0, radius, radiusY, 0, -Math.PI / 2, Math.PI / 2, false);
+    ctx.closePath();
+    ctx.restore();
+  };
+
+  ctx.save();
+  ctx.globalAlpha = fade;
+  ctx.fillStyle = "rgba(78, 0, 0, 0.56)";
+  ctx.strokeStyle = `rgba(255, 76, 76, ${0.48 + pulse * 0.22})`;
+  ctx.lineWidth = 2;
+  drawPoundSemicirclePath(GOAT_POUND_RANGE, GOAT_POUND_SEMICIRCLE_Y_SCALE);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = `rgba(255, 90, 74, ${0.18 + chargeT * 0.42})`;
+  drawPoundSemicirclePath(GOAT_POUND_RANGE * chargeT, GOAT_POUND_SEMICIRCLE_Y_SCALE);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(56, 0, 0, 0.42)";
+  ctx.strokeStyle = `rgba(255, 74, 64, ${0.34 + pulse * 0.18})`;
+  drawPoundSemicirclePath(GOAT_POUND_QUAKE_RANGE, GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = `rgba(255, 77, 68, ${0.16 + chargeT * 0.3})`;
+  drawPoundSemicirclePath(GOAT_POUND_QUAKE_RANGE * chargeT, GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE);
+  ctx.fill();
+  ctx.strokeStyle = `rgba(255, 220, 205, ${0.1 + chargeT * 0.18})`;
+  ctx.lineWidth = 4;
+  drawPoundSemicirclePath(GOAT_POUND_QUAKE_RANGE * (0.55 + chargeT * 0.45), GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGoatPunchTelegraph(enemy, fade = 1) {
+  if (enemy.goatAction !== "punch" || enemy.goatHasHit || enemy.dead || enemy.spawnGrace > 0) return;
+  const firstActiveIndex = goatFrames.punch.findIndex((frame) => GOAT_PUNCH_ACTIVE_FRAMES.has(frame));
+  const chargeT = clamp(enemy.anim / Math.max(1, firstActiveIndex), 0, 1);
+  const startX = enemy.x - cameraX + enemy.facing * 38;
+  const y = enemy.y;
+  const radiusY = GOAT_PUNCH_RANGE * GOAT_PUNCH_SEMICIRCLE_Y_SCALE;
+  const fillRadius = GOAT_PUNCH_RANGE * chargeT;
+  const fillRadiusY = fillRadius * GOAT_PUNCH_SEMICIRCLE_Y_SCALE;
+  const pulse = 0.5 + Math.sin(performance.now() / 78) * 0.5;
 
   const drawSemicirclePath = (radius, yRadius) => {
     ctx.beginPath();
@@ -11058,21 +12192,15 @@ function drawGoatPoundTelegraph(enemy, fade = 1) {
 
   ctx.save();
   ctx.globalAlpha = fade;
-  ctx.fillStyle = "rgba(70, 0, 0, 0.5)";
-  ctx.strokeStyle = `rgba(255, 76, 76, ${0.48 + pulse * 0.22})`;
+  ctx.fillStyle = "rgba(74, 0, 0, 0.42)";
+  ctx.strokeStyle = `rgba(255, 72, 72, ${0.44 + pulse * 0.2})`;
   ctx.lineWidth = 2;
-  drawSemicirclePath(GOAT_POUND_RANGE, radiusY);
+  drawSemicirclePath(GOAT_PUNCH_RANGE, radiusY);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = `rgba(255, 77, 68, ${0.22 + chargeT * 0.42})`;
+  ctx.fillStyle = `rgba(255, 82, 68, ${0.18 + chargeT * 0.34})`;
   drawSemicirclePath(fillRadius, fillRadiusY);
   ctx.fill();
-  ctx.save();
-  ctx.clip();
-  ctx.fillStyle = `rgba(255, 205, 190, ${0.1 + chargeT * 0.22})`;
-  const fillX = enemy.facing === 1 ? startX : startX - fillRadius;
-  ctx.fillRect(fillX, y - fillRadiusY * 0.18, fillRadius, Math.max(4, fillRadiusY * 0.36));
-  ctx.restore();
   ctx.restore();
 }
 
@@ -11321,6 +12449,23 @@ function drawBeatriceTowerVolleys() {
 function drawPlayer() {
   drawActorShadow(player, 78);
   const frame = player.airborne ? launchFrame(player) : currentPlayerActionFrame();
+  drawDashAttackTimingMarker();
+  const dashFlash = dashAttackFlashProgress();
+  if (dashFlash > 0) {
+    const flashWindow = player.runTimer >= DASH_ATTACK_FLASH_START && player.runTimer <= DASH_ATTACK_FLASH_END;
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 34);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = flashWindow ? 0.5 + pulse * 0.24 : 0.12 + dashFlash * 0.34;
+    ctx.filter = "brightness(0) invert(1)";
+    const grow = flashWindow ? 1.11 + pulse * 0.055 : 1.02 + dashFlash * 0.11;
+    drawSprite(player, frame, PLAYER_SCALE * grow, false, player.action);
+    if (flashWindow) {
+      ctx.globalAlpha = 0.18 + pulse * 0.16;
+      drawSprite({ ...player, x: player.x - player.facing * 7 }, frame, PLAYER_SCALE * (grow + 0.08), false, player.action);
+    }
+    ctx.restore();
+  }
   const charge = attackChargeProgress();
   if (charge > 0) {
     const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 55);
@@ -12906,6 +14051,45 @@ function drawCrystalShockwaves() {
   }
 }
 
+function drawGoatPoundQuakes() {
+  for (const quake of goatPoundQuakes) {
+    if (quake.timer < GOAT_POUND_QUAKE_DELAY) continue;
+    const expandT = clamp((quake.timer - GOAT_POUND_QUAKE_DELAY) / GOAT_POUND_QUAKE_DURATION, 0, 1);
+    const fadeT = clamp((quake.timer - GOAT_POUND_QUAKE_DELAY - GOAT_POUND_QUAKE_DURATION) / 0.18, 0, 1);
+    const alpha = (1 - fadeT) * (0.45 + 0.25 * (1 - expandT));
+    const radius = GOAT_POUND_RANGE + (GOAT_POUND_QUAKE_RANGE - GOAT_POUND_RANGE) * expandT;
+    const inner = GOAT_POUND_RANGE + 6;
+    const x = quake.x - cameraX;
+    const y = quake.y;
+
+    const path = (r, scale) => {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(Math.atan2(quake.dirY, quake.dirX));
+      ctx.beginPath();
+      ctx.moveTo(0, -r * scale);
+      ctx.ellipse(0, 0, r, r * scale, 0, -Math.PI / 2, Math.PI / 2, false);
+      ctx.closePath();
+      ctx.restore();
+    };
+
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = `rgba(92, 46, 20, ${0.22 * alpha})`;
+    path(radius, GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(167, 96, 42, ${0.72 * alpha})`;
+    ctx.lineWidth = 5 + 5 * (1 - expandT);
+    path(radius, GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(53, 32, 22, ${0.55 * alpha})`;
+    ctx.lineWidth = 2;
+    path(inner, GOAT_POUND_SEMICIRCLE_Y_SCALE);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 function drawKonpeitoShots() {
   for (const shot of konpeitoShots) {
     const pos = konpeitoShotPosition(shot);
@@ -13016,6 +14200,41 @@ function drawLambdaSpecialShrapnel() {
     ctx.stroke();
     ctx.restore();
     drawKonpeitoCandy(x, y, 22 + Math.sin(pos.t * Math.PI) * 6, shard.frame, shard.spin * pos.t, 0.9);
+  }
+}
+
+function drawLambdaSpecialFinalBursts() {
+  for (const wave of lambdaSpecialFinalBursts) {
+    const t = 1 - wave.life / wave.max;
+    const alpha = Math.sin(Math.PI * clamp(t, 0, 1));
+    const radius = wave.radius * Math.pow(clamp(t, 0, 1), 0.82);
+    const x = wave.x - cameraX;
+    const y = wave.y + 10;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const glow = ctx.createRadialGradient(x, y - radius * 0.18, radius * 0.04, x, y, radius * 0.86);
+    glow.addColorStop(0, `rgba(255, 245, 252, ${0.2 * alpha})`);
+    glow.addColorStop(0.35, `rgba(255, 92, 224, ${0.18 * alpha})`);
+    glow.addColorStop(1, "rgba(255, 92, 224, 0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.ellipse(x, y - radius * 0.16, radius, radius * 0.6, 0, Math.PI, Math.PI * 2);
+    ctx.lineTo(x + radius, y);
+    ctx.ellipse(x, y, radius, radius * 0.34, 0, 0, Math.PI, true);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = `rgba(255, 238, 126, ${0.78 * alpha})`;
+    ctx.lineWidth = 8 * alpha + 2;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radius, radius * 0.34, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255, 105, 232, ${0.66 * alpha})`;
+    ctx.lineWidth = 13 * alpha + 3;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radius * 0.96, radius * 0.33, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 }
 
@@ -13752,6 +14971,57 @@ function drawBernHazardWarning() {
   ctx.restore();
 }
 
+function drawShadowPortals() {
+  if (!shadowPortalEvents.length) return;
+  const now = performance.now() / 1000;
+  ctx.save();
+  for (const event of shadowPortalEvents) {
+    const crawlT = clamp(event.timer / SHADOW_PORTAL_CRAWL_TIME, 0, 1);
+    const settleT = clamp((event.timer - SHADOW_PORTAL_CRAWL_TIME) / SHADOW_PORTAL_SETTLE_TIME, 0, 1);
+    const triggeredT = event.triggered
+      ? clamp((event.timer - SHADOW_PORTAL_CRAWL_TIME - SHADOW_PORTAL_SETTLE_TIME) / SHADOW_PORTAL_ENEMY_FADE_IN, 0, 1)
+      : 0;
+    for (const shadow of event.shadows) {
+      const x = shadow.x - cameraX;
+      const y = shadow.y + 13;
+      const pulse = Math.sin(now * 11 + shadow.wobble) * 0.08;
+      const grow = 0.72 + crawlT * 0.42 + settleT * 0.24;
+      const fade = 1 - triggeredT * 0.55;
+      const w = (52 + shadow.radius * 0.28) * grow * (1 + pulse);
+      const h = (13 + shadow.radius * 0.075) * grow * (1 - pulse * 0.4);
+      ctx.globalAlpha = 0.64 * fade;
+      ctx.fillStyle = "#020203";
+      ctx.beginPath();
+      ctx.ellipse(x, y, w, h, Math.sin(now * 3 + shadow.wobble) * 0.18, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 0.28 * fade;
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.95)";
+      ctx.lineWidth = 3;
+      for (let i = 0; i < 4; i++) {
+        const a = shadow.angle + i * Math.PI * 0.5 + now * shadow.speed * 0.65;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.quadraticCurveTo(
+          x + Math.cos(a) * w * 0.62,
+          y + Math.sin(a * 1.7) * h * 1.8,
+          x + Math.cos(a + 0.7) * w * 1.18,
+          y + Math.sin(a + 0.4) * h * 0.95
+        );
+        ctx.stroke();
+      }
+      if (event.timer >= SHADOW_PORTAL_CRAWL_TIME) {
+        ctx.globalAlpha = (0.18 + settleT * 0.2) * fade;
+        ctx.strokeStyle = "rgba(18, 18, 24, 0.9)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(x, y, w * (1.1 + settleT * 0.2), h * (1.18 + settleT * 0.3), 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
 function drawParticles() {
   for (const p of particles) {
     ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
@@ -14382,6 +15652,7 @@ function draw() {
     drawAbsorbingPickups();
     drawMessageBottles();
     drawSummonPillars();
+    drawShadowPortals();
     drawKonpeitoGeysers(false);
     drawKonpeitoDomeBursts(false);
     drawBeatriceStakeReticles();
@@ -14395,10 +15666,12 @@ function draw() {
     drawKonpeitoGeysers(true);
     drawSpecialBeam();
     drawCrystalShockwaves();
+    drawGoatPoundQuakes();
     drawCrystalShards();
     drawKonpeitoShockwaves();
     drawKonpeitoDomeBursts(true);
     drawLambdaSpecialKonpeitos();
+    drawLambdaSpecialFinalBursts();
     drawLambdaSpecialShrapnel();
     drawShannonWalls();
     drawBeatriceStakeShockwaves();
@@ -14423,6 +15696,7 @@ function draw() {
     drawAbsorbingPickups();
     drawMessageBottles();
     drawSummonPillars();
+    drawShadowPortals();
     drawKonpeitoGeysers(false);
     drawKonpeitoDomeBursts(false);
     drawBeatriceStakeReticles();
@@ -14438,10 +15712,12 @@ function draw() {
     drawSpecialBeam();
     drawCrystalTrails();
     drawCrystalShockwaves();
+    drawGoatPoundQuakes();
     drawCrystalShards();
     drawKonpeitoShockwaves();
     drawKonpeitoDomeBursts(true);
     drawLambdaSpecialKonpeitos();
+    drawLambdaSpecialFinalBursts();
     drawLambdaSpecialShrapnel();
     drawShannonWalls();
     drawBeatriceStakeShockwaves();
@@ -14486,27 +15762,23 @@ function togglePause() {
 function beginAttackHold(kind) {
   const hold = attackHolds[kind];
   if (!hold || hold.down) return;
+  if (player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0 || player.action === "getUp") return;
   if (tryBeatriceStakeParry()) return;
   if (tryBeatriceMeleeKickParry()) return;
   if (tryBernHazardParry()) return;
   if (tryGoatPoundParry(kind)) return;
-  if (player.resolve < chargedAttackResolveCost()) {
-    attack(kind);
-    return;
-  }
   hold.down = true;
   hold.timer = 0;
   hold.triggered = false;
+  if (state === "playing") attack(kind);
 }
 
 function releaseAttackHold(kind) {
   const hold = attackHolds[kind];
   if (!hold || !hold.down) return;
-  const shouldTap = !hold.triggered && state === "playing";
   hold.down = false;
   hold.timer = 0;
   hold.triggered = false;
-  if (shouldTap) attack(kind);
 }
 
 function storedTouchPreference() {
@@ -14816,6 +16088,12 @@ function inputAxisX() {
   if (keys.has("arrowright") || keys.has("d")) axis += 1;
   if (touchControls.visible) axis += touchControls.movementX;
   return clamp(axis, -1, 1);
+}
+
+function inputHorizontalOpposed() {
+  const left = keys.has("arrowleft") || keys.has("a");
+  const right = keys.has("arrowright") || keys.has("d");
+  return left && right;
 }
 
 function inputAxisY() {
