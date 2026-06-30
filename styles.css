@@ -276,7 +276,7 @@ body.touch-layout-active .orientation-prompt {
 .touch-buttons {
   position: absolute;
   inset: 0;
-  pointer-events: auto;
+  pointer-events: none;
   --touch-edge-right: max(22px, env(safe-area-inset-right));
   --touch-edge-bottom: max(18px, env(safe-area-inset-bottom));
   --touch-core-size: clamp(112px, 14vw, 152px);
@@ -295,6 +295,7 @@ body.touch-layout-active .orientation-prompt {
     0 0 0 1px rgba(0, 0, 0, 0.24) inset,
     0 10px 24px rgba(0, 0, 0, 0.32);
   touch-action: none;
+  pointer-events: auto;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -332,6 +333,7 @@ body.touch-layout-active .orientation-prompt {
     0 0 0 2px rgba(0, 0, 0, 0.42) inset,
     0 0 24px rgba(255, 236, 178, 0.2);
   transform-origin: center;
+  pointer-events: auto;
 }
 
 .touch-attack-core::after {
@@ -355,6 +357,7 @@ body.touch-layout-active .orientation-prompt {
   color: #fff4c6;
   font: 900 clamp(0.68rem, 1.2vw, 0.88rem) "Segoe UI", Arial, sans-serif;
   touch-action: none;
+  pointer-events: auto;
   -webkit-user-select: none;
   user-select: none;
 }
@@ -435,6 +438,7 @@ body.touch-layout-active .orientation-prompt {
   color: #fff4c6;
   font: 850 clamp(0.68rem, 1.2vw, 0.84rem) "Segoe UI", Arial, sans-serif;
   touch-action: none;
+  pointer-events: auto;
 }
 
 .touch-adjust-toggle input {
