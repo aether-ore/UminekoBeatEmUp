@@ -71,6 +71,7 @@ const WAVE_EFFECT_START_WAVE = 2;
 const WAVE_EFFECT_WITCH_CHANCE = 0.12;
 const WAVE_EFFECT_GAAP_CHANCE = 0.16;
 const WAVE_EFFECT_STAMPEDE_CHANCE = 0.18;
+const WAVE_EFFECT_PURGATORIO_CHANCE = 0.12;
 const DEBUG_FORCE_WAVE_EFFECTS = [];
 const GAAP_PORTAL_RADIUS_X = 104;
 const GAAP_PORTAL_RADIUS_Y = 38;
@@ -89,6 +90,9 @@ const MORTAL_STAMPEDE_TELEGRAPH_TIME = 1.05;
 const MORTAL_STAMPEDE_LANE_COUNT = 4;
 const MORTAL_STAMPEDE_LANES_PER_WAVE = 2;
 const MORTAL_STAMPEDE_SPEED_MULTIPLIER = 1.1;
+const PURGATORIO_ATTACK_INTERVAL = 7;
+const PURGATORIO_LEVIATHAN_DELAY = 1.05;
+const PURGATORIO_LEVIATHAN_RADIUS = 174;
 const MESSAGE_BOTTLE_FLIGHT_TIME = 1.15;
 const MESSAGE_BOTTLE_THROW_DELAY = 0.48;
 const ENEMY_HEALTH_FIVE_WAVE_BONUS = 8;
@@ -1402,7 +1406,9 @@ const waveEffects = {
   gaapPortals: [],
   stampedeTimer: 0,
   stampedeTelegraphs: [],
-  stampedeSeed: 0
+  stampedeSeed: 0,
+  purgatorioTimer: 0,
+  purgatorioDefeated: false
 };
 const crystalShards = [];
 const pendingMiracleCrystalFollowups = [];
@@ -1575,7 +1581,8 @@ const beatriceBoss = {
   downTime: 0,
   stunIdleTimer: 0,
   stunDamageTimer: 0,
-  recoveryTimer: 0
+  recoveryTimer: 0,
+  waveEffect: ""
 };
 const runStats = {
   wavesCompleted: 0,
@@ -5858,7 +5865,8 @@ function randomChoice(list) {
 const WAVE_EFFECT_DEFS = {
   witchesIntervention: { label: "Witch's Intervention", kind: "beneficial", color: "#46e978" },
   gaapIntervention: { label: "Gaap's Intervention", kind: "chaotic", color: "#b27cff" },
-  mortalStampede: { label: "Mortal Stampede", kind: "negative", color: "#ff565f" }
+  mortalStampede: { label: "Mortal Stampede", kind: "negative", color: "#ff565f" },
+  purgatorio: { label: "Purgatorio", kind: "negative", color: "#ff565f" }
 };
 
 function waveEffectActive(id) {
@@ -5871,6 +5879,11 @@ function clearWaveEffects() {
   waveEffects.stampedeTimer = 0;
   waveEffects.stampedeTelegraphs = [];
   waveEffects.stampedeSeed = 0;
+  waveEffects.purgatorioTimer = 0;
+  waveEffects.purgatorioDefeated = false;
+  if (typeof beatriceBoss !== "undefined" && beatriceBoss?.waveEffect === "purgatorio") {
+    dismissPurgatorioBeatrice({ silent: true, markDefeated: false });
+  }
   if (typeof player !== "undefined" && player) {
     player.gaapTeleport = null;
     player.gaapPortalCooldown = 0;
@@ -5903,8 +5916,12 @@ function rollWaveEffects() {
   if (!forced.length || !waveEffectActive("mortalStampede")) {
     if (Math.random() < WAVE_EFFECT_STAMPEDE_CHANCE) addWaveEffect("mortalStampede");
   }
+  if (!forced.length || !waveEffectActive("purgatorio")) {
+    if (Math.random() < WAVE_EFFECT_PURGATORIO_CHANCE) addWaveEffect("purgatorio");
+  }
   if (waveEffectActive("gaapIntervention")) startGaapIntervention();
   if (waveEffectActive("mortalStampede")) startMortalStampede();
+  if (waveEffectActive("purgatorio")) startPurgatorio();
   if (waveEffectActive("witchesIntervention")) triggerWitchIntervention();
 }
 
@@ -6120,9 +6137,138 @@ function updateMortalStampede(dt) {
   }
 }
 
+function startPurgatorio() {
+  if (waveMode !== "normal" || waveEffects.purgatorioDefeated) return;
+  const target = beatriceIdleHoverPoint();
+  beatriceBoss.active = true;
+  beatriceBoss.waveEffect = "purgatorio";
+  beatriceBoss.x = clamp(target.x, 90, STAGE_W - 90);
+  beatriceBoss.y = target.y;
+  beatriceBoss.facing = player.x >= beatriceBoss.x ? 1 : -1;
+  beatriceBoss.anim = 0;
+  beatriceBoss.hoverOffset = 76;
+  beatriceBoss.mechanic = "purgatorio";
+  beatriceBoss.flavor = "idle";
+  beatriceBoss.flavorTimer = 0;
+  beatriceBoss.stakeCastFired = false;
+  beatriceBoss.rewardStakePending = false;
+  beatriceBoss.nextMechanicTimer = 0;
+  beatriceBoss.rings = [];
+  beatriceBoss.barrierActive = true;
+  beatriceBoss.barrierMax = BEATRICE_BARRIER_MAX;
+  beatriceBoss.barrierHp = beatriceBoss.barrierMax;
+  beatriceBoss.vulnerable = false;
+  beatriceBoss.breakFade = 0;
+  beatriceBoss.z = 0;
+  beatriceBoss.vz = 0;
+  beatriceBoss.airVx = 0;
+  waveEffects.purgatorioTimer = PURGATORIO_ATTACK_INTERVAL;
+  spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 62, 42);
+  spawnAsmodeusGoldenWisps(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 16);
+}
+
+function dismissPurgatorioBeatrice({ silent = false, markDefeated = true } = {}) {
+  if (beatriceBoss.waveEffect !== "purgatorio") return;
+  if (!silent) {
+    spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 62, 54);
+    spawnAsmodeusGoldenWisps(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 18);
+  }
+  beatriceBoss.active = false;
+  beatriceBoss.waveEffect = "";
+  beatriceBoss.mechanic = "idle";
+  beatriceBoss.flavor = "idle";
+  beatriceBoss.anim = 0;
+  beatriceBoss.rings = [];
+  beatriceBoss.barrierActive = false;
+  beatriceBoss.vulnerable = false;
+  beatriceStakes.length = 0;
+  beatriceStakeShockwaves.length = 0;
+  waveEffects.purgatorioTimer = 0;
+  if (markDefeated) waveEffects.purgatorioDefeated = true;
+}
+
+function startPurgatorioStake() {
+  if (!beatriceBoss.active || beatriceBoss.waveEffect !== "purgatorio" || beatriceBoss.flavor !== "idle") return false;
+  beatriceBoss.mechanic = "purgatorioStake";
+  beatriceBoss.facing = player.x >= beatriceBoss.x ? 1 : -1;
+  startBeatriceStakeCast();
+  message = "Purgatorio: Stake of Purgatory";
+  messageTimer = 1.05;
+  return true;
+}
+
+function startPurgatorioLeviathan() {
+  if (!beatriceBoss.active || beatriceBoss.waveEffect !== "purgatorio" || beatriceBoss.flavor !== "idle") return false;
+  beatriceBoss.mechanic = "purgatorioLeviathan";
+  beatriceBoss.rings = [{
+    source: "purgatorio",
+    timer: 0,
+    appearAt: 0,
+    detonateAt: PURGATORIO_LEVIATHAN_DELAY,
+    x: clamp(player.x + (player.vx || 0) * 0.26, 90, STAGE_W - 90),
+    y: clampPlayY(player.y + (player.vy || 0) * 0.22),
+    radius: PURGATORIO_LEVIATHAN_RADIUS,
+    baseRadius: PURGATORIO_LEVIATHAN_RADIUS,
+    travel: 0,
+    detonated: false,
+    leviathanSpawned: false,
+    locked: false
+  }];
+  message = "Purgatorio: Leviathan";
+  messageTimer = 0.95;
+  return true;
+}
+
+function clearPurgatorioAttack() {
+  if (beatriceBoss.waveEffect !== "purgatorio") return;
+  beatriceBoss.rings = [];
+  if (beatriceBoss.mechanic === "purgatorioLeviathan" || beatriceBoss.mechanic === "purgatorioStake") {
+    beatriceBoss.mechanic = "purgatorio";
+  }
+  waveEffects.purgatorioTimer = PURGATORIO_ATTACK_INTERVAL;
+}
+
+function updatePurgatorioLeviathan(dt) {
+  if (beatriceBoss.mechanic !== "purgatorioLeviathan") return false;
+  const ring = beatriceBoss.rings[0];
+  if (!ring) {
+    clearPurgatorioAttack();
+    return false;
+  }
+  ring.timer += dt;
+  updateTrackingLeviathanRing(ring, ring.timer);
+  if (!ring.detonated && ring.timer >= ring.detonateAt) {
+    ring.detonated = true;
+    ring.leviathanSpawned = true;
+    spawnLeviathanSlash(ring.x, ring.y, ring.radius);
+  }
+  if (ring.detonated && !leviathanAttacks.length) {
+    clearPurgatorioAttack();
+  }
+  return true;
+}
+
+function updatePurgatorio(dt) {
+  if (!waveEffectActive("purgatorio") || waveEffects.purgatorioDefeated) return;
+  if (!beatriceBoss.active || beatriceBoss.waveEffect !== "purgatorio") {
+    startPurgatorio();
+    return;
+  }
+  if (beatriceBoss.flavor === "barrierBreak") return;
+  if (updatePurgatorioLeviathan(dt)) return;
+  if (beatriceBoss.flavor === "stakeCast" || beatriceStakes.some((stake) => stake.mode !== "return")) return;
+  if (beatriceBoss.flavor !== "idle") return;
+  if (beatriceBoss.mechanic === "purgatorioStake") clearPurgatorioAttack();
+  waveEffects.purgatorioTimer = Math.max(0, waveEffects.purgatorioTimer - dt);
+  if (waveEffects.purgatorioTimer > 0) return;
+  const started = Math.random() < 0.5 ? startPurgatorioLeviathan() : startPurgatorioStake();
+  if (!started) waveEffects.purgatorioTimer = 0.3;
+}
+
 function updateWaveEffects(dt) {
   updateGaapIntervention(dt);
   updateMortalStampede(dt);
+  updatePurgatorio(dt);
 }
 
 function bossBlessingOptionsFromCompanions() {
@@ -6331,6 +6477,7 @@ function activateBeatriceBoss() {
   beatriceBoss.stunIdleTimer = 0;
   beatriceBoss.stunDamageTimer = 0;
   beatriceBoss.recoveryTimer = 0;
+  beatriceBoss.waveEffect = "";
   beatriceBoss.lastMechanic = "";
   if (DEBUG_BEATRICE_TELEPORT_PREP_TEST) {
     startBeatriceTeleportPrep();
@@ -6834,19 +6981,36 @@ function updateBeatriceTowerVolleyLeviathanRings() {
 }
 
 function leviathanTowerParryRings() {
-  if (!beatriceBoss.active || beatriceBoss.mechanic !== "towerVolley" || !beatriceTowerVolley.active || beatriceTowerVolley.phase !== "fire") return [];
-  const elapsed = beatriceTowerVolley.timer;
-  return beatriceTowerVolley.leviathanRings.filter((ring) => {
-    return ring.wave === beatriceTowerVolley.wave
+  if (!beatriceBoss.active) return [];
+  const rings = [];
+  if (beatriceBoss.mechanic === "towerVolley" && beatriceTowerVolley.active && beatriceTowerVolley.phase === "fire") {
+    const elapsed = beatriceTowerVolley.timer;
+    rings.push(...beatriceTowerVolley.leviathanRings.filter((ring) => {
+      return ring.wave === beatriceTowerVolley.wave
+        && !ring.detonated
+        && elapsed >= ring.appearAt
+        && elapsed < ring.detonateAt;
+    }));
+  }
+  if (beatriceBoss.mechanic === "purgatorioLeviathan") {
+    rings.push(...beatriceBoss.rings.filter((ring) => {
+      const elapsed = ring.timer || 0;
+      return ring.source === "purgatorio"
       && !ring.detonated
       && elapsed >= ring.appearAt
       && elapsed < ring.detonateAt;
-  });
+    }));
+  }
+  return rings;
+}
+
+function leviathanRingElapsed(ring) {
+  return ring?.source === "purgatorio" ? (ring.timer || 0) : beatriceTowerVolley.timer;
 }
 
 function leviathanRingParryProgress(ring) {
   if (!ring) return 0;
-  return clamp((beatriceTowerVolley.timer - ring.appearAt) / Math.max(0.001, ring.detonateAt - ring.appearAt), 0, 1);
+  return clamp((leviathanRingElapsed(ring) - ring.appearAt) / Math.max(0.001, ring.detonateAt - ring.appearAt), 0, 1);
 }
 
 function leviathanRingParryTimingRadius(ring) {
@@ -7015,6 +7179,7 @@ function canStartBeatriceTutorial() {
   if (state !== "playing" || beatriceTutorial.seen || beatriceTutorial.active) return false;
   if (beatriceTutorial.stakeParried) return false;
   if (!beatriceBoss.active || !beatriceBoss.barrierActive || beatriceBoss.vulnerable) return false;
+  if (beatriceBoss.waveEffect === "purgatorio") return false;
   if (beatriceBoss.flavor !== "idle" && beatriceBoss.flavor !== "puff") return false;
   const dx = Math.abs(player.x - beatriceBoss.x);
   const dy = Math.abs(player.y - beatriceBoss.y);
@@ -7460,6 +7625,7 @@ function startGame() {
   beatriceBoss.stunIdleTimer = 0;
   beatriceBoss.stunDamageTimer = 0;
   beatriceBoss.recoveryTimer = 0;
+  beatriceBoss.waveEffect = "";
   beatriceStakes.length = 0;
   beatriceStakeTrails.length = 0;
   beatriceStakeShockwaves.length = 0;
@@ -8171,7 +8337,12 @@ function pointInsideGoatBody(goat, x, y) {
 }
 
 function separatePlayerFromGoats(previousX, previousY, allowRunBump = true) {
-  if (player.airborne || player.knockedDown || player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0) return false;
+  if (player.airborne
+    || player.knockedDown
+    || player.runState === "dodging"
+    || player.runStumbleTimer > 0
+    || player.runStumbleTripTimer > 0
+    || player.runStumbleProneTimer > 0) return false;
   let blocked = false;
   for (const goat of enemies) {
     if (!goatBodyBlocksPlayer(goat)) continue;
@@ -9310,6 +9481,12 @@ function startBeatriceBarrierBreak(direction = 1) {
   beatriceBoss.wallsActive = false;
   beatriceBoss.rewardStakePending = false;
   beatriceBoss.nextMechanicTimer = BEATRICE_RING_ATTACK_DELAY;
+  if (beatriceBoss.waveEffect === "purgatorio") {
+    waveEffects.purgatorioDefeated = true;
+    beatriceBoss.rings = [];
+    beatriceStakes.length = 0;
+    leviathanAttacks.length = 0;
+  }
   spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 64, 54);
   screenShakeTimer = Math.max(screenShakeTimer, 0.35);
   message = "Barrier Broken";
@@ -9318,6 +9495,14 @@ function startBeatriceBarrierBreak(direction = 1) {
 }
 
 function finishBeatriceBarrierBreak() {
+  if (beatriceBoss.waveEffect === "purgatorio") {
+    spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 62, 56);
+    spawnAsmodeusGoldenWisps(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 18);
+    dismissPurgatorioBeatrice();
+    message = "Purgatorio fades";
+    messageTimer = 1.1;
+    return;
+  }
   beatriceBoss.flavor = "dizzy";
   beatriceBoss.anim = 0;
   beatriceBoss.breakVx = 0;
@@ -11848,7 +12033,15 @@ function tryLeviathanTowerParry() {
   if (!ring) return false;
   ring.detonated = true;
   ring.leviathanSpawned = false;
-  collapseBeatriceTowerVolleyForParry();
+  if (ring.source === "purgatorio") {
+    beatriceBoss.rings = [];
+    waveEffects.purgatorioDefeated = true;
+    beatriceBoss.mechanic = "purgatorio";
+    message = "Counter!";
+    messageTimer = 0.85;
+  } else {
+    collapseBeatriceTowerVolleyForParry();
+  }
   return launchReturnedStakeFromBattler();
 }
 
@@ -13499,6 +13692,9 @@ function drawBeatriceRingTelegraphs() {
   } else if (beatriceBoss.mechanic === "towerVolley" && beatriceTowerVolley.active && beatriceTowerVolley.phase === "fire") {
     rings = beatriceTowerVolley.leviathanRings.filter((ring) => ring.wave === beatriceTowerVolley.wave);
     elapsedForRing = () => beatriceTowerVolley.timer;
+  } else if (beatriceBoss.mechanic === "purgatorioLeviathan") {
+    rings = beatriceBoss.rings;
+    elapsedForRing = (ring) => ring.timer || 0;
   } else {
     return;
   }
@@ -13534,7 +13730,7 @@ function drawBeatriceRingTelegraphs() {
       ctx.ellipse(x, y, ring.radius * visibleT, radiusY * visibleT, 0, 0, Math.PI * 2);
       ctx.fill();
     }
-    if (beatriceBoss.mechanic === "towerVolley") {
+    if (beatriceBoss.mechanic === "towerVolley" || beatriceBoss.mechanic === "purgatorioLeviathan") {
       const timingRadius = leviathanRingParryTimingRadius(ring);
       const ready = leviathanTowerParryReady(ring);
       drawReflexParryGraceRing(x, y, BEATRICE_TOWER_LEVIATHAN_PARRY_RING_RADIUS, BEATRICE_TOWER_LEVIATHAN_PARRY_WINDOW, 0.82, 1.25);
