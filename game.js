@@ -31,6 +31,7 @@ const STAGE_W = 3600;
 const PLAYER_SCALE = 1.45;
 const SPECIAL_BEAM_DRAIN = 42;
 const SPECIAL_BEAM_DAMAGE = 38;
+const PARRY_RESOLVE_GAIN = 15;
 const CHARGED_ATTACK_HOLD_TIME = 0.34;
 const CHARGED_ATTACK_RESOLVE_COST = 25;
 const SUPER_CHARGE_DAMAGE_MULTIPLIER = 1.25;
@@ -146,7 +147,7 @@ const LAMBDA_BLESSINGS = [
     id: "superCharge",
     source: "Lambdadelta",
     title: "Blessing of Certainty: Super Charge",
-    text: "Charged attacks teleport Battler to the nearest enemy, deal more damage, and release a candy shockwave."
+    text: "Charged attacks teleport to the nearest enemy and release a stronger candy shockwave if a dash charge is available."
   },
   {
     id: "lambdaKonpeitoSpecial",
@@ -266,6 +267,9 @@ const GOAT_PUNCH_DRIFT = 126;
 const GOAT_PUNCH_SLIDE_DISTANCE = 76;
 const GOAT_PUNCH_SLIDE_SPEED = 220;
 const GOAT_PUNCH_ACTIVE_FRAMES = new Set([711, 712, 713, 714, 715, 716]);
+const GOAT_PUNCH_PARRY_RING_RADIUS = 74;
+const GOAT_PUNCH_PARRY_WINDOW = 16;
+const GOAT_PUNCH_PARRY_START_RADIUS = 132;
 const STAGE3_KICK_STARTUP_TIME = 0.34;
 const STAGE3_KICK_ACTIVE_END = 0.52;
 const STAGE3_KICK_GRAVITY = 1320;
@@ -406,8 +410,11 @@ const BEATRICE_TOWER_VOLLEY_LEVIATHAN_TRACK_RATE = 0.72;
 const BEATRICE_TOWER_VOLLEY_LEVIATHAN_MIN_TRACK_RATE = 0.1;
 const BEATRICE_TOWER_VOLLEY_LEVIATHAN_SHRINK_DISTANCE = 430;
 const BEATRICE_TOWER_VOLLEY_LEVIATHAN_MIN_RADIUS = 104;
+const BEATRICE_TOWER_LEVIATHAN_PARRY_RING_RADIUS = 70;
+const BEATRICE_TOWER_LEVIATHAN_PARRY_START_RADIUS = 148;
+const BEATRICE_TOWER_LEVIATHAN_PARRY_WINDOW = 18;
 const BEATRICE_MECHANIC_CHOICES = ["goatTrial", "teleportAttack", "goatRush", "towerVolley"];
-const DEBUG_START_BEATRICE_BOSS_WAVE = false;
+const DEBUG_START_BEATRICE_BOSS_WAVE = true;
 const DEBUG_BEATRICE_TELEPORT_PREP_TEST = false;
 const BEATRICE_TELEPORT_PREP_JUMPS = 7;
 const BEATRICE_TELEPORT_PREP_JUMP_TIME = 0.14;
@@ -763,7 +770,9 @@ const beatriceFrames = {
   downed: [209, 210, 211, 212, 213],
   defeatMove: [819, 820, 821],
   defeatFinal: [822, 823, 824, 825, 826, 827, 828, 829, 830, 831],
-  defeatLoop: [829, 830, 831]
+  defeatLoop: [829, 830, 831],
+  victoryIntro: [844, 845],
+  victoryLoop: [851, 852, 853, 854]
 };
 const beelzebubFrames = [503, 504, 505, 506, 507, 508, 509, 510, 511, 512];
 const leviathanFrames = [513, 514, 515, 516, 517, 518, 519, 520, 521, 522];
@@ -1356,6 +1365,7 @@ const beatriceTowerVolley = {
   timer: 0,
   wave: 0,
   side: -1,
+  parryCollapse: false,
   towers: [],
   points: [],
   safeZones: [],
@@ -1863,6 +1873,30 @@ function cancelInterruptibleGoatCharge(enemy) {
   enemy.cooldown = Math.max(enemy.cooldown || 0, 0.55);
 }
 
+function cancelEnemyAttackTelegraph(enemy, cooldown = 0.35) {
+  if (!enemy || isUninterruptibleBeatriceRushGoat(enemy)) return;
+  if (enemy.type !== "goat" && enemy.type !== "battler") return;
+  enemy.attack = 0;
+  enemy.attackHasHit = false;
+  enemy.attackTelegraph = 0;
+  enemy.attackFacing = 0;
+  if (enemy.type === "goat" && enemy.goatAction !== "idle" && enemy.goatAction !== "defeat") {
+    enemy.goatAction = "idle";
+    enemy.goatHasHit = false;
+    enemy.goatParryFailed = false;
+    enemy.goatParryFailFade = 0;
+    enemy.goatPoundFinalHold = 0;
+    enemy.goatPunchSlideDistance = 0;
+    enemy.goatChargeDx = 0;
+    enemy.goatChargeDy = 0;
+    enemy.goatChargeDistance = 0;
+    enemy.goatChargeLimit = 0;
+    enemy.goatChargeSpeed = 0;
+    enemy.anim = 0;
+  }
+  enemy.cooldown = Math.max(enemy.cooldown || 0, cooldown);
+}
+
 function beatriceCanBeDamaged() {
   const vulnerableFlavor = ["dizzy", "hurt", "launched", "downed"].includes(beatriceBoss.flavor);
   return beatriceBoss.active
@@ -1895,6 +1929,40 @@ function beatriceHurtbox() {
     w: 172,
     h: 132
   };
+}
+
+function beatriceBarrierCanBeDamagedBySpecial() {
+  return beatriceBoss.active
+    && beatriceBoss.barrierActive
+    && beatriceBoss.hp > 0
+    && beatriceBoss.flavor !== "barrierBreak"
+    && beatriceBoss.flavor !== "defeated";
+}
+
+function beatriceBarrierBounds() {
+  const radius = 132;
+  const centerY = beatriceBoss.y - beatriceBoss.hoverOffset - 150;
+  return {
+    x: beatriceBoss.x - radius,
+    y: centerY - radius,
+    w: radius * 2,
+    h: radius * 2,
+    centerX: beatriceBoss.x,
+    centerY,
+    radius
+  };
+}
+
+function circleTouchesBeatriceBarrier(x, y, radius) {
+  if (!beatriceBarrierCanBeDamagedBySpecial()) return false;
+  const barrier = beatriceBarrierBounds();
+  return Math.hypot(barrier.centerX - x, (barrier.centerY - y) * 0.9) <= barrier.radius + radius;
+}
+
+function damageBeatriceBarrierWithSpecial(amount, direction = player.facing || 1) {
+  if (!beatriceBarrierCanBeDamagedBySpecial() || amount <= 0) return false;
+  damageBeatriceBarrier(amount, direction);
+  return true;
 }
 
 function damageBeatrice(amount, direction = 0) {
@@ -2279,6 +2347,8 @@ const player = {
   attackHasHit: false,
   crestAttackHasHit: false,
   superChargeShockwaveDone: false,
+  superChargeAttackActive: false,
+  pendingSuperChargeAttack: false,
   comboStep: 0,
   comboTimer: 0,
   comboQueuedKind: "",
@@ -2361,6 +2431,10 @@ function playerMaxHp() {
 
 function playerReflexBonus() {
   return clamp((player.blessings.miracleReflex || 0) * MIRACLE_REFLEX_PER_STACK, 0, MAX_MIRACLE_REFLEX);
+}
+
+function grantParryResolve() {
+  player.resolve = clamp(player.resolve + PARRY_RESOLVE_GAIN, 0, 100);
 }
 
 function reflexParryOuterBonus(radius, multiplier = 1) {
@@ -2929,7 +3003,7 @@ function companionFollowTarget(id) {
 function companionDrawSortY(id, y) {
   if (id === "shannon") return y;
   const slot = companionSlotIndex(id);
-  if (slot === 0) return player.y - 0.35;
+  if (slot === 0) return Math.max(y, player.y + 0.35);
   if (slot === 1) return y - 40;
   return y;
 }
@@ -3097,7 +3171,7 @@ function defeatEnemy(enemy) {
   enemy.dead = true;
   enemy.knockedDown = false;
   enemy.hurt = 0;
-  enemy.attack = 0;
+  cancelEnemyAttackTelegraph(enemy, 0);
   enemy.anim = 0;
   if (!wasAirborne) {
     enemy.airborne = false;
@@ -3129,7 +3203,7 @@ function absorbEnemyIntoDuoSingularity(enemy) {
   enemy.airborne = false;
   enemy.knockedDown = false;
   enemy.hurt = 0;
-  enemy.attack = 0;
+  cancelEnemyAttackTelegraph(enemy, 0);
   enemy.anim = 0;
   enemy.z = 0;
   enemy.launchSource = "";
@@ -3843,7 +3917,7 @@ function detonateDuoAttack() {
 function beginDuoAbsorb(enemy) {
   if (!enemy || enemy.dead || enemy.duoAbsorb > 0) return;
   enemy.hurt = 0;
-  enemy.attack = 0;
+  cancelEnemyAttackTelegraph(enemy, 0);
   enemy.airborne = false;
   enemy.knockedDown = false;
   enemy.duoAbsorb = 0.01;
@@ -4030,8 +4104,7 @@ function updateDuoAttack(dt) {
         enemy.anim += dt * 14;
         if (enemy.duoAbsorb >= 1) absorbEnemyIntoDuoSingularity(enemy);
       }
-      enemy.attack = 0;
-      enemy.cooldown = 0.4;
+      cancelEnemyAttackTelegraph(enemy, 0.4);
     }
   }
   if (attackTimer >= DUO_SPIRAL_DURATION * 0.86) detonateDuoAttack();
@@ -4156,6 +4229,7 @@ function tryBernHazardParry() {
   }
   const direction = bernCompanion.x >= player.x ? 1 : -1;
   runStats.parriesPerformed += 1;
+  grantParryResolve();
   startBernParryCounterPunch(direction);
   bernCompanion.state = "hazardParried";
   bernCompanion.anim = 0;
@@ -4198,6 +4272,7 @@ function resolveBeatriceMeleeKickParry() {
   screenShakeTimer = Math.max(screenShakeTimer, 0.18);
   enemyFreezeTimer = Math.max(enemyFreezeTimer, 0.45);
   runStats.parriesPerformed += 1;
+  grantParryResolve();
   const barrierDirection = Math.sign(beatriceBoss.x - player.x) || beatriceBoss.facing || 1;
   const barrierBroken = damageBeatriceBarrier(BEATRICE_MELEE_PARRY_BARRIER_DAMAGE, barrierDirection);
   if (!barrierBroken) {
@@ -4254,7 +4329,42 @@ function goatPoundParryIndicatorActive(enemy) {
   return enemy.type === "goat"
     && !enemy.dead
     && enemy.spawnGrace <= 0
+    && enemy.hurt <= 0
+    && !enemy.airborne
+    && !enemy.knockedDown
     && enemy.goatAction === "pound"
+    && !enemy.goatHasHit
+    && !enemy.goatParryFailed;
+}
+
+function goatPunchParryImpactIndex() {
+  return Math.max(1, goatFrames.punch.findIndex((frame) => GOAT_PUNCH_ACTIVE_FRAMES.has(frame)));
+}
+
+function goatPunchParryRingRadius(enemy) {
+  const impactFrameIndex = goatPunchParryImpactIndex();
+  const t = enemy.anim / impactFrameIndex;
+  return GOAT_PUNCH_PARRY_START_RADIUS - t * (GOAT_PUNCH_PARRY_START_RADIUS - GOAT_PUNCH_PARRY_RING_RADIUS);
+}
+
+function goatPunchParryTimingReady(enemy) {
+  if (enemy.type !== "goat" || enemy.dead || enemy.spawnGrace > 0) return false;
+  if (enemy.goatAction !== "punch" || enemy.goatHasHit || enemy.goatParryFailed) return false;
+  return parryRingReadyWithReflex(
+    goatPunchParryRingRadius(enemy),
+    GOAT_PUNCH_PARRY_RING_RADIUS,
+    GOAT_PUNCH_PARRY_WINDOW
+  );
+}
+
+function goatPunchParryIndicatorActive(enemy) {
+  return enemy.type === "goat"
+    && !enemy.dead
+    && enemy.spawnGrace <= 0
+    && enemy.hurt <= 0
+    && !enemy.airborne
+    && !enemy.knockedDown
+    && enemy.goatAction === "punch"
     && !enemy.goatHasHit
     && !enemy.goatParryFailed;
 }
@@ -4262,8 +4372,9 @@ function goatPoundParryIndicatorActive(enemy) {
 function hasParryIndicatorActive() {
   return bernHazardParryIndicatorActive()
     || beatriceStakeParryIndicatorActive()
+    || leviathanTowerParryIndicatorActive()
     || beatriceMeleeKickParryIndicatorActive()
-    || enemies.some(goatPoundParryIndicatorActive);
+    || enemies.some((enemy) => goatPoundParryIndicatorActive(enemy) || goatPunchParryIndicatorActive(enemy));
 }
 
 function hasParryTimingReady() {
@@ -4275,8 +4386,9 @@ function hasParryTimingReady() {
       }
       return true;
     })
+    || leviathanTowerParryRings().some(leviathanTowerParryReady)
     || beatriceMeleeKickParryReady()
-    || enemies.some(goatPoundParryReady);
+    || enemies.some((enemy) => goatPoundParryReady(enemy) || goatPunchParryReady(enemy));
 }
 
 function updateParryTipAlert() {
@@ -4292,6 +4404,14 @@ function goatPoundParryReady(enemy) {
   if (player.airborne || player.knockedDown) return false;
   if (!pointInGoatPoundSlam(enemy, player.x, player.y)) return false;
   return goatPoundParryTimingReady(enemy);
+}
+
+function goatPunchParryReady(enemy) {
+  if (enemy.type !== "goat" || enemy.dead || enemy.spawnGrace > 0) return false;
+  if (enemy.goatAction !== "punch" || enemy.goatHasHit || enemy.goatParryFailed) return false;
+  if (player.airborne || player.knockedDown) return false;
+  if (!pointInGoatPunch(enemy, player.x, player.y)) return false;
+  return goatPunchParryTimingReady(enemy);
 }
 
 function startGoatParryCounter(kind, direction) {
@@ -4332,9 +4452,15 @@ function tryGoatPoundParry(kind) {
   if (kind !== "punch" && kind !== "kick") return false;
   for (const enemy of enemies) {
     if (enemy.type !== "goat" || enemy.dead || enemy.spawnGrace > 0) continue;
-    if (enemy.goatAction !== "pound" || enemy.goatHasHit || enemy.goatParryFailed) continue;
-    if (player.airborne || player.knockedDown || !pointInGoatPoundSlam(enemy, player.x, player.y)) continue;
-    if (!goatPoundParryTimingReady(enemy)) {
+    if ((enemy.goatAction !== "pound" && enemy.goatAction !== "punch") || enemy.goatHasHit || enemy.goatParryFailed) continue;
+    const inParryRange = enemy.goatAction === "pound"
+      ? pointInGoatPoundSlam(enemy, player.x, player.y)
+      : pointInGoatPunch(enemy, player.x, player.y);
+    if (player.airborne || player.knockedDown || !inParryRange) continue;
+    const timingReady = enemy.goatAction === "pound"
+      ? goatPoundParryTimingReady(enemy)
+      : goatPunchParryTimingReady(enemy);
+    if (!timingReady) {
       enemy.goatParryFailed = true;
       enemy.goatParryFailFade = GOAT_POUND_PARRY_FAIL_FADE;
       message = "Parry failed";
@@ -4344,6 +4470,7 @@ function tryGoatPoundParry(kind) {
     }
     const direction = enemy.x >= player.x ? 1 : -1;
     runStats.parriesPerformed += 1;
+    grantParryResolve();
     startGoatParryCounter(kind, direction);
     if (enemy.bossMechanic === "beatriceGoatTrial") {
       enemy.hp = 0;
@@ -4364,7 +4491,7 @@ function tryGoatPoundParry(kind) {
     enemy.goatArmorFlash = 0;
     enemy.hurt = 0;
     enemy.anim = 0;
-    enemy.attack = 0;
+    cancelEnemyAttackTelegraph(enemy, 0.55);
     enemyFreezeTimer = Math.max(enemyFreezeTimer, 1);
     screenShakeTimer = Math.max(screenShakeTimer, 0.48);
     burst(enemy.x, enemy.y - 150, "special");
@@ -4872,6 +4999,7 @@ function launchActor(actor, direction, lift = 470, drift = 170) {
   actor.hurt = 0;
   actor.attack = 0;
   actor.anim = 0;
+  if (actor !== player) cancelEnemyAttackTelegraph(actor);
 }
 
 function juggleScaleFor(enemy) {
@@ -4900,7 +5028,7 @@ function spendBattlerExtraLaunchExtension(target) {
 
 function proratedEnemyJuggle(enemy, direction, source, lift = 260, drift = 90) {
   if (isUninterruptibleBeatriceRushGoat(enemy)) return false;
-  cancelInterruptibleGoatCharge(enemy);
+  cancelEnemyAttackTelegraph(enemy);
   const scale = juggleScaleFor(enemy);
   enemy.airborne = true;
   enemy.knockedDown = false;
@@ -4911,6 +5039,7 @@ function proratedEnemyJuggle(enemy, direction, source, lift = 260, drift = 90) {
   enemy.anim = 0;
   enemy.hurt = 0;
   enemy.attack = 0;
+  enemy.attackTelegraph = 0;
   return true;
 }
 
@@ -4938,7 +5067,7 @@ function groundBounceEnemyByBattlerRules(enemy, direction, source, lift = STAGE3
 
 function launchEnemy(enemy, direction, lift = 470, drift = 170, source = "unknown") {
   if (isUninterruptibleBeatriceRushGoat(enemy)) return false;
-  cancelInterruptibleGoatCharge(enemy);
+  cancelEnemyAttackTelegraph(enemy);
   if (enemy.airborne) {
     if (enemy.launchSource === source) {
       const scale = juggleScaleFor(enemy);
@@ -4953,6 +5082,7 @@ function launchEnemy(enemy, direction, lift = 470, drift = 170, source = "unknow
     enemy.anim = 0;
     enemy.hurt = 0;
     enemy.attack = 0;
+    enemy.attackTelegraph = 0;
   } else {
     launchActor(enemy, direction, lift, drift);
     enemy.juggleCount = 0;
@@ -4963,7 +5093,7 @@ function launchEnemy(enemy, direction, lift = 470, drift = 170, source = "unknow
 
 function launchEnemyUnprorated(enemy, direction, source, lift = 360, drift = 100) {
   if (isUninterruptibleBeatriceRushGoat(enemy)) return false;
-  cancelInterruptibleGoatCharge(enemy);
+  cancelEnemyAttackTelegraph(enemy);
   if (enemy.airborne) {
     enemy.vz = Math.max(enemy.vz || 0, lift);
     enemy.airVx = (enemy.airVx || 0) * 0.38 + direction * drift * 0.62;
@@ -4971,6 +5101,7 @@ function launchEnemyUnprorated(enemy, direction, source, lift = 360, drift = 100
     enemy.anim = 0;
     enemy.hurt = 0;
     enemy.attack = 0;
+    enemy.attackTelegraph = 0;
   } else {
     launchActor(enemy, direction, lift, drift);
   }
@@ -5011,7 +5142,7 @@ function spawnShannonWallFromCast() {
 
 function extendEnemyLaunch(enemy, direction, source, lift = 260, drift = 90) {
   if (isUninterruptibleBeatriceRushGoat(enemy)) return false;
-  cancelInterruptibleGoatCharge(enemy);
+  cancelEnemyAttackTelegraph(enemy);
   if (!enemy.airborne || enemy.launchSource === source) return false;
   const scale = juggleScaleFor(enemy);
   enemy.vz = Math.max(enemy.vz, lift * scale);
@@ -5021,12 +5152,13 @@ function extendEnemyLaunch(enemy, direction, source, lift = 260, drift = 90) {
   enemy.anim = 0;
   enemy.hurt = 0;
   enemy.attack = 0;
+  enemy.attackTelegraph = 0;
   return true;
 }
 
 function groundBounceEnemy(enemy, direction, source, lift = STAGE3_KICK_BOUNCE_LIFT, drift = STAGE3_KICK_BOUNCE_DRIFT) {
   if (isUninterruptibleBeatriceRushGoat(enemy)) return false;
-  cancelInterruptibleGoatCharge(enemy);
+  cancelEnemyAttackTelegraph(enemy);
   enemy.airborne = true;
   enemy.knockedDown = false;
   const pickupHeight = enemy.type === "goat" ? STAGE3_KICK_BOUNCE_FALL_HEIGHT * 1.12 : STAGE3_KICK_BOUNCE_FALL_HEIGHT;
@@ -5036,6 +5168,7 @@ function groundBounceEnemy(enemy, direction, source, lift = STAGE3_KICK_BOUNCE_L
   enemy.downTime = Math.max(enemy.downTime || 0, STAGE3_KICK_BOUNCE_DELAY + 0.14);
   enemy.hurt = 0;
   enemy.attack = 0;
+  enemy.attackTelegraph = 0;
   enemy.anim = 1;
   enemy.groundBouncePending = true;
   enemy.groundBounceTimer = -1;
@@ -5063,7 +5196,7 @@ function canGroundBounceTarget(enemy) {
 }
 
 function landLaunchedActor(actor, downTime = 0.85) {
-  cancelInterruptibleGoatCharge(actor);
+  cancelEnemyAttackTelegraph(actor);
   actor.z = 0;
   actor.airborne = false;
   actor.launchSource = "";
@@ -5991,6 +6124,7 @@ function resetBeatriceTowerVolley() {
   beatriceTowerVolley.timer = 0;
   beatriceTowerVolley.wave = 0;
   beatriceTowerVolley.side = -1;
+  beatriceTowerVolley.parryCollapse = false;
   beatriceTowerVolley.towers = [];
   beatriceTowerVolley.points = [];
   beatriceTowerVolley.safeZones = [];
@@ -6176,6 +6310,48 @@ function updateBeatriceTowerVolleyLeviathanRings() {
   }
 }
 
+function leviathanTowerParryRings() {
+  if (!beatriceBoss.active || beatriceBoss.mechanic !== "towerVolley" || !beatriceTowerVolley.active || beatriceTowerVolley.phase !== "fire") return [];
+  const elapsed = beatriceTowerVolley.timer;
+  return beatriceTowerVolley.leviathanRings.filter((ring) => {
+    return ring.wave === beatriceTowerVolley.wave
+      && !ring.detonated
+      && elapsed >= ring.appearAt
+      && elapsed < ring.detonateAt;
+  });
+}
+
+function leviathanRingParryProgress(ring) {
+  if (!ring) return 0;
+  return clamp((beatriceTowerVolley.timer - ring.appearAt) / Math.max(0.001, ring.detonateAt - ring.appearAt), 0, 1);
+}
+
+function leviathanRingParryTimingRadius(ring) {
+  const t = leviathanRingParryProgress(ring);
+  return BEATRICE_TOWER_LEVIATHAN_PARRY_START_RADIUS
+    - t * (BEATRICE_TOWER_LEVIATHAN_PARRY_START_RADIUS - BEATRICE_TOWER_LEVIATHAN_PARRY_RING_RADIUS);
+}
+
+function playerInLeviathanRing(ring) {
+  if (!ring) return false;
+  const dx = player.x - ring.x;
+  const dy = (player.y - ring.y) / 0.42;
+  return Math.hypot(dx, dy) <= ring.radius;
+}
+
+function leviathanTowerParryReady(ring) {
+  if (!ring || player.airborne || player.knockedDown || !playerInLeviathanRing(ring)) return false;
+  return parryRingReadyWithReflex(
+    leviathanRingParryTimingRadius(ring),
+    BEATRICE_TOWER_LEVIATHAN_PARRY_RING_RADIUS,
+    BEATRICE_TOWER_LEVIATHAN_PARRY_WINDOW
+  );
+}
+
+function leviathanTowerParryIndicatorActive() {
+  return leviathanTowerParryRings().some(playerInLeviathanRing);
+}
+
 function beatriceTowerVolleyLeviathanDone() {
   const volley = beatriceTowerVolley;
   return volley.leviathanRings
@@ -6183,8 +6359,35 @@ function beatriceTowerVolleyLeviathanDone() {
     .every((ring) => ring.detonated);
 }
 
+function collapseBeatriceTowerVolleyForParry() {
+  if (!beatriceTowerVolley.active) return;
+  for (const tower of beatriceTowerVolley.towers) {
+    const x = cameraX + (tower.screenX ?? (tower.side < 0 ? 0 : W));
+    const y = tower.y ?? FLOOR_Y;
+    spawnGoldenButterflies(x, y - 260, 38);
+    spawnGoldenButterflies(x, y - 122, 28);
+    spawnAsmodeusGoldenWisps(x, y - 210, 16);
+  }
+  beatriceTowerVolley.phase = "retreat";
+  beatriceTowerVolley.timer = 0;
+  beatriceTowerVolley.parryCollapse = true;
+  beatriceTowerVolley.points = [];
+  beatriceTowerVolley.safeZones = [];
+  beatriceTowerVolley.missiles = [];
+  beatriceTowerVolley.leviathanRings = [];
+  leviathanAttacks.length = 0;
+  beatriceStakeShockwaves.length = 0;
+  beatriceBoss.towerVolleyStarted = false;
+  beatriceBoss.mechanic = "stakeReward";
+  beatriceBoss.rewardStakePending = false;
+  beatriceBoss.nextMechanicTimer = 0;
+  message = "Counter!";
+  messageTimer = 0.85;
+}
+
 function updateBeatriceTowerVolley(dt) {
-  if (beatriceBoss.mechanic !== "towerVolley" || !beatriceTowerVolley.active) return;
+  if (!beatriceTowerVolley.active) return;
+  if (beatriceBoss.mechanic !== "towerVolley" && !beatriceTowerVolley.parryCollapse) return;
   beatriceTowerVolley.timer += dt;
   const volley = beatriceTowerVolley;
   if (volley.phase === "emerge") {
@@ -6246,6 +6449,10 @@ function updateBeatriceTowerVolley(dt) {
     const t = clamp(volley.timer / BEATRICE_TOWER_VOLLEY_RETREAT_TIME, 0, 1);
     for (const tower of volley.towers) tower.retreat = t;
     if (volley.timer >= BEATRICE_TOWER_VOLLEY_RETREAT_TIME) {
+      if (volley.parryCollapse) {
+        resetBeatriceTowerVolley();
+        return;
+      }
       resetBeatriceTowerVolley();
       completeBeatriceMechanic();
     }
@@ -6551,6 +6758,8 @@ function startGame() {
   player.attackLock = 0;
   player.attackHasHit = false;
   player.superChargeShockwaveDone = false;
+  player.superChargeAttackActive = false;
+  player.pendingSuperChargeAttack = false;
   player.currentAttack = "";
   player.attackConsumesResolve = false;
   player.pendingResolveAttack = false;
@@ -6826,6 +7035,8 @@ function setAction(name, lock = 0) {
       player.currentAttack = "";
       player.attackConsumesResolve = false;
       player.pendingResolveAttack = false;
+      player.superChargeAttackActive = false;
+      player.pendingSuperChargeAttack = false;
       player.poise = 0;
     }
   }
@@ -6924,6 +7135,7 @@ function defeatPlayer() {
   bankScoreCombo({ allowRewards: false });
   runStats.wavesCompleted = Math.max(runStats.wavesCompleted, wave - 1);
   recordCompletedRun();
+  const beatriceVictory = waveMode === "boss" && beatriceBoss.active && beatriceBoss.flavor !== "defeated";
   player.hp = 0;
   player.attackLock = 0;
   player.invuln = 0;
@@ -6954,15 +7166,20 @@ function defeatPlayer() {
   player.getUpIntoDizzy = false;
   screenShakeTimer = 0;
   setAction("down");
-  startLambdaGameOver();
-  startLambdaGameOverDialogue();
+  if (beatriceVictory) {
+    startBeatriceVictoryFlourish();
+    lambdaGameOverDialogue.active = false;
+  } else {
+    startLambdaGameOver();
+    startLambdaGameOverDialogue();
+  }
   state = "lost";
   message = "Try Again";
   messageTimer = 99;
 }
 
 function isSuperChargedAttack(kind, data) {
-  return player.blessings.superCharge
+  return player.superChargeAttackActive
     && player.attackConsumesResolve
     && data?.stage === 3
     && (kind === "punch3" || kind === "kick3");
@@ -7089,18 +7306,14 @@ function applyAttackHit(kind, data) {
       } else if (enemy.airborne) {
         extendEnemyLaunch(enemy, player.facing, source);
       } else if (data.knockdown) {
-        cancelInterruptibleGoatCharge(enemy);
+        cancelEnemyAttackTelegraph(enemy);
         enemy.knockedDown = true;
         enemy.downTime = 1.1;
         enemy.hurt = 0;
-        enemy.attack = 0;
-        enemy.attackTelegraph = 0;
         enemy.anim = 0;
       } else {
+        cancelEnemyAttackTelegraph(enemy);
         enemy.hurt = enemy.type === "goat" ? GOAT_HIT_STUN_DURATION : 0.34;
-        enemy.attack = 0;
-        enemy.attackHasHit = false;
-        enemy.attackTelegraph = 0;
       }
     }
   }
@@ -7223,16 +7436,14 @@ function applyCrestEchoHit(kind, data) {
     } else if (enemy.airborne) {
       extendEnemyLaunch(enemy, direction, source);
     } else if (data.knockdown) {
-      cancelInterruptibleGoatCharge(enemy);
+      cancelEnemyAttackTelegraph(enemy);
       enemy.knockedDown = true;
       enemy.downTime = 1.1;
       enemy.hurt = 0;
-      enemy.attack = 0;
       enemy.anim = 0;
     } else {
+      cancelEnemyAttackTelegraph(enemy);
       enemy.hurt = enemy.type === "goat" ? GOAT_HIT_STUN_DURATION : 0.24;
-      enemy.attack = 0;
-      enemy.attackHasHit = false;
     }
   }
   return hit;
@@ -7476,6 +7687,14 @@ function pointInGoatPunch(enemy, x, y) {
   return Math.hypot(forward, scaledY) <= GOAT_PUNCH_RANGE;
 }
 
+function shouldGoatPunchSlide(enemy) {
+  if (pointInGoatPunch(enemy, player.x, player.y)) return false;
+  const startX = enemy.x + enemy.facing * 38;
+  const forward = (player.x - startX) * enemy.facing;
+  const scaledY = (player.y - enemy.y) / GOAT_PUNCH_SEMICIRCLE_Y_SCALE;
+  return forward > GOAT_PUNCH_RANGE && Math.abs(scaledY) <= GOAT_PUNCH_RANGE;
+}
+
 function applyGoatChargeHit(enemy) {
   if (enemy.spawnGrace > 0 || player.airborne || player.knockedDown || state !== "playing") return false;
   if (!pointInGoatChargePath(enemy, player.x, player.y, 96)) return false;
@@ -7690,6 +7909,8 @@ function attack(kind) {
     player.pendingResolveAttack = false;
     player.crestAttackHasHit = false;
     player.superChargeShockwaveDone = false;
+    player.superChargeAttackActive = false;
+    player.pendingSuperChargeAttack = false;
     player.poise = 0;
     player.attackLungeRemaining = 0;
     player.stage3KickAir = false;
@@ -7745,6 +7966,8 @@ function attack(kind) {
   player.pendingResolveAttack = false;
   player.crestAttackHasHit = false;
   player.superChargeShockwaveDone = false;
+  player.superChargeAttackActive = !!player.pendingSuperChargeAttack;
+  player.pendingSuperChargeAttack = false;
   player.poise = 0;
   player.attackLungeRemaining = data.lunge || 0;
   if (action === "kick3") {
@@ -7803,33 +8026,53 @@ function nearestChargeTarget() {
   return candidates[0];
 }
 
-function teleportForSuperCharge() {
-  if (!player.blessings.superCharge) return;
-  const target = nearestChargeTarget();
-  if (!target) return;
+function teleportForSuperCharge(target = nearestChargeTarget()) {
+  if (!player.pendingSuperChargeAttack) return false;
+  if (!target) return false;
   const side = target.x >= player.x ? 1 : -1;
   burst(player.x, player.y - 90, "special");
   player.facing = side;
   player.x = clamp(target.x - side * 78, cameraX + 38, cameraX + W - 38);
   player.y = clampPlayY(target.y);
   burst(player.x, player.y - 90, "special");
+  return true;
 }
 
 function startChargedAttack(kind) {
   if (kind !== "punch" && kind !== "kick") return false;
   const cost = chargedAttackResolveCost();
   if (player.resolve < cost || !canStartChargedAttack()) return false;
+  const usesSuperCharge = Boolean(player.blessings.superCharge);
   const action = `${kind}3`;
+  let spentDashIndex = -1;
+  let superChargeTarget = usesSuperCharge && availableDashStocks() > 0 ? nearestChargeTarget() : null;
+  if (superChargeTarget) {
+    if (consumeDashStock()) {
+      spentDashIndex = player.heldDashCooldownIndex;
+    } else {
+      superChargeTarget = null;
+    }
+  }
   player.resolve = Math.max(0, player.resolve - cost);
   resolveSpendFlashTimer = 0.34;
   player.pendingResolveAttack = true;
-  teleportForSuperCharge();
+  player.pendingSuperChargeAttack = spentDashIndex >= 0;
+  teleportForSuperCharge(superChargeTarget);
   const started = attack(action);
+  if (started && spentDashIndex >= 0) {
+    player.heldDashCooldownIndex = -1;
+  }
   if (!started) {
     player.pendingResolveAttack = false;
+    player.pendingSuperChargeAttack = false;
     player.attackConsumesResolve = false;
     player.resolve = Math.min(100, player.resolve + cost);
     resolveSpendFlashTimer = 0;
+    if (spentDashIndex >= 0 && player.dashCooldowns[spentDashIndex] !== undefined) {
+      player.dashCooldowns[spentDashIndex] = 0;
+      player.heldDashCooldownIndex = -1;
+      updateDashCooldowns(0);
+    }
   }
   return started;
 }
@@ -8429,6 +8672,37 @@ function clearBeatriceBossMechanics() {
   }
 }
 
+function startBeatriceVictoryFlourish() {
+  if (!beatriceBoss.active) return;
+  clearBeatriceBossMechanics();
+  const side = -(player.facing || (beatriceBoss.x >= player.x ? 1 : -1));
+  const victorySideOffset = 300;
+  const targetX = clamp(player.x + side * victorySideOffset, cameraX + 92, cameraX + W - 92);
+  const targetY = clamp(player.y - 18, FLOOR_Y - 30, FLOOR_Y + 56);
+  spawnBeatriceAfterimage(beatriceBoss.x, beatriceBoss.y, 0.5, beatriceFrames.victoryIntro[0]);
+  spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 62, 34);
+  spawnAsmodeusGoldenWisps(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 16);
+  beatriceBoss.active = true;
+  beatriceBoss.x = targetX;
+  beatriceBoss.y = targetY;
+  beatriceBoss.z = 0;
+  beatriceBoss.vz = 0;
+  beatriceBoss.airVx = 0;
+  beatriceBoss.hoverOffset = 0;
+  beatriceBoss.facing = player.x >= beatriceBoss.x ? 1 : -1;
+  beatriceBoss.flavor = "victory";
+  beatriceBoss.defeatPhase = "intro";
+  beatriceBoss.anim = 0;
+  beatriceBoss.materializeTimer = 0;
+  beatriceBoss.barrierActive = false;
+  beatriceBoss.vulnerable = false;
+  beatriceBoss.mechanic = "victory";
+  beatriceBoss.wallsActive = false;
+  spawnBeatriceAfterimage(targetX, targetY, 0.62, beatriceFrames.victoryIntro[0]);
+  spawnGoldenButterflies(targetX, targetY - 78, 46);
+  spawnAsmodeusGoldenWisps(targetX, targetY - 72, 18);
+}
+
 function defeatBeatriceBoss() {
   if (!beatriceBoss.active || beatriceBoss.flavor === "defeated") return;
   const startY = beatriceBoss.y;
@@ -8612,10 +8886,8 @@ function applySpecialBeam(dt) {
     if (isUninterruptibleBeatriceRushGoat(enemy)) {
       enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.08);
     } else {
+      cancelEnemyAttackTelegraph(enemy, 0.2);
       enemy.hurt = 0.12;
-      enemy.attack = 0;
-      enemy.attackHasHit = false;
-      enemy.attackTelegraph = 0;
       enemy.facing = -player.facing;
     }
     if (enemy.airborne && !isUninterruptibleBeatriceRushGoat(enemy)) {
@@ -8625,6 +8897,15 @@ function applySpecialBeam(dt) {
     }
     if (enemy.hp <= 0) {
       defeatEnemy(enemy);
+    }
+  }
+  if (beatriceBarrierCanBeDamagedBySpecial()) {
+    const barrier = beatriceBarrierBounds();
+    if (rectsTouch(beam, barrier)) {
+      const contactX = clamp(barrier.centerX, beam.x, beam.x + beam.w);
+      const contactY = clamp(barrier.centerY, beam.y, beam.y + beam.h);
+      spawnBeamContactSparks(contactX, contactY, dt);
+      damageBeatriceBarrierWithSpecial(SPECIAL_BEAM_DAMAGE * dt, player.facing);
     }
   }
 }
@@ -8643,10 +8924,8 @@ function damageLambdaSpecialArea(x, y, radius, damage, source, options = {}) {
     if (uninterruptibleRushGoat) {
       enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
     } else {
+      cancelEnemyAttackTelegraph(enemy, 0.2);
       enemy.hurt = Math.max(enemy.hurt || 0, 0.16);
-      enemy.attack = 0;
-      enemy.attackHasHit = false;
-      enemy.attackTelegraph = 0;
     }
     const direction = Math.sign(enemy.x - x) || player.facing || 1;
     if (uninterruptibleRushGoat) {
@@ -8673,6 +8952,9 @@ function damageLambdaSpecialArea(x, y, radius, damage, source, options = {}) {
       damageBeatrice(damage, direction);
       if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
     }
+  } else if (circleTouchesBeatriceBarrier(x, y - 82, radius)) {
+    const direction = Math.sign(beatriceBoss.x - x) || player.facing || 1;
+    damageBeatriceBarrierWithSpecial(damage, direction);
   }
 }
 
@@ -8865,6 +9147,14 @@ function lambdaSpecialKonpeitoCollisionTarget(effect, previousX, previousY) {
         best = { type: "beatrice", dist };
       }
     }
+  } else if (beatriceBarrierCanBeDamagedBySpecial()) {
+    const box = beatriceBarrierBounds();
+    if (rectsTouch(pathBox, box)) {
+      const dist = distanceToSegment(box.centerX, box.centerY, previousX, previousY, effect.x, effect.hoverY);
+      if (dist <= LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS + box.radius && (!best || dist < best.dist)) {
+        best = { type: "beatriceBarrier", dist };
+      }
+    }
   }
   return best;
 }
@@ -8931,10 +9221,8 @@ function updateLambdaSpecialFinalBursts(dt) {
       if (isUninterruptibleBeatriceRushGoat(enemy)) {
         enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.22);
       } else {
+        cancelEnemyAttackTelegraph(enemy, 0.35);
         enemy.hurt = Math.max(enemy.hurt || 0, 0.34);
-        enemy.attack = 0;
-        enemy.attackHasHit = false;
-        enemy.attackTelegraph = 0;
         const direction = Math.sign(enemy.x - wave.x) || player.facing || 1;
         if (enemy.airborne) {
           extendEnemyLaunch(enemy, direction, "battler:lambdaKonpeitoSpecialFinalBurst", 230, 78);
@@ -8953,6 +9241,9 @@ function updateLambdaSpecialFinalBursts(dt) {
         damageBeatrice(wave.damage, Math.sign(beatriceBoss.x - wave.x) || player.facing || 1);
         if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
       }
+    } else if (!wave.hitBeatrice && circleTouchesBeatriceBarrier(wave.x, wave.y - 72, radius)) {
+      wave.hitBeatrice = true;
+      damageBeatriceBarrierWithSpecial(wave.damage, Math.sign(beatriceBoss.x - wave.x) || player.facing || 1);
     }
     wave.life -= dt;
     if (wave.life <= 0) lambdaSpecialFinalBursts.splice(i, 1);
@@ -8976,8 +9267,8 @@ function updateLambdaSpecialShrapnel(dt) {
       if (isUninterruptibleBeatriceRushGoat(enemy)) {
         enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
       } else {
+        cancelEnemyAttackTelegraph(enemy, 0.2);
         enemy.hurt = Math.max(enemy.hurt || 0, 0.12);
-        enemy.attack = 0;
       }
       if (enemy.hp <= 0) defeatEnemy(enemy);
     }
@@ -8988,6 +9279,9 @@ function updateLambdaSpecialShrapnel(dt) {
         damageBeatrice(LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE, Math.sign(beatriceBoss.x - player.x) || player.facing || 1);
         if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
       }
+    } else if (!shard.hitBeatrice && circleTouchesBeatriceBarrier(pos.x, pos.y, LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_RADIUS)) {
+      shard.hitBeatrice = true;
+      damageBeatriceBarrierWithSpecial(LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE, Math.sign(beatriceBoss.x - pos.x) || player.facing || 1);
     }
     if (shard.t >= 1) {
       burst(shard.targetX, shard.targetY, "special");
@@ -9294,6 +9588,8 @@ function updatePlayer(dt) {
     player.goatParryCounter = false;
     player.attackConsumesResolve = false;
     player.pendingResolveAttack = false;
+    player.superChargeAttackActive = false;
+    player.pendingSuperChargeAttack = false;
   }
   if (player.attackLock <= 0 && player.comboQueuedKind && player.comboTimer > 0) {
     const queuedKind = player.comboQueuedKind;
@@ -9547,9 +9843,7 @@ function updateEnemies(dt) {
     }
     if (enemy.spawnGrace > 0) {
       enemy.spawnGrace = Math.max(0, enemy.spawnGrace - dt);
-      enemy.attack = 0;
-      enemy.attackHasHit = false;
-      enemy.cooldown = 0.45;
+      cancelEnemyAttackTelegraph(enemy, 0.45);
       enemy.anim += dt * 9;
       if (enemy.type !== "goat") enemy.facing = player.x >= enemy.x ? 1 : -1;
       continue;
@@ -9561,6 +9855,9 @@ function updateEnemies(dt) {
       enemy.cooldown = Math.max(0, enemy.cooldown - dt);
       enemy.attack = 0;
       enemy.attackHasHit = false;
+      if (enemy.hurt > 0 && enemy.goatAction !== "idle" && enemy.goatAction !== "defeat" && !isUninterruptibleBeatriceRushGoat(enemy)) {
+        cancelEnemyAttackTelegraph(enemy, 0.45);
+      }
       if (enemy.hurt > 0) enemy.goatHurtAnim += dt * 11;
       if (enemy.hurt > 0 && enemy.goatAction === "idle") {
         enemy.anim += dt * 3.6;
@@ -9599,7 +9896,7 @@ function updateEnemies(dt) {
       } else if (enemy.goatAction === "punch") {
         enemy.anim += dt * 9.5;
         const slideRemaining = GOAT_PUNCH_SLIDE_DISTANCE - (enemy.goatPunchSlideDistance || 0);
-        if (slideRemaining > 0 && !enemy.goatHasHit) {
+        if (slideRemaining > 0 && !enemy.goatHasHit && shouldGoatPunchSlide(enemy)) {
           const slideStep = Math.min(slideRemaining, GOAT_PUNCH_SLIDE_SPEED * dt);
           enemy.x = clamp(enemy.x + enemy.facing * slideStep, 80, STAGE_W - 80);
           enemy.goatPunchSlideDistance = (enemy.goatPunchSlideDistance || 0) + slideStep;
@@ -9749,11 +10046,6 @@ function updateGoatPoundQuakes(dt) {
     if (quake.timer >= GOAT_POUND_QUAKE_DELAY) {
       const expandT = clamp((quake.timer - GOAT_POUND_QUAKE_DELAY) / GOAT_POUND_QUAKE_DURATION, 0, 1);
       const radius = GOAT_POUND_RANGE + (GOAT_POUND_QUAKE_RANGE - GOAT_POUND_RANGE) * expandT;
-      quake.rockTimer -= dt;
-      while (quake.rockTimer <= 0 && expandT < 1) {
-        spawnGoatQuakeRocks(quake, radius);
-        quake.rockTimer += 0.055;
-      }
       applyGoatDelayedQuakeHit(quake, radius);
     }
     if (quake.timer >= GOAT_POUND_QUAKE_DELAY + GOAT_POUND_QUAKE_DURATION + 0.18) {
@@ -9866,8 +10158,8 @@ function updateCrystalShards(dt) {
       if (isUninterruptibleBeatriceRushGoat(enemy)) {
         enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
       } else {
+        cancelEnemyAttackTelegraph(enemy, 0.2);
         enemy.hurt = Math.max(enemy.hurt || 0, 0.18);
-        enemy.attack = 0;
         if (enemy.airborne) {
           extendEnemyLaunch(enemy, direction, "bern:crystalShardPlus", CRYSTAL_SHARD_PLUS_LIFT, CRYSTAL_SHARD_PLUS_DRIFT);
         } else {
@@ -9939,8 +10231,8 @@ function updateCrystalShards(dt) {
         if (isUninterruptibleBeatriceRushGoat(enemy)) {
           enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
         } else {
+          cancelEnemyAttackTelegraph(enemy, 0.25);
           enemy.hurt = 0.2;
-          enemy.attack = 0;
           if (enemy.airborne) {
             extendEnemyLaunch(enemy, direction, source, 250, 80);
           } else {
@@ -9973,8 +10265,8 @@ function updateCrystalShockwaves(dt) {
         if (isUninterruptibleBeatriceRushGoat(enemy)) {
           enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
         } else {
+          cancelEnemyAttackTelegraph(enemy, 0.2);
           enemy.hurt = Math.max(enemy.hurt || 0, 0.16);
-          enemy.attack = 0;
           if (enemy.airborne) {
             const direction = Math.sign(enemy.x - wave.x || 1);
             extendEnemyLaunch(enemy, direction, wave.dome ? "bern:crystalShockwave" : "crystalShockwave", 220, 70);
@@ -10142,6 +10434,15 @@ function updateBeatrice(dt) {
     }
     return;
   }
+  if (beatriceBoss.flavor === "victory") {
+    beatriceBoss.anim += dt * 7.5;
+    if (beatriceBoss.defeatPhase === "intro" && beatriceBoss.anim >= beatriceFrames.victoryIntro.length) {
+      beatriceBoss.defeatPhase = "loop";
+      beatriceBoss.anim = 0;
+    }
+    beatriceBoss.facing = player.x >= beatriceBoss.x ? 1 : -1;
+    return;
+  }
   if (beatriceBoss.asmoDropKickPending) {
     if (!player.airborne || player.knockedDown || state !== "playing") {
       beatriceBoss.asmoDropKickPending = false;
@@ -10164,7 +10465,8 @@ function updateBeatrice(dt) {
     && beatriceBoss.flavor !== "hurt"
     && beatriceBoss.flavor !== "launched"
     && beatriceBoss.flavor !== "downed"
-    && beatriceBoss.flavor !== "stunRecover") {
+    && beatriceBoss.flavor !== "stunRecover"
+    && beatriceBoss.flavor !== "victory") {
     const target = beatriceIdleHoverPoint();
     const desiredX = target.x;
     const desiredY = target.y;
@@ -10686,6 +10988,63 @@ function beatriceStakeParryIndicatorActive() {
   return beatriceStakes.some((stake) => stake.mode === "launch" && playerInBeatriceStakeReticle(stake));
 }
 
+function launchReturnedStakeFromBattler(stake = null) {
+  if (!beatriceBoss.active) return false;
+  const targetX = beatriceBoss.x;
+  const targetY = beatriceBoss.y - beatriceBoss.hoverOffset - 70;
+  player.action = "stakeParryPose";
+  player.anim = 0;
+  player.attackLock = Math.max(player.attackLock, BEATRICE_STAKE_RETURN_FREEZE + 0.08);
+  player.attackHasHit = false;
+  player.crestAttackHasHit = false;
+  player.currentAttack = "";
+  player.facing = Math.sign(targetX - player.x) || player.facing || 1;
+  const lineStartX = player.x + player.facing * 48;
+  const lineStartY = player.y - 106;
+  const lineDx = targetX - lineStartX;
+  const lineDy = targetY - lineStartY;
+  const lineLen = Math.hypot(lineDx, lineDy) || 1;
+  const returnedStake = stake || {
+    x: lineStartX,
+    y: lineStartY,
+    vx: 0,
+    vy: 0,
+    bounces: BEATRICE_STAKE_BOUNCES,
+    mode: "return",
+    targetX,
+    targetY,
+    angle: 0,
+    parryWindow: 0,
+    parried: true,
+    playerGroundedAtThrow: false
+  };
+  returnedStake.mode = "return";
+  returnedStake.x = lineStartX;
+  returnedStake.y = lineStartY;
+  returnedStake.vx = (lineDx / lineLen) * BEATRICE_STAKE_RETURN_SPEED;
+  returnedStake.vy = (lineDy / lineLen) * BEATRICE_STAKE_RETURN_SPEED;
+  returnedStake.parried = true;
+  returnedStake.parryWindow = 0;
+  returnedStake.targetX = targetX;
+  returnedStake.targetY = targetY;
+  returnedStake.angle = Math.atan2(returnedStake.vy, returnedStake.vx);
+  if (!beatriceStakes.includes(returnedStake)) beatriceStakes.push(returnedStake);
+  beatriceStakeParryLine.life = BEATRICE_STAKE_RETURN_LINE_TIME;
+  beatriceStakeParryLine.max = BEATRICE_STAKE_RETURN_LINE_TIME;
+  beatriceStakeParryLine.x1 = lineStartX;
+  beatriceStakeParryLine.y1 = lineStartY;
+  beatriceStakeParryLine.x2 = targetX + (lineDx / lineLen) * 210;
+  beatriceStakeParryLine.y2 = targetY + (lineDy / lineLen) * 210;
+  beatriceTutorial.stakeParried = true;
+  runStats.parriesPerformed += 1;
+  grantParryResolve();
+  enemyFreezeTimer = Math.max(enemyFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
+  beatriceStakeParryFreezeTimer = Math.max(beatriceStakeParryFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
+  screenShakeTimer = Math.max(screenShakeTimer, 0.56);
+  burst(player.x, player.y - 96, "special");
+  return true;
+}
+
 function tryBeatriceStakeParry() {
   if (state !== "playing") return false;
   for (let i = beatriceStakes.length - 1; i >= 0; i--) {
@@ -10701,42 +11060,19 @@ function tryBeatriceStakeParry() {
       }
       continue;
     }
-    const targetX = beatriceBoss.x;
-    const targetY = beatriceBoss.y - beatriceBoss.hoverOffset - 70;
-    player.action = "stakeParryPose";
-    player.anim = 0;
-    player.attackLock = Math.max(player.attackLock, BEATRICE_STAKE_RETURN_FREEZE + 0.08);
-    player.attackHasHit = false;
-    player.crestAttackHasHit = false;
-    player.currentAttack = "";
-    player.facing = Math.sign(targetX - player.x) || player.facing || 1;
-    const lineStartX = player.x + player.facing * 48;
-    const lineStartY = player.y - 106;
-    const lineDx = targetX - lineStartX;
-    const lineDy = targetY - lineStartY;
-    const lineLen = Math.hypot(lineDx, lineDy) || 1;
-    stake.mode = "return";
-    stake.x = lineStartX;
-    stake.y = lineStartY;
-    stake.vx = (lineDx / lineLen) * BEATRICE_STAKE_RETURN_SPEED;
-    stake.vy = (lineDy / lineLen) * BEATRICE_STAKE_RETURN_SPEED;
-    stake.parried = true;
-    stake.parryWindow = 0;
-    beatriceStakeParryLine.life = BEATRICE_STAKE_RETURN_LINE_TIME;
-    beatriceStakeParryLine.max = BEATRICE_STAKE_RETURN_LINE_TIME;
-    beatriceStakeParryLine.x1 = lineStartX;
-    beatriceStakeParryLine.y1 = lineStartY;
-    beatriceStakeParryLine.x2 = targetX + (lineDx / lineLen) * 210;
-    beatriceStakeParryLine.y2 = targetY + (lineDy / lineLen) * 210;
-    beatriceTutorial.stakeParried = true;
-    runStats.parriesPerformed += 1;
-    enemyFreezeTimer = Math.max(enemyFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
-    beatriceStakeParryFreezeTimer = Math.max(beatriceStakeParryFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
-    screenShakeTimer = Math.max(screenShakeTimer, 0.56);
-    burst(player.x, player.y - 96, "special");
-    return true;
+    return launchReturnedStakeFromBattler(stake);
   }
   return false;
+}
+
+function tryLeviathanTowerParry() {
+  if (state !== "playing") return false;
+  const ring = leviathanTowerParryRings().find(leviathanTowerParryReady);
+  if (!ring) return false;
+  ring.detonated = true;
+  ring.leviathanSpawned = false;
+  collapseBeatriceTowerVolleyForParry();
+  return launchReturnedStakeFromBattler();
 }
 
 function updateLambda(dt) {
@@ -11401,6 +11737,7 @@ function update(dt) {
       player.attackLock = Math.max(0, player.attackLock - dt);
     }
     enemyFreezeTimer = Math.max(0, enemyFreezeTimer - dt);
+    updateBeatriceTowerVolley(dt);
     updateBeatriceStakes(dt);
     updateBeatriceStakeParryLine(dt);
     updateCrystalTrails(dt);
@@ -11542,9 +11879,10 @@ function drawSprite(actor, frameId, scale, enemy = false, action = "") {
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(-actor.facing, 1);
+  let shadowFade = 0;
   if (enemy) {
     const spawning = actor.spawnGrace > 0;
-    const shadowFade = actor.shadowFadeIn > 0 ? clamp(actor.shadowFadeIn / SHADOW_PORTAL_ENEMY_FADE_IN, 0, 1) : 0;
+    shadowFade = actor.shadowFadeIn > 0 ? clamp(actor.shadowFadeIn / SHADOW_PORTAL_ENEMY_FADE_IN, 0, 1) : 0;
     const telegraphing = (actor.attackTelegraph || 0) > 0;
     const tellPulse = Math.sin(performance.now() / 48) > 0;
     const alpha = spawning
@@ -11564,17 +11902,39 @@ function drawSprite(actor, frameId, scale, enemy = false, action = "") {
   } else if (actor.invuln > 0) {
     ctx.globalAlpha = Math.sin(performance.now() / 45) > 0 ? 0.58 : 1;
   }
-  ctx.drawImage(
-    img,
-    bounds[0],
-    bounds[1],
-    sourceW,
-    sourceH,
-    drawX,
-    drawY,
-    drawW,
-    drawH
-  );
+  if (enemy && shadowFade > 0) {
+    const riseT = 1 - shadowFade;
+    const easedRise = 1 - Math.pow(1 - riseT, 3);
+    const sink = (1 - easedRise) * drawH * 0.86;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(drawX - 8, -drawH - 24, drawW + 16, drawH + 42);
+    ctx.clip();
+    ctx.drawImage(
+      img,
+      bounds[0],
+      bounds[1],
+      sourceW,
+      sourceH,
+      drawX,
+      drawY + sink,
+      drawW,
+      drawH
+    );
+    ctx.restore();
+  } else {
+    ctx.drawImage(
+      img,
+      bounds[0],
+      bounds[1],
+      sourceW,
+      sourceH,
+      drawX,
+      drawY,
+      drawW,
+      drawH
+    );
+  }
   ctx.restore();
 }
 
@@ -11813,7 +12173,7 @@ function drawDashAttackTimingMarker() {
 }
 
 function drawGoatPoundParryRings(enemy, fade = 1) {
-  if (enemy.goatAction !== "pound" || enemy.goatHasHit || enemy.dead || enemy.spawnGrace > 0) return;
+  if (enemy.goatAction !== "pound" || enemy.goatHasHit || enemy.dead || enemy.spawnGrace > 0 || enemy.hurt > 0 || enemy.airborne || enemy.knockedDown) return;
   const failed = Boolean(enemy.goatParryFailed);
   const failFade = failed ? clamp((enemy.goatParryFailFade || 0) / GOAT_POUND_PARRY_FAIL_FADE, 0, 1) : 1;
   if (failed && failFade <= 0) return;
@@ -11851,6 +12211,50 @@ function drawGoatPoundParryRings(enemy, fade = 1) {
     ctx.lineWidth = 10;
     ctx.beginPath();
     ctx.arc(x, y, GOAT_POUND_PARRY_RING_RADIUS + 5, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawGoatPunchParryRings(enemy, fade = 1) {
+  if (enemy.goatAction !== "punch" || enemy.goatHasHit || enemy.dead || enemy.spawnGrace > 0 || enemy.hurt > 0 || enemy.airborne || enemy.knockedDown) return;
+  const failed = Boolean(enemy.goatParryFailed);
+  const failFade = failed ? clamp((enemy.goatParryFailFade || 0) / GOAT_POUND_PARRY_FAIL_FADE, 0, 1) : 1;
+  if (failed && failFade <= 0) return;
+  const x = enemy.x - cameraX + enemy.facing * 34;
+  const y = enemy.y - 150;
+  const timingRadius = goatPunchParryRingRadius(enemy);
+  const ready = !failed && goatPunchParryTimingReady(enemy);
+  const pulse = pulseValue(15);
+  ctx.save();
+  ctx.globalAlpha = fade * failFade;
+  ctx.globalCompositeOperation = "lighter";
+  if (!failed) drawReflexParryGraceRing(x, y, GOAT_PUNCH_PARRY_RING_RADIUS, GOAT_PUNCH_PARRY_WINDOW, fade * failFade);
+  ctx.lineWidth = ready ? 5 : 3;
+  ctx.strokeStyle = failed ? "rgba(175, 175, 175, 0.62)" : ready ? `rgba(255, 232, 74, ${0.88 + pulse * 0.12})` : "rgba(255, 255, 255, 0.78)";
+  ctx.beginPath();
+  ctx.arc(x, y, GOAT_PUNCH_PARRY_RING_RADIUS, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = ready ? 6 : 4;
+  ctx.strokeStyle = failed ? "rgba(92, 92, 92, 0.72)" : ready ? `rgba(255, 214, 45, ${0.9 + pulse * 0.1})` : "rgba(255, 44, 44, 0.78)";
+  ctx.beginPath();
+  ctx.arc(x, y, Math.max(8, timingRadius), 0, Math.PI * 2);
+  ctx.stroke();
+  if (failed) {
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = "rgba(210, 210, 210, 0.72)";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(x - 28, y - 28);
+    ctx.lineTo(x + 28, y + 28);
+    ctx.moveTo(x + 28, y - 28);
+    ctx.lineTo(x - 28, y + 28);
+    ctx.stroke();
+  } else if (ready) {
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.55)";
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(x, y, GOAT_PUNCH_PARRY_RING_RADIUS + 5, 0, Math.PI * 2);
     ctx.stroke();
   }
   ctx.restore();
@@ -11909,7 +12313,7 @@ function drawSpecialWindupGlow() {
 }
 
 function drawGoatChargeTelegraph(enemy, fade = 1) {
-  if (enemy.goatAction !== "chargeWindup" || enemy.dead || enemy.spawnGrace > 0) return;
+  if (enemy.goatAction !== "chargeWindup" || enemy.dead || enemy.spawnGrace > 0 || enemy.hurt > 0 || enemy.airborne || enemy.knockedDown) return;
   const chargeT = clamp(enemy.anim / Math.max(1, goatFrames.chargeWindup.length), 0, 1);
   const startX = enemy.x - cameraX + enemy.facing * 42;
   const startY = enemy.y;
@@ -12076,6 +12480,7 @@ function drawGoatEnemy(enemy) {
   drawGoatChargeTelegraph(enemy, fade);
   drawGoatPunchTelegraph(enemy, fade);
   drawGoatPoundParryRings(enemy, fade);
+  drawGoatPunchParryRings(enemy, fade);
   ctx.save();
   ctx.globalAlpha = fade;
   drawActorShadow(enemy, 82);
@@ -12098,17 +12503,41 @@ function drawGoatEnemy(enemy) {
     ctx.globalAlpha *= 1 - deathT * 0.72;
     ctx.filter = `grayscale(1) brightness(${0.85 - deathT * 0.85}) contrast(${1 + deathT * 0.8})`;
   }
-  ctx.drawImage(
-    img,
-    bounds[0],
-    bounds[1],
-    sourceW,
-    sourceH,
-    -drawW * 0.5 + idleAnchorOffset.x,
-    -drawH + 16 + groundedDownOffset + idleAnchorOffset.y,
-    drawW,
-    drawH
-  );
+  const drawX = -drawW * 0.5 + idleAnchorOffset.x;
+  const drawY = -drawH + 16 + groundedDownOffset + idleAnchorOffset.y;
+  if (shadowFade > 0) {
+    const riseT = 1 - shadowFade;
+    const easedRise = 1 - Math.pow(1 - riseT, 3);
+    const sink = (1 - easedRise) * drawH * 0.86;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(drawX - 10, -drawH - 36, drawW + 20, drawH + 58);
+    ctx.clip();
+    ctx.drawImage(
+      img,
+      bounds[0],
+      bounds[1],
+      sourceW,
+      sourceH,
+      drawX,
+      drawY + sink,
+      drawW,
+      drawH
+    );
+    ctx.restore();
+  } else {
+    ctx.drawImage(
+      img,
+      bounds[0],
+      bounds[1],
+      sourceW,
+      sourceH,
+      drawX,
+      drawY,
+      drawW,
+      drawH
+    );
+  }
   ctx.restore();
   if (!enemy.dead && !enemy.knockedDown) {
     ctx.fillStyle = "#1f1518";
@@ -12119,7 +12548,7 @@ function drawGoatEnemy(enemy) {
 }
 
 function drawGoatPoundTelegraph(enemy, fade = 1) {
-  if (enemy.goatAction !== "pound" || enemy.goatHasHit || enemy.dead || enemy.spawnGrace > 0) return;
+  if (enemy.goatAction !== "pound" || enemy.goatHasHit || enemy.dead || enemy.spawnGrace > 0 || enemy.hurt > 0 || enemy.airborne || enemy.knockedDown) return;
   const impactFrameIndex = goatFrames.pound.findIndex((frame) => frame >= 684);
   const chargeT = clamp(enemy.anim / Math.max(1, impactFrameIndex), 0, 1);
   const dirX = enemy.goatPoundDx || enemy.facing || 1;
@@ -12168,7 +12597,7 @@ function drawGoatPoundTelegraph(enemy, fade = 1) {
 }
 
 function drawGoatPunchTelegraph(enemy, fade = 1) {
-  if (enemy.goatAction !== "punch" || enemy.goatHasHit || enemy.dead || enemy.spawnGrace > 0) return;
+  if (enemy.goatAction !== "punch" || enemy.goatHasHit || enemy.dead || enemy.spawnGrace > 0 || enemy.hurt > 0 || enemy.airborne || enemy.knockedDown) return;
   const firstActiveIndex = goatFrames.punch.findIndex((frame) => GOAT_PUNCH_ACTIVE_FRAMES.has(frame));
   const chargeT = clamp(enemy.anim / Math.max(1, firstActiveIndex), 0, 1);
   const startX = enemy.x - cameraX + enemy.facing * 38;
@@ -12297,6 +12726,28 @@ function drawBeatriceRingTelegraphs() {
       ctx.beginPath();
       ctx.ellipse(x, y, ring.radius * visibleT, radiusY * visibleT, 0, 0, Math.PI * 2);
       ctx.fill();
+    }
+    if (beatriceBoss.mechanic === "towerVolley") {
+      const timingRadius = leviathanRingParryTimingRadius(ring);
+      const ready = leviathanTowerParryReady(ring);
+      drawReflexParryGraceRing(x, y, BEATRICE_TOWER_LEVIATHAN_PARRY_RING_RADIUS, BEATRICE_TOWER_LEVIATHAN_PARRY_WINDOW, 0.82, 1.25);
+      ctx.lineWidth = ready ? 5 : 3;
+      ctx.strokeStyle = ready ? `rgba(255, 232, 74, ${0.84 + pulse * 0.16})` : "rgba(255, 255, 255, 0.72)";
+      ctx.beginPath();
+      ctx.arc(x, y, BEATRICE_TOWER_LEVIATHAN_PARRY_RING_RADIUS, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.lineWidth = ready ? 6 : 4;
+      ctx.strokeStyle = ready ? `rgba(255, 214, 45, ${0.9 + pulse * 0.1})` : "rgba(255, 42, 62, 0.78)";
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(8, timingRadius), 0, Math.PI * 2);
+      ctx.stroke();
+      if (ready) {
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.52)";
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.arc(x, y, BEATRICE_TOWER_LEVIATHAN_PARRY_RING_RADIUS + 5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
     ctx.restore();
   }
@@ -12733,6 +13184,9 @@ function beatriceFrameListForFlavor(flavor) {
   if (flavor === "hurt") return beatriceFrames.hurt;
   if (flavor === "launched") return beatriceBoss.vz > 0 ? beatriceFrames.launchedUp : beatriceFrames.launchedFall;
   if (flavor === "downed" || flavor === "stunRecover") return beatriceFrames.downed;
+  if (flavor === "victory") {
+    return beatriceBoss.defeatPhase === "intro" ? beatriceFrames.victoryIntro : beatriceFrames.victoryLoop;
+  }
   if (flavor === "defeated") {
     if (beatriceBoss.defeatPhase === "move") return beatriceFrames.defeatMove;
     if (beatriceBoss.defeatPhase === "fade") return beatriceFrames.defeatLoop;
@@ -12836,7 +13290,7 @@ function drawBeatrice() {
   const list = beatriceFrameListForFlavor(beatriceBoss.flavor);
   const frame = list[Math.min(list.length - 1, Math.floor(beatriceBoss.anim) % list.length)];
   const x = Math.round(beatriceBoss.x - cameraX);
-  const grounded = ["dizzy", "hurt", "launched", "downed", "stunRecover", "defeated"].includes(beatriceBoss.flavor);
+  const grounded = ["dizzy", "hurt", "launched", "downed", "stunRecover", "defeated", "victory"].includes(beatriceBoss.flavor);
   const hover = beatriceBoss.hoverOffset + (grounded ? 0 : Math.sin(performance.now() / 430) * 4);
   const y = Math.round(beatriceBoss.y - hover - (beatriceBoss.z || 0));
 
@@ -14056,35 +14510,36 @@ function drawGoatPoundQuakes() {
     if (quake.timer < GOAT_POUND_QUAKE_DELAY) continue;
     const expandT = clamp((quake.timer - GOAT_POUND_QUAKE_DELAY) / GOAT_POUND_QUAKE_DURATION, 0, 1);
     const fadeT = clamp((quake.timer - GOAT_POUND_QUAKE_DELAY - GOAT_POUND_QUAKE_DURATION) / 0.18, 0, 1);
-    const alpha = (1 - fadeT) * (0.45 + 0.25 * (1 - expandT));
+    const alpha = (1 - fadeT) * (0.52 + 0.24 * (1 - expandT));
     const radius = GOAT_POUND_RANGE + (GOAT_POUND_QUAKE_RANGE - GOAT_POUND_RANGE) * expandT;
-    const inner = GOAT_POUND_RANGE + 6;
     const x = quake.x - cameraX;
-    const y = quake.y;
-
-    const path = (r, scale) => {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(Math.atan2(quake.dirY, quake.dirX));
-      ctx.beginPath();
-      ctx.moveTo(0, -r * scale);
-      ctx.ellipse(0, 0, r, r * scale, 0, -Math.PI / 2, Math.PI / 2, false);
-      ctx.closePath();
-      ctx.restore();
-    };
+    const y = quake.y + 10;
+    const domeHeight = radius * (0.58 + 0.18 * (1 - alpha));
 
     ctx.save();
-    ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = `rgba(92, 46, 20, ${0.22 * alpha})`;
-    path(radius, GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE);
+    ctx.globalCompositeOperation = "lighter";
+    const fill = ctx.createRadialGradient(x, y - domeHeight * 0.34, 8, x, y - domeHeight * 0.22, radius);
+    fill.addColorStop(0, `rgba(255, 255, 255, ${0.32 * alpha})`);
+    fill.addColorStop(0.42, `rgba(245, 245, 235, ${0.18 * alpha})`);
+    fill.addColorStop(1, "rgba(255, 255, 255, 0)");
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.moveTo(x - radius, y);
+    ctx.quadraticCurveTo(x, y - domeHeight * 1.45, x + radius, y);
+    ctx.closePath();
     ctx.fill();
-    ctx.strokeStyle = `rgba(167, 96, 42, ${0.72 * alpha})`;
-    ctx.lineWidth = 5 + 5 * (1 - expandT);
-    path(radius, GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE);
+
+    ctx.strokeStyle = `rgba(255, 255, 245, ${0.86 * alpha})`;
+    ctx.lineWidth = 4.5 * alpha + 1;
+    ctx.beginPath();
+    ctx.moveTo(x - radius, y);
+    ctx.quadraticCurveTo(x, y - domeHeight * 1.45, x + radius, y);
     ctx.stroke();
-    ctx.strokeStyle = `rgba(53, 32, 22, ${0.55 * alpha})`;
-    ctx.lineWidth = 2;
-    path(inner, GOAT_POUND_SEMICIRCLE_Y_SCALE);
+
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.42 * alpha})`;
+    ctx.lineWidth = 2 * alpha + 0.8;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radius, radius * 0.34, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
@@ -14681,18 +15136,27 @@ function drawBeatriceBossHud() {
   if (beatriceBoss.barrierActive) {
     const pulse = pulseValue(7);
     const barrierT = clamp((beatriceBoss.barrierHp ?? beatriceBoss.barrierMax ?? BEATRICE_BARRIER_MAX) / Math.max(1, beatriceBoss.barrierMax || BEATRICE_BARRIER_MAX), 0, 1);
+    const barrierW = (barW + 10) * barrierT;
+    const outerBarrierW = (barW + 20) * barrierT;
     ctx.globalCompositeOperation = "lighter";
-    ctx.strokeStyle = `rgba(255, 211, 77, ${0.82 + pulse * 0.18})`;
-    ctx.lineWidth = 4 + pulse * 2;
-    ctx.strokeRect(x - 5, y - 1, barW + 10, barH + 10);
-    ctx.fillStyle = `rgba(255, 226, 93, ${0.7 + pulse * 0.18})`;
-    ctx.fillRect(x - 5, y - 8, (barW + 10) * barrierT, 4);
-    ctx.strokeStyle = "rgba(255, 246, 188, 0.72)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x - 5, y - 8, barW + 10, 4);
-    ctx.strokeStyle = `rgba(255, 247, 181, ${0.36 + pulse * 0.24})`;
+    if (barrierW > 1) {
+      ctx.strokeStyle = `rgba(255, 211, 77, ${0.82 + pulse * 0.18})`;
+      ctx.lineWidth = 4 + pulse * 2;
+      ctx.strokeRect(x - 5, y - 1, barrierW, barH + 10);
+      ctx.fillStyle = `rgba(255, 226, 93, ${0.7 + pulse * 0.18})`;
+      ctx.fillRect(x - 5, y - 8, barrierW, 4);
+      ctx.strokeStyle = "rgba(255, 246, 188, 0.72)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 5, y - 8, barrierW, 4);
+      ctx.strokeStyle = `rgba(255, 247, 181, ${0.36 + pulse * 0.24})`;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(x - 10, y - 6, outerBarrierW, barH + 20);
+    }
+    ctx.globalCompositeOperation = "source-over";
+    ctx.strokeStyle = "rgba(255, 214, 96, 0.2)";
+    ctx.setLineDash([7, 6]);
     ctx.lineWidth = 1.5;
-    ctx.strokeRect(x - 10, y - 6, barW + 20, barH + 20);
+    ctx.strokeRect(x - 5, y - 1, barW + 10, barH + 10);
   } else {
     ctx.strokeStyle = "rgba(255, 214, 96, 0.28)";
     ctx.setLineDash([8, 6]);
@@ -15764,6 +16228,7 @@ function beginAttackHold(kind) {
   if (!hold || hold.down) return;
   if (player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0 || player.action === "getUp") return;
   if (tryBeatriceStakeParry()) return;
+  if (tryLeviathanTowerParry()) return;
   if (tryBeatriceMeleeKickParry()) return;
   if (tryBernHazardParry()) return;
   if (tryGoatPoundParry(kind)) return;
