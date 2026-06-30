@@ -5881,16 +5881,17 @@ function updateGaapIntervention(dt) {
 function gaapRouteTargetForEnemy(enemy, directDx, directDy) {
   if (!waveEffectActive("gaapIntervention") || waveEffects.gaapPortals.length < 2 || enemy.gaapTeleport) return null;
   const directDist = Math.hypot(directDx, directDy);
-  let best = null;
-  for (let i = 0; i < waveEffects.gaapPortals.length; i++) {
-    const from = waveEffects.gaapPortals[i];
-    const to = waveEffects.gaapPortals[1 - i];
-    const routeDist = Math.hypot(enemy.x - from.x, enemy.y - from.y) + Math.hypot(player.x - to.x, player.y - to.y);
-    if (routeDist + GAAP_PORTAL_ENEMY_ROUTE_BIAS < directDist && (!best || routeDist < best.routeDist)) {
-      best = { x: from.x, y: from.y, routeDist };
-    }
+  const first = waveEffects.gaapPortals[0];
+  const second = waveEffects.gaapPortals[1];
+  const firstDist = Math.hypot(enemy.x - first.x, enemy.y - first.y);
+  const secondDist = Math.hypot(enemy.x - second.x, enemy.y - second.y);
+  const entrance = firstDist <= secondDist ? first : second;
+  const exit = firstDist <= secondDist ? second : first;
+  const exitToPlayer = Math.hypot(player.x - exit.x, player.y - exit.y);
+  if (exitToPlayer + GAAP_PORTAL_ENEMY_ROUTE_BIAS < directDist) {
+    return { x: entrance.x, y: entrance.y, routeDist: firstDist <= secondDist ? firstDist : secondDist };
   }
-  return best;
+  return null;
 }
 
 function startMortalStampedeTelegraphs() {
