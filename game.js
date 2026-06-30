@@ -10368,7 +10368,7 @@ function updatePlayer(dt) {
       if (player.runState === "starting") {
         player.runTimer += dt;
         action = "runStart";
-        moveSpeed = 240;
+        moveSpeed = 270;
         laneSpeed = 150;
         if (player.runTimer >= DASH_START_DURATION) {
           player.runState = "running";
@@ -10390,7 +10390,7 @@ function updatePlayer(dt) {
         const easedCharge = player.runCharge * player.runCharge * (3 - 2 * player.runCharge);
         player.runTimer += dt;
         player.brakeBurstTimer = 0;
-        moveSpeed = 300 + 400 * easedCharge;
+        moveSpeed = 330 + 400 * easedCharge;
         laneSpeed = 150 + 75 * easedCharge;
       }
     } else if (player.runState === "starting" || player.runState === "running") {
