@@ -12,6 +12,8 @@ const parryTip = document.getElementById("parryTip");
 const runDetailsPanel = document.getElementById("runDetailsPanel");
 const runDetailsList = document.getElementById("runDetailsList");
 const runDetailsClose = document.getElementById("runDetailsClose");
+const runDetailsKicker = document.getElementById("runDetailsKicker");
+const runDetailsTitle = document.getElementById("runDetailsTitle");
 const touchControlsEl = document.getElementById("touchControls");
 const touchStickEl = document.querySelector("[data-touch-stick]");
 const touchStickNub = touchStickEl?.querySelector(".touch-stick__nub");
@@ -73,6 +75,10 @@ const DEBUG_FORCE_WAVE_EFFECTS = [];
 const GAAP_PORTAL_RADIUS_X = 104;
 const GAAP_PORTAL_RADIUS_Y = 38;
 const GAAP_PORTAL_ACTIVATE_RADIUS = 74;
+const GAAP_PORTAL_EXIT_OFFSET = 128;
+const GAAP_PORTAL_ENEMY_EXIT_MIN = GAAP_PORTAL_ACTIVATE_RADIUS + 58;
+const GAAP_PORTAL_ENEMY_EXIT_MAX = GAAP_PORTAL_ACTIVATE_RADIUS + 108;
+const GAAP_PORTAL_ENEMY_EXIT_SPREAD = Math.PI * 0.36;
 const GAAP_PORTAL_SINK_TIME = 0.34;
 const GAAP_PORTAL_RISE_TIME = 0.42;
 const GAAP_PORTAL_COOLDOWN = 1.15;
@@ -325,7 +331,7 @@ const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE = 24;
 const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_RADIUS = 46;
 const LAMBDA_SPECIAL_KONPEITO_DURATION = 1.62;
 const LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS = 52;
-const LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_DAMAGE = 250;
+const LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_DAMAGE = 150;
 const LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_DURATION = 0.58;
 const LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_RADIUS = Math.hypot(W, H) * 1.16;
 const LAMBDA_SPECIAL_KONPEITO_LAUNCH_SPEED = 760;
@@ -577,6 +583,9 @@ const DASH_RUN_ACCEL_TIME = 0.78;
 const DASH_TAP_DODGE_BRAKE_DURATION = 0.32;
 const DASH_TAP_DODGE_HOP_DURATION = 0.22;
 const DASH_TAP_DODGE_HOP_HEIGHT = 42;
+const DASH_NEUTRAL_BACK_DODGE_DURATION = 0.34;
+const DASH_NEUTRAL_BACK_DODGE_DRIFT = 150;
+const DASH_NEUTRAL_BACK_DODGE_HOP_HEIGHT = 36;
 const DASH_BRAKE_DURATION = 0.36;
 const DASH_TAP_DODGE_DRIFT = 215;
 const DASH_TAP_DODGE_DRIFT_SPEED = 640;
@@ -585,6 +594,9 @@ const DASH_ATTACK_FLASH_END = 1.08;
 const DASH_ATTACK_MISS_FADE = 0.45;
 const DASH_ATTACK_MARKER_RADIUS = 62;
 const DASH_ATTACK_MARKER_START_RADIUS = 118;
+const DASH_CANCEL_RESOLVE_COST = 25;
+const DASH_CANCEL_DURATION = 0.3;
+const DASH_CANCEL_DISTANCE = 176;
 const RUN_STUMBLE_STUN_TIME = 1.5;
 const RUN_STUMBLE_KNOCKBACK = 58;
 const RUN_STUMBLE_LAUNCH_LIFT = 260;
@@ -593,6 +605,14 @@ const RUN_STUMBLE_DOWN_TIME = 0.72;
 const RUN_STUMBLE_TRIP_DURATION = 0.72;
 const RUN_STUMBLE_PRONE_HOLD = 0.3;
 const RUN_STUMBLE_TRIP_SLIDE = 148;
+const PLAYER_WALL_BOUNCE_LEFT = 80;
+const PLAYER_WALL_BOUNCE_RIGHT = STAGE_W - 120;
+const PLAYER_WALL_BOUNCE_VX_MULTIPLIER = 0.72;
+const PLAYER_WALL_BOUNCE_MIN_LIFT = 240;
+const GOAT_BODY_BLOCK_RADIUS_X = 52;
+const GOAT_BODY_BLOCK_RADIUS_Y = 34;
+const GOAT_RUN_BUMP_LIFT = 255;
+const GOAT_RUN_BUMP_DRIFT = 118;
 const GET_UP_DURATION = 0.58;
 const EXPERIMENTAL_JUGGLE_LAMBDA_KONPEITO = true;
 const DEBUG_JUGGLED_KONPEITO_TARGETS_LAMBDA = false;
@@ -652,6 +672,7 @@ const mouse = {
   inside: false
 };
 const runDetailsButton = { x: 0, y: 0, w: 0, h: 0, visible: false };
+const blessingsButton = { x: 0, y: 0, w: 0, h: 0, visible: false };
 let resolveSpendFlashTimer = 0;
 let latestRunRecord = null;
 let latestRunRankInfo = null;
@@ -673,6 +694,7 @@ const frames = {
   run: [97, 96, 98, 99, 100, 101, 102, 103, 104, 105],
   runBrake: [106, 107, 108, 109, 110],
   runDodge: [322],
+  backDodge: [111, 112, 112, 113],
   punch: [217, 218, 219, 220, 221, 222, 223, 224],
   punch1: [193, 194, 195],
   punch2: [217, 218, 219, 220, 221, 222, 223, 224],
@@ -883,6 +905,11 @@ const actionFrameOffsets = {
   },
   runDodge: {
     322: [0, 0]
+  },
+  backDodge: {
+    111: [0, 0],
+    112: [0, 0],
+    113: [0, 0]
   },
   runDizzy: {
     460: [-1, 0],
@@ -2233,6 +2260,8 @@ function runStatsRows() {
 
 function refreshRunDetailsPanel() {
   if (!runDetailsList) return;
+  if (runDetailsKicker) runDetailsKicker.textContent = "Most Recent Run";
+  if (runDetailsTitle) runDetailsTitle.textContent = "Run Details";
   runDetailsList.innerHTML = "";
   const summary = document.createElement("section");
   summary.className = "run-details__summary";
@@ -2324,9 +2353,61 @@ function refreshRunDetailsPanel() {
   runDetailsList.append(resetButton);
 }
 
+function collectedBlessingRows() {
+  const rows = [];
+  const add = (source, title, detail, color = "") => rows.push({ source, title, detail, color });
+  const b = player.blessings || {};
+  if ((b.launchExtension || 0) > 0) add("Lambdadelta", "Launch Extension", `+${b.launchExtension} launch/ground-bounce allowance per target`, "pink");
+  if (b.superCharge) add("Lambdadelta", "Super Charge", "Charged attacks can spend a dash charge to teleport and create a candy shockwave.", "pink");
+  if (b.lambdaKonpeitoSpecial) add("Lambdadelta", "Candy Cataclysm", "Special summons a pulsing konpeito that can be launched and detonated.", "pink");
+  if ((b.lambdaDamageUp || 0) > 0) add("Lambdadelta", "Damage Up", `+${Math.round((b.lambdaDamageUp || 0) * 5)}% damage`, "pink");
+  if ((b.miracleRevival || 0) > 0) add("Bernkastel", "Revival", `${b.miracleRevival} stocked revival${b.miracleRevival === 1 ? "" : "s"}`, "purple");
+  if (b.miracleShardFollowup) add("Bernkastel", "Crystal Follow-Up", "Stage 3 attacks call down a delayed crystal shard.", "purple");
+  if (b.miracleCrystalShardPlus) add("Bernkastel", "Crystal Shard+", "Crystal shards erupt upward after impact.", "purple");
+  if (b.miracleRisk) add("Bernkastel", "Cruel Equation", "+50% damage dealt and +50% damage taken.", "purple");
+  if ((b.miracleMaxHealth || 0) > 0) add("Bernkastel", "Max Health Up", `+${Math.round((b.miracleMaxHealth || 0) * 10)}% max health`, "purple");
+  if ((b.miracleReflex || 0) > 0) add("Bernkastel", "Reflex", `+${Math.round((b.miracleReflex || 0) * MIRACLE_REFLEX_PER_STACK * 100)}% parry timing grace`, "purple");
+  return rows;
+}
+
+function refreshBlessingsPanel() {
+  if (!runDetailsList) return;
+  if (runDetailsKicker) runDetailsKicker.textContent = "Current Run";
+  if (runDetailsTitle) runDetailsTitle.textContent = "Blessings";
+  runDetailsList.innerHTML = "";
+  const rows = collectedBlessingRows();
+  if (!rows.length) {
+    const empty = document.createElement("div");
+    empty.className = "run-details__row";
+    const name = document.createElement("span");
+    const stat = document.createElement("span");
+    name.textContent = "No blessings yet";
+    stat.textContent = "Keep fighting";
+    empty.append(name, stat);
+    runDetailsList.append(empty);
+    return;
+  }
+  rows.forEach((entry) => {
+    const row = document.createElement("div");
+    row.className = `run-details__row${entry.color ? ` is-${entry.color}` : ""}`;
+    const name = document.createElement("span");
+    const stat = document.createElement("span");
+    name.textContent = `${entry.source}: ${entry.title}`;
+    stat.textContent = entry.detail;
+    row.append(name, stat);
+    runDetailsList.append(row);
+  });
+}
+
 function showRunDetails() {
   if (!runDetailsPanel) return;
   refreshRunDetailsPanel();
+  runDetailsPanel.hidden = false;
+}
+
+function showBlessingsPanel() {
+  if (!runDetailsPanel) return;
+  refreshBlessingsPanel();
   runDetailsPanel.hidden = false;
 }
 
@@ -2426,6 +2507,7 @@ const player = {
   beatriceDropKickBouncePending: false,
   beatriceDropKickBounceTimer: 0,
   beatriceDropKickBounceDirection: 1,
+  wallBounceDone: false,
   wallSlamTimer: 0,
   wallSlamTargetX: 0,
   wallSlamStartX: 0,
@@ -2441,6 +2523,8 @@ const player = {
   dashInvulnTimer: 0,
   brakeDrift: 0,
   brakeBurstTimer: 0,
+  neutralDodge: false,
+  dodgeDuration: DASH_TAP_DODGE_HOP_DURATION,
   runStumbleTimer: 0,
   runStumblePendingDizzy: false,
   runStumbleTripTimer: 0,
@@ -2938,7 +3022,7 @@ function drainDashStocksForRunStumble() {
 
 function updateDashCooldowns(dt) {
   ensureDashCooldownSlots();
-  const pauseDashRefill = player.runState === "starting" || player.runState === "running" || player.runState === "dodging" || player.runState === "braking" || player.dashInvulnTimer > 0 || player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0 || player.getUpTimer > 0 || player.runStumblePendingDizzy;
+  const pauseDashRefill = player.runState === "starting" || player.runState === "running" || player.runState === "dodging" || player.runState === "braking" || player.runState === "dashCancel" || player.dashInvulnTimer > 0 || player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0 || player.getUpTimer > 0 || player.runStumblePendingDizzy;
   for (let i = 0; i < player.dashCooldowns.length; i++) {
     if (pauseDashRefill) continue;
     player.dashCooldowns[i] = Math.max(0, player.dashCooldowns[i] - dt);
@@ -3148,21 +3232,74 @@ function stopRunMomentumForAttack() {
   }
 }
 
-function startTapDodgeHop() {
+function startTapDodgeHop(neutral = false) {
   player.runState = "dodging";
   player.runLocked = false;
-  player.runTimer = DASH_TAP_DODGE_HOP_DURATION;
-  player.brakeDrift = DASH_TAP_DODGE_DRIFT;
+  player.neutralDodge = Boolean(neutral);
+  player.dodgeDuration = neutral ? DASH_NEUTRAL_BACK_DODGE_DURATION : DASH_TAP_DODGE_HOP_DURATION;
+  player.runTimer = player.dodgeDuration;
+  player.brakeDrift = neutral ? DASH_NEUTRAL_BACK_DODGE_DRIFT : DASH_TAP_DODGE_DRIFT;
   player.brakeBurstTimer = DASH_TAP_DODGE_BRAKE_DURATION;
   player.runCharge = 0;
   player.z = 0;
-  player.invuln = Math.max(player.invuln, DASH_BRAKE_DURATION);
-  player.dashInvulnTimer = Math.max(player.dashInvulnTimer || 0, DASH_BRAKE_DURATION);
+  player.invuln = Math.max(player.invuln, player.dodgeDuration + DASH_BRAKE_DURATION * 0.45);
+  player.dashInvulnTimer = Math.max(player.dashInvulnTimer || 0, player.dodgeDuration + DASH_BRAKE_DURATION * 0.45);
   if (touchControls.runLatched) {
     touchControls.runLatched = false;
     syncTouchRunButtonState();
   }
-  setAction("runDodge");
+  setAction(neutral ? "backDodge" : "runDodge");
+}
+
+function canStartDashCancel() {
+  return state === "playing"
+    && player.attackLock > 0
+    && isPlayerComboAttack(player.action)
+    && !player.airborne
+    && !player.knockedDown
+    && !player.stage3KickAir
+    && player.runStumbleTimer <= 0
+    && player.runStumbleTripTimer <= 0
+    && player.runStumbleProneTimer <= 0
+    && player.getUpTimer <= 0
+    && player.resolve >= DASH_CANCEL_RESOLVE_COST
+    && availableDashStocks() > 0;
+}
+
+function startDashCancel() {
+  if (!canStartDashCancel()) return false;
+  if (!consumeDashStock()) return false;
+  player.resolve = Math.max(0, player.resolve - DASH_CANCEL_RESOLVE_COST);
+  resolveSpendFlashTimer = 0.22;
+  player.z = 0;
+  player.vz = 0;
+  player.airborne = false;
+  player.stage3KickAir = false;
+  player.stage3KickTimer = 0;
+  player.stage3KickVz = 0;
+  player.attackLock = 0;
+  player.attackLungeRemaining = 0;
+  player.comboTimer = Math.max(player.comboTimer, 0.95);
+  player.comboQueuedKind = "";
+  player.attackHasHit = true;
+  player.crestAttackHasHit = true;
+  player.attackConsumesResolve = false;
+  player.pendingResolveAttack = false;
+  player.superChargeAttackActive = false;
+  player.pendingSuperChargeAttack = false;
+  player.runState = "dashCancel";
+  player.runLocked = false;
+  player.runTimer = DASH_CANCEL_DURATION;
+  player.runCharge = 0;
+  player.brakeDrift = DASH_CANCEL_DISTANCE;
+  player.brakeBurstTimer = 0;
+  player.invuln = Math.max(player.invuln, 0.08);
+  if (touchControls.runLatched) {
+    touchControls.runLatched = false;
+    syncTouchRunButtonState();
+  }
+  setAction("run");
+  return true;
 }
 
 function startMistimedDashAttackTrip() {
@@ -5090,6 +5227,7 @@ function launchActor(actor, direction, lift = 470, drift = 170) {
     actor.stage3KickTimer = 0;
     actor.stage3KickVz = 0;
     actor.poise = 0;
+    actor.wallBounceDone = false;
   }
   actor.z = 6;
   actor.vz = lift;
@@ -5781,16 +5919,18 @@ function triggerWitchIntervention() {
   const blessing = certainty
     ? randomBlessingFromPool(LAMBDA_BLESSINGS, "lambdaDamageUp")
     : randomBlessingFromPool(BERN_BLESSINGS, "miracleMaxHealth");
-  applyBossBlessing(blessing);
-  if (certainty) grantCompanionItemFromWitch("konpeito");
-  else grantCompanionItemFromWitch("plumTea");
-  message = blessing ? `Witch's Intervention: ${blessing.source}` : "Witch's Intervention";
-  messageTimer = 1.75;
+  if (!blessing) return;
+  const companionType = certainty ? "konpeito" : "plumTea";
+  startBlessingChoice([{ ...blessing, color: certainty ? "pink" : "purple", witchCompanionType: companionType }], "witch");
 }
 
 function startGaapIntervention() {
-  const leftX = clamp(cameraX + W * (0.26 + Math.random() * 0.1), 180, STAGE_W - 180);
-  const rightX = clamp(cameraX + W * (0.72 + Math.random() * 0.1), 180, STAGE_W - 180);
+  const edgeBuffer = Math.max(220, GAAP_PORTAL_RADIUS_X + 90);
+  const middleBuffer = 220;
+  const leftMax = Math.max(edgeBuffer, STAGE_W * 0.38 - middleBuffer);
+  const rightMin = Math.min(STAGE_W - edgeBuffer, STAGE_W * 0.62 + middleBuffer);
+  const leftX = edgeBuffer + Math.random() * Math.max(1, leftMax - edgeBuffer);
+  const rightX = rightMin + Math.random() * Math.max(1, STAGE_W - edgeBuffer - rightMin);
   const y1 = clampPlayY(FLOOR_Y - 58 + Math.random() * 92);
   const y2 = clampPlayY(FLOOR_Y - 58 + Math.random() * 92);
   waveEffects.gaapPortals = [
@@ -5805,20 +5945,46 @@ function startMortalStampede() {
   waveEffects.stampedeSeed = Math.random() * Math.PI * 2;
 }
 
+function gaapEnemyExitPoint(to, from) {
+  let angle = Math.atan2((player.y - to.y) * 0.78, player.x - to.x);
+  if (!Number.isFinite(angle)) angle = Math.atan2((to.y - from.y) * 0.55, to.x - from.x);
+  const spread = (Math.random() - 0.5) * GAAP_PORTAL_ENEMY_EXIT_SPREAD;
+  const distance = GAAP_PORTAL_ENEMY_EXIT_MIN + Math.random() * (GAAP_PORTAL_ENEMY_EXIT_MAX - GAAP_PORTAL_ENEMY_EXIT_MIN);
+  const x = clamp(to.x + Math.cos(angle + spread) * distance, 80, STAGE_W - 120);
+  const y = clampPlayY(to.y + Math.sin(angle + spread) * distance * 0.72);
+  return { x, y };
+}
+
 function beginGaapTeleport(actor, fromIndex) {
   if (!actor || actor.gaapTeleport || actor.gaapPortalCooldown > 0) return;
   const portals = waveEffects.gaapPortals;
   const from = portals[fromIndex];
   const to = portals[1 - fromIndex];
   if (!from || !to) return;
+  let exitX;
+  let exitY;
+  if (actor === player) {
+    const dx = to.x - from.x;
+    const dy = (to.y - from.y) * 0.55;
+    const len = Math.hypot(dx, dy) || 1;
+    const side = Math.random() < 0.5 ? -1 : 1;
+    const exitDistance = GAAP_PORTAL_EXIT_OFFSET + Math.random() * 44;
+    const sideDistance = (Math.random() - 0.5) * 54;
+    exitX = clamp(to.x + (dx / len) * exitDistance + (-dy / len) * sideDistance * side, 80, STAGE_W - 120);
+    exitY = clampPlayY(to.y + (dy / len) * exitDistance + (dx / len) * sideDistance * side);
+  } else {
+    const exit = gaapEnemyExitPoint(to, from);
+    exitX = exit.x;
+    exitY = exit.y;
+  }
   if (actor !== player) cancelEnemyAttackTelegraph(actor, 0.4);
   actor.gaapTeleport = {
     timer: 0,
     duration: GAAP_PORTAL_SINK_TIME + GAAP_PORTAL_RISE_TIME,
     fromX: actor.x,
     fromY: actor.y,
-    toX: to.x,
-    toY: to.y,
+    toX: exitX,
+    toY: exitY,
     switched: false
   };
   actor.gaapPortalCooldown = GAAP_PORTAL_COOLDOWN;
@@ -6074,6 +6240,9 @@ function chooseBossBlessing(index = bossBlessingChoice.selected || 0) {
   const choice = bossBlessingChoice.choices[index] || bossBlessingChoice.choices[0];
   const context = bossBlessingChoice.context || "boss";
   applyBossBlessing(choice);
+  if (context === "witch") {
+    grantCompanionItemFromWitch(choice.witchCompanionType);
+  }
   bossBlessingChoice.active = false;
   bossBlessingChoice.choices = [];
   bossBlessingChoice.pendingBoss = false;
@@ -6082,6 +6251,8 @@ function chooseBossBlessing(index = bossBlessingChoice.selected || 0) {
   state = "playing";
   if (context === "boss") {
     activateBeatriceBoss();
+  } else if (context === "witch") {
+    maybeStartScoreBlessingChoice();
   } else {
     maybeStartScoreBlessingChoice();
   }
@@ -7926,6 +8097,115 @@ function startPlayerRunStumble(direction = -player.facing, contactX = player.x, 
   burst(contactX, contactY, "enemy");
 }
 
+function startPlayerGoatRunBump(goat) {
+  const direction = Math.sign(player.x - goat.x) || -player.facing || 1;
+  player.runStumbleTimer = 0;
+  player.runStumbleTripTimer = 0;
+  player.runStumbleProneTimer = 0;
+  player.runStumbleTripVx = 0;
+  player.runStumblePendingDizzy = true;
+  player.attackLock = 0;
+  player.attackLungeRemaining = 0;
+  player.attackHasHit = false;
+  player.crestAttackHasHit = false;
+  player.currentAttack = "";
+  player.stage3KickAir = false;
+  player.stage3KickTimer = 0;
+  player.stage3KickVz = 0;
+  player.runState = "none";
+  player.runLocked = false;
+  player.runTimer = 0;
+  player.runCharge = 0;
+  player.brakeDrift = 0;
+  player.brakeBurstTimer = 0;
+  if (touchControls.runLatched) {
+    touchControls.runLatched = false;
+    syncTouchRunButtonState();
+  }
+  touchControls.runHeld = false;
+  syncTouchRunButtonState();
+  drainDashStocksForRunStumble();
+  resetPlayerCombo();
+  launchActor(player, direction, GOAT_RUN_BUMP_LIFT, GOAT_RUN_BUMP_DRIFT);
+  player.runStumblePendingDizzy = true;
+  setAction("hurt", 0.3);
+  burst((player.x + goat.x) * 0.5, player.y - 100, "enemy");
+}
+
+function applyPlayerAirborneWallBounce(dt) {
+  const nextX = player.x + player.airVx * dt;
+  const hitLeft = nextX <= PLAYER_WALL_BOUNCE_LEFT && player.airVx < 0;
+  const hitRight = nextX >= PLAYER_WALL_BOUNCE_RIGHT && player.airVx > 0;
+  if ((hitLeft || hitRight) && !player.wallBounceDone) {
+    const inward = hitLeft ? 1 : -1;
+    player.x = hitLeft ? PLAYER_WALL_BOUNCE_LEFT : PLAYER_WALL_BOUNCE_RIGHT;
+    player.airVx = Math.max(80, Math.abs(player.airVx) * PLAYER_WALL_BOUNCE_VX_MULTIPLIER) * inward;
+    player.vx = player.airVx;
+    player.vz = Math.max(player.vz, PLAYER_WALL_BOUNCE_MIN_LIFT);
+    player.z = Math.max(player.z, 18);
+    player.wallBounceDone = true;
+    player.action = "hurt";
+    player.anim = 0;
+    screenShakeTimer = Math.max(screenShakeTimer, 0.22);
+    burst(player.x, player.y - Math.max(64, player.z + 42), "enemy");
+    return true;
+  }
+  player.x = clamp(nextX, PLAYER_WALL_BOUNCE_LEFT, PLAYER_WALL_BOUNCE_RIGHT);
+  return false;
+}
+
+function goatBodyBlocksPlayer(goat) {
+  return goat
+    && goat.type === "goat"
+    && !goat.dead
+    && goat.spawnGrace <= 0
+    && !goat.airborne
+    && !goat.knockedDown
+    && goat.goatAction !== "defeat";
+}
+
+function pointInsideGoatBody(goat, x, y) {
+  const nx = (x - goat.x) / GOAT_BODY_BLOCK_RADIUS_X;
+  const ny = (y - goat.y) / GOAT_BODY_BLOCK_RADIUS_Y;
+  return nx * nx + ny * ny < 1;
+}
+
+function separatePlayerFromGoats(previousX, previousY, allowRunBump = true) {
+  if (player.airborne || player.knockedDown || player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0) return false;
+  let blocked = false;
+  for (const goat of enemies) {
+    if (!goatBodyBlocksPlayer(goat)) continue;
+    const dx = player.x - goat.x;
+    const dy = player.y - goat.y;
+    const nx = dx / GOAT_BODY_BLOCK_RADIUS_X;
+    const ny = dy / GOAT_BODY_BLOCK_RADIUS_Y;
+    const distSq = nx * nx + ny * ny;
+    if (distSq >= 1) continue;
+    if (allowRunBump && player.runState === "running") {
+      startPlayerGoatRunBump(goat);
+      return true;
+    }
+    if (!pointInsideGoatBody(goat, previousX, player.y)) {
+      player.x = previousX;
+    } else if (!pointInsideGoatBody(goat, player.x, previousY)) {
+      player.y = previousY;
+    } else if (!pointInsideGoatBody(goat, previousX, previousY)) {
+      player.x = previousX;
+      player.y = previousY;
+    } else {
+      const dist = Math.sqrt(distSq) || 0.001;
+      player.x = goat.x + (nx / dist) * GOAT_BODY_BLOCK_RADIUS_X;
+      player.y = goat.y + (ny / dist) * GOAT_BODY_BLOCK_RADIUS_Y;
+    }
+    player.x = clamp(player.x, 80, STAGE_W - 120);
+    player.y = constrainLaneToBeatriceWalls(clampPlayY(player.y));
+    player.vx = 0;
+    player.vy = 0;
+    blocked = true;
+  }
+  return blocked;
+}
+
 function checkPlayerRunBodyCollision() {
   if (player.runState !== "running" || player.airborne || player.knockedDown || player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0) return false;
   const playerBox = { x: player.x - 30, y: player.y - 68, w: 60, h: 96 };
@@ -7933,6 +8213,10 @@ function checkPlayerRunBodyCollision() {
     if (enemy.dead || enemy.spawnGrace > 0 || enemy.airborne || enemy.knockedDown) continue;
     if (enemy.type === "goat" && enemy.goatAction === "defeat") continue;
     if (!rectsTouch(playerBox, enemyHurtbox(enemy))) continue;
+    if (enemy.type === "goat") {
+      startPlayerGoatRunBump(enemy);
+      return true;
+    }
     const direction = Math.sign(player.x - enemy.x) || -player.facing || 1;
     startPlayerRunStumble(direction, (player.x + enemy.x) * 0.5, player.y - 98);
     return true;
@@ -9860,7 +10144,7 @@ function updatePlayer(dt) {
   if (player.airborne) {
     player.vx = player.airVx;
     player.vy = 0;
-    player.x = clamp(player.x + player.airVx * dt, 80, STAGE_W - 120);
+    applyPlayerAirborneWallBounce(dt);
     player.z += player.vz * dt;
     player.vz -= 980 * dt;
     player.anim = player.vz > 0 ? 0 : player.anim + dt * 8;
@@ -10019,6 +10303,8 @@ function updatePlayer(dt) {
   }
 
   if (player.attackLock <= 0) {
+    const movementStartX = player.x;
+    const movementStartY = player.y;
     const moving = mx || my;
     const runButtonHeld = inputRunButtonHeld();
     if (!moving && player.runLocked) {
@@ -10032,7 +10318,7 @@ function updatePlayer(dt) {
     if (reversedRunDirection) {
       const burstRelease = player.runState === "starting" || player.brakeBurstTimer > 0;
       if (burstRelease) {
-        startTapDodgeHop();
+        startTapDodgeHop(false);
       } else {
         player.runState = "braking";
         player.runLocked = false;
@@ -10110,7 +10396,7 @@ function updatePlayer(dt) {
     } else if (player.runState === "starting" || player.runState === "running") {
       const burstRelease = player.runState === "starting" || player.brakeBurstTimer > 0;
       if (burstRelease) {
-        startTapDodgeHop();
+        startTapDodgeHop(!moving);
       } else {
         player.runState = "braking";
         player.runLocked = false;
@@ -10126,21 +10412,47 @@ function updatePlayer(dt) {
       }
     }
 
-    if (player.runState === "dodging") {
-      action = "runDodge";
-      const previousTimer = player.runTimer;
+    if (player.runState === "dashCancel") {
+      action = "run";
       player.runTimer = Math.max(0, player.runTimer - dt);
-      const elapsed = DASH_TAP_DODGE_HOP_DURATION - player.runTimer;
-      const hopT = clamp(elapsed / DASH_TAP_DODGE_HOP_DURATION, 0, 1);
-      const driftSpeed = DASH_TAP_DODGE_DRIFT_SPEED * (0.68 + 0.32 * Math.sin(hopT * Math.PI));
-      const driftStep = Math.min(player.brakeDrift, driftSpeed * dt);
+      const dashSpeed = DASH_CANCEL_DISTANCE / DASH_CANCEL_DURATION;
+      const driftStep = Math.min(player.brakeDrift, dashSpeed * dt);
       player.x = clamp(player.x + player.facing * driftStep, 80, STAGE_W - 120);
       player.brakeDrift -= driftStep;
-      player.brakeBurstTimer = Math.max(0, player.brakeBurstTimer - dt);
-      player.z = Math.sin(hopT * Math.PI) * DASH_TAP_DODGE_HOP_HEIGHT;
       moveSpeed = 0;
       laneSpeed = 0;
+      player.z = 0;
       player.vx = player.facing * (driftStep / Math.max(dt, 0.001));
+      player.vy = 0;
+      if (player.runTimer <= 0 || player.brakeDrift <= 0) {
+        player.runState = "none";
+        player.runLocked = false;
+        player.runCharge = 0;
+        player.brakeDrift = 0;
+        action = moving ? "walk" : "idle";
+      }
+    }
+
+    if (player.runState === "dodging") {
+      action = player.neutralDodge ? "backDodge" : "runDodge";
+      const previousTimer = player.runTimer;
+      player.runTimer = Math.max(0, player.runTimer - dt);
+      const dodgeDuration = player.dodgeDuration || DASH_TAP_DODGE_HOP_DURATION;
+      const elapsed = dodgeDuration - player.runTimer;
+      const hopT = clamp(elapsed / dodgeDuration, 0, 1);
+      const direction = player.neutralDodge ? -player.facing : player.facing;
+      const driftSpeed = DASH_TAP_DODGE_DRIFT_SPEED * (player.neutralDodge ? 0.72 : 1) * (0.68 + 0.32 * Math.sin(hopT * Math.PI));
+      const driftStep = Math.min(player.brakeDrift, driftSpeed * dt);
+      player.x = clamp(player.x + direction * driftStep, 80, STAGE_W - 120);
+      player.brakeDrift -= driftStep;
+      player.brakeBurstTimer = Math.max(0, player.brakeBurstTimer - dt);
+      player.z = Math.sin(hopT * Math.PI) * (player.neutralDodge ? DASH_NEUTRAL_BACK_DODGE_HOP_HEIGHT : DASH_TAP_DODGE_HOP_HEIGHT);
+      if (player.neutralDodge) {
+        player.anim = hopT < 0.18 ? 0 : hopT < 0.78 ? 1 : 3;
+      }
+      moveSpeed = 0;
+      laneSpeed = 0;
+      player.vx = direction * (driftStep / Math.max(dt, 0.001));
       player.vy = 0;
       if (previousTimer > 0 && player.runTimer <= 0) {
         player.z = 0;
@@ -10148,6 +10460,8 @@ function updatePlayer(dt) {
         player.runTimer = DASH_BRAKE_DURATION * 0.72;
         player.brakeBurstTimer = 0;
         setAction("runBrake");
+        player.neutralDodge = false;
+        player.dodgeDuration = DASH_TAP_DODGE_HOP_DURATION;
         action = "runBrake";
       }
     }
@@ -10168,6 +10482,8 @@ function updatePlayer(dt) {
         player.runState = "none";
         player.runLocked = false;
         player.runCharge = 0;
+        player.neutralDodge = false;
+        player.dodgeDuration = DASH_TAP_DODGE_HOP_DURATION;
         player.brakeDrift = 0;
         player.brakeBurstTimer = 0;
         action = moving ? "walk" : "idle";
@@ -10179,7 +10495,7 @@ function updatePlayer(dt) {
     const moveY = (my / len) * laneSpeed;
     player.x += moveX * dt;
     player.y += moveY * dt;
-    if (player.runState !== "dodging" && player.runState !== "braking") {
+    if (player.runState !== "dodging" && player.runState !== "braking" && player.runState !== "dashCancel") {
       player.vx = moveX;
       player.vy = moveY;
     } else {
@@ -10188,8 +10504,9 @@ function updatePlayer(dt) {
     }
     player.x = clamp(player.x, 80, STAGE_W - 120);
     player.y = constrainLaneToBeatriceWalls(clampPlayY(player.y));
-    if (mx && player.runState !== "dodging" && player.runState !== "braking") player.facing = Math.sign(mx);
-    setAction(action);
+    const goatCollisionStoppedAction = separatePlayerFromGoats(movementStartX, movementStartY);
+    if (mx && player.runState !== "dodging" && player.runState !== "braking" && player.runState !== "dashCancel") player.facing = Math.sign(mx);
+    if (!goatCollisionStoppedAction) setAction(action);
   } else {
     player.vx = 0;
     player.vy = 0;
@@ -16439,6 +16756,7 @@ function drawLambdaRetaliationOverlay() {
 
 function drawOverlay() {
   runDetailsButton.visible = false;
+  blessingsButton.visible = false;
   if (state === "playing" || state === "paused" || state === "lost" || state === "itemTutorial" || state === "bossBlessing" || state === "beatriceTutorial" || state === "beatriceStakeTutorial") {
     drawBeatriceBossHud();
     drawCanvasMobileHud();
@@ -16463,11 +16781,16 @@ function drawOverlay() {
     ctx.fillStyle = "#fff2c7";
     ctx.textAlign = "center";
     ctx.font = "700 48px Segoe UI, Arial";
-    ctx.fillText("Paused", W / 2, H / 2 - 18);
+    ctx.fillText("Paused", W / 2, H / 2 - 112);
     ctx.font = "20px Segoe UI, Arial";
     ctx.fillStyle = "#d7cfba";
-    ctx.fillText("Press P or Esc to resume", W / 2, H / 2 + 30);
-    drawRunDetailsButton(false, H / 2 + 58);
+    ctx.fillText("Press P or Esc to resume", W / 2, H / 2 - 64);
+    const pauseButtonGap = 18;
+    const pauseButtonW = 176;
+    const pauseButtonsX = W / 2 - pauseButtonW - pauseButtonGap / 2;
+    const pauseButtonsY = H / 2 - 28;
+    drawRunDetailsButton(false, pauseButtonsY, pauseButtonsX);
+    drawBlessingsButton(pauseButtonsY, pauseButtonsX + pauseButtonW + pauseButtonGap);
   }
   if (state === "loading" || state === "ready" || state === "lost") {
     ctx.fillStyle = "rgba(6, 7, 10, 0.62)";
@@ -16541,16 +16864,25 @@ function bossBlessingCardRects() {
 function drawBossBlessingOverlay() {
   const rects = bossBlessingCardRects();
   const scoreReward = bossBlessingChoice.context === "score";
+  const witchReward = bossBlessingChoice.context === "witch";
   ctx.save();
   ctx.fillStyle = "rgba(5, 6, 12, 0.72)";
   ctx.fillRect(0, 0, W, H);
   ctx.textAlign = "center";
   ctx.fillStyle = "#fff2c7";
   ctx.font = "900 42px Segoe UI, Arial";
-  ctx.fillText(scoreReward ? "Score Reward" : "A Witch Offers Certainty", W / 2, 132);
+  ctx.fillText(scoreReward ? "Score Reward" : witchReward ? "Witch's Intervention" : "A Witch Offers Certainty", W / 2, 132);
   ctx.font = "600 19px Segoe UI, Arial";
   ctx.fillStyle = "#d8d0ba";
-  ctx.fillText(scoreReward ? "Choose a reward earned from your combo score." : "Choose one blessing before the boss battle begins.", W / 2, 166);
+  ctx.fillText(
+    scoreReward
+      ? "Choose a reward earned from your combo score."
+      : witchReward
+        ? "A witch lends you this blessing for the wave."
+        : "Choose one blessing before the boss battle begins.",
+    W / 2,
+    166
+  );
   for (const [index, rect] of rects.entries()) {
     const isSelected = index === bossBlessingChoice.selected;
     const pink = rect.choice.color === "pink";
@@ -16638,10 +16970,10 @@ function drawItemTutorialOverlay() {
   ctx.restore();
 }
 
-function drawRunDetailsButton(lostWithLambda = false, yOverride = null) {
+function drawRunDetailsButton(lostWithLambda = false, yOverride = null, xOverride = null) {
   const w = 176;
   const h = 42;
-  const x = W - w - 30;
+  const x = xOverride ?? (W - w - 30);
   const y = yOverride ?? (lostWithLambda ? 28 : H / 2 + 54);
   runDetailsButton.x = x;
   runDetailsButton.y = y;
@@ -16662,6 +16994,30 @@ function drawRunDetailsButton(lostWithLambda = false, yOverride = null) {
   ctx.restore();
 }
 
+function drawBlessingsButton(yOverride = null, xOverride = null) {
+  const w = 176;
+  const h = 42;
+  const x = xOverride ?? (W - w - 30);
+  const y = yOverride ?? (H / 2 + 108);
+  blessingsButton.x = x;
+  blessingsButton.y = y;
+  blessingsButton.w = w;
+  blessingsButton.h = h;
+  blessingsButton.visible = true;
+  ctx.save();
+  ctx.fillStyle = "rgba(10, 13, 22, 0.78)";
+  ctx.strokeStyle = "rgba(255, 244, 198, 0.78)";
+  ctx.lineWidth = 2;
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.fillStyle = "#fff4c6";
+  ctx.font = "800 17px Segoe UI, Arial";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("Blessings", x + w / 2, y + h / 2 + 1);
+  ctx.restore();
+}
+
 function canvasPointFromEvent(event) {
   const rect = canvas.getBoundingClientRect();
   return {
@@ -16676,6 +17032,14 @@ function pointInRunDetailsButton(point) {
     && point.x <= runDetailsButton.x + runDetailsButton.w
     && point.y >= runDetailsButton.y
     && point.y <= runDetailsButton.y + runDetailsButton.h;
+}
+
+function pointInBlessingsButton(point) {
+  return blessingsButton.visible
+    && point.x >= blessingsButton.x
+    && point.x <= blessingsButton.x + blessingsButton.w
+    && point.y >= blessingsButton.y
+    && point.y <= blessingsButton.y + blessingsButton.h;
 }
 
 function draw() {
@@ -17244,6 +17608,11 @@ function handleTouchActionPress(action) {
   if (action === "special") attack("special");
   if (action === "duo") touchControls.duoHeld = true;
   if (action === "run") {
+    if (startDashCancel()) {
+      touchControls.runHeld = false;
+      syncTouchRunButtonState();
+      return;
+    }
     touchControls.runHeld = true;
     syncTouchRunButtonState();
   }
@@ -17314,6 +17683,10 @@ window.addEventListener("keydown", (event) => {
   if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) event.preventDefault();
   if (key === "enter" && (state === "ready" || state === "lost")) startGame();
   if (state !== "playing") return;
+  if (key === "shift" && !event.repeat && startDashCancel()) {
+    event.preventDefault();
+    return;
+  }
   if (key === "j") {
     event.preventDefault();
     if (event.repeat) return;
@@ -17395,6 +17768,10 @@ canvas.addEventListener("click", (event) => {
   }
   if ((state === "lost" || state === "paused") && pointInRunDetailsButton(canvasPointFromEvent(event))) {
     showRunDetails();
+    return;
+  }
+  if (state === "paused" && pointInBlessingsButton(canvasPointFromEvent(event))) {
+    showBlessingsPanel();
     return;
   }
   if (state === "lost" && lambdaGameOverDialogue.active) {

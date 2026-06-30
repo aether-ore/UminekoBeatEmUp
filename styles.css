@@ -654,6 +654,16 @@ body.touch-ui-adjusting .touch-attack-core {
   text-align: right;
 }
 
+.run-details__row.is-pink {
+  border-color: rgba(255, 139, 218, 0.32);
+  background: rgba(96, 16, 64, 0.22);
+}
+
+.run-details__row.is-purple {
+  border-color: rgba(188, 147, 255, 0.32);
+  background: rgba(42, 24, 96, 0.22);
+}
+
 .run-details__summary {
   display: grid;
   grid-template-columns: auto 1fr;
