@@ -644,6 +644,39 @@ const GOAT_RUN_BUMP_DRIFT = 118;
 const GET_UP_DURATION = 0.58;
 const EXPERIMENTAL_JUGGLE_LAMBDA_KONPEITO = true;
 const DEBUG_JUGGLED_KONPEITO_TARGETS_LAMBDA = false;
+const DEBUG_FLAG_DEFS = [
+  { key: "startBeatriceBossWave", label: "Start With Beatrice Boss", defaultValue: DEBUG_START_BEATRICE_BOSS_WAVE },
+  { key: "beatriceTeleportPrepTest", label: "Beatrice Teleport Prep Test", defaultValue: DEBUG_BEATRICE_TELEPORT_PREP_TEST },
+  { key: "forceBernCatForm", label: "Force Bern Cat Form", defaultValue: DEBUG_FORCE_BERN_CAT_FORM },
+  { key: "startWithPlumTea", label: "Start With Plum Tea", defaultValue: DEBUG_START_WITH_PLUM_TEA },
+  { key: "startWithKonpeito", label: "Start With Konpeito", defaultValue: DEBUG_START_WITH_KONPEITO },
+  { key: "startWithGoldenBroochRight", label: "Start With Brooch (R) / Shannon", defaultValue: DEBUG_START_WITH_GOLDEN_BROOCH_RIGHT },
+  { key: "startWithGoldenBroochLeft", label: "Start With Brooch (L) / Kanon", defaultValue: DEBUG_START_WITH_GOLDEN_BROOCH_LEFT },
+  { key: "startWith50Reflex", label: "Start With 50% Reflex", defaultValue: DEBUG_START_WITH_50_REFLEX },
+  { key: "startWithSuperCharge", label: "Start With Super Charge", defaultValue: DEBUG_START_WITH_SUPER_CHARGE },
+  { key: "startWithCandyCataclysm", label: "Start With Candy Cataclysm", defaultValue: DEBUG_START_WITH_CANDY_CATACLYSM },
+  { key: "startWithCrystalFollowup", label: "Start With Crystal Follow-up", defaultValue: DEBUG_START_WITH_CRYSTAL_FOLLOWUP },
+  { key: "startWithCrystalShardPlus", label: "Start With Crystal Shard+", defaultValue: DEBUG_START_WITH_CRYSTAL_SHARD_PLUS },
+  { key: "juggledKonpeitoTargetsLambda", label: "Auto-target Juggled Konpeito To Lambda", defaultValue: DEBUG_JUGGLED_KONPEITO_TARGETS_LAMBDA }
+];
+const DEBUG_CHEAT_ALPHA = ["w", "w", "s", "s", "a", "d", "a", "d"];
+const DEBUG_CHEAT_DIRECTIONS = ["up", "up", "down", "down", "left", "right", "left", "right"];
+const DEBUG_CHEAT_TIMEOUT = 1000;
+const debugFlags = Object.fromEntries(DEBUG_FLAG_DEFS.map((flag) => [flag.key, Boolean(flag.defaultValue)]));
+const debugMenu = {
+  active: false,
+  pending: {},
+  checkboxRects: [],
+  buttonRect: null,
+  changed: false
+};
+const debugCheat = {
+  alphaIndex: 0,
+  alphaStartedAt: 0,
+  directionIndex: 0,
+  directionStartedAt: 0,
+  lastStickDirection: ""
+};
 const LAMBDA_KONPEITO_JUGGLE_DURATION = 0.56;
 const LAMBDA_KONPEITO_JUGGLE_ARC = 210;
 const LAMBDA_KONPEITO_JUGGLE_PUSH = 260;
@@ -3847,7 +3880,7 @@ function updateAbsorbingPickups(dt) {
 }
 
 function debugGrantStartingPlumTea() {
-  if (!DEBUG_START_WITH_PLUM_TEA) return;
+  if (!debugFlag("startWithPlumTea")) return;
   player.plumTeaActive = true;
   player.plumTeaBurned = false;
   setInitialWitchDuration("plumTea");
@@ -3861,7 +3894,7 @@ function debugGrantStartingPlumTea() {
 }
 
 function debugGrantStartingKonpeito() {
-  if (!DEBUG_START_WITH_KONPEITO) return;
+  if (!debugFlag("startWithKonpeito")) return;
   player.konpeitoActive = true;
   setInitialWitchDuration("konpeito");
   if (!player.itemOrder.includes("konpeito")) player.itemOrder.push("konpeito");
@@ -3874,7 +3907,7 @@ function debugGrantStartingKonpeito() {
 }
 
 function debugGrantStartingGoldenBroochRight() {
-  if (!DEBUG_START_WITH_GOLDEN_BROOCH_RIGHT) return;
+  if (!debugFlag("startWithGoldenBroochRight")) return;
   player.goldenBroochRightActive = true;
   if (!player.itemOrder.includes("goldenBroochRight")) player.itemOrder.push("goldenBroochRight");
   if (player.seenItemTutorials && typeof player.seenItemTutorials.add === "function") {
@@ -3886,7 +3919,7 @@ function debugGrantStartingGoldenBroochRight() {
 }
 
 function debugGrantStartingGoldenBroochLeft() {
-  if (!DEBUG_START_WITH_GOLDEN_BROOCH_LEFT) return;
+  if (!debugFlag("startWithGoldenBroochLeft")) return;
   player.goldenBroochLeftActive = true;
   if (!player.itemOrder.includes("goldenBroochLeft")) player.itemOrder.push("goldenBroochLeft");
   if (player.seenItemTutorials && typeof player.seenItemTutorials.add === "function") {
@@ -4470,7 +4503,7 @@ function triggerBernCrystalAttack(force = false) {
 }
 
 function maybeBernCatForm() {
-  const chance = DEBUG_FORCE_BERN_CAT_FORM ? 1 : BERN_CAT_FORM_CHANCE;
+  const chance = debugFlag("forceBernCatForm") ? 1 : BERN_CAT_FORM_CHANCE;
   bernCompanion.catForm = BERN_CAT_FORM_ENABLED && Math.random() < chance;
 }
 
@@ -5815,7 +5848,7 @@ function juggleLambdaKonpeito(shot, hitX, hitY, data) {
   const laneNudge = player.vy ? Math.sign(player.vy) * 36 : 0;
   shot.startX = hitX;
   shot.startY = hitY;
-  if (DEBUG_JUGGLED_KONPEITO_TARGETS_LAMBDA && lambdaCompanion.active && lambdaCompanion.summoned) {
+  if (debugFlag("juggledKonpeitoTargetsLambda") && lambdaCompanion.active && lambdaCompanion.summoned) {
     shot.targetX = clamp(lambdaCompanion.x, 80, STAGE_W - 120);
     shot.targetY = clampPlayY(lambdaCompanion.y);
   } else {
@@ -6461,7 +6494,7 @@ function scheduledBossNumberForWave() {
 }
 
 function debugBossesDefeatedBeforeSchedule() {
-  return DEBUG_START_BEATRICE_BOSS_WAVE && (wave > 1 || runStats.bossesDefeated > 0) ? 1 : 0;
+  return debugFlag("startBeatriceBossWave") && (wave > 1 || runStats.bossesDefeated > 0) ? 1 : 0;
 }
 
 function scheduledBossesDefeated() {
@@ -6469,12 +6502,12 @@ function scheduledBossesDefeated() {
 }
 
 function currentBossWaveNumber() {
-  if (DEBUG_START_BEATRICE_BOSS_WAVE && wave === 1 && runStats.bossesDefeated === 0) return 1;
+  if (debugFlag("startBeatriceBossWave") && wave === 1 && runStats.bossesDefeated === 0) return 1;
   return Math.max(1, scheduledBossNumberForWave());
 }
 
 function currentWaveMode() {
-  if (DEBUG_START_BEATRICE_BOSS_WAVE && wave === 1 && runStats.bossesDefeated === 0) return "boss";
+  if (debugFlag("startBeatriceBossWave") && wave === 1 && runStats.bossesDefeated === 0) return "boss";
   const scheduledBoss = scheduledBossNumberForWave();
   return scheduledBoss > 0 && scheduledBossesDefeated() < scheduledBoss ? "boss" : "normal";
 }
@@ -7088,7 +7121,7 @@ function beginBossWave() {
 }
 
 function beatriceBossMaxHealthForEncounter(bossNumber) {
-  const firstBossWave = DEBUG_START_BEATRICE_BOSS_WAVE && wave === 1 && runStats.bossesDefeated === 0
+  const firstBossWave = debugFlag("startBeatriceBossWave") && wave === 1 && runStats.bossesDefeated === 0
     ? 1
     : BOSS_WAVE_INTERVAL;
   const fiveWaveSteps = Math.floor(Math.max(0, firstBossWave - 1) / 5);
@@ -7151,7 +7184,7 @@ function activateBeatriceBoss() {
   beatriceBoss.recoveryTimer = 0;
   beatriceBoss.waveEffect = "";
   beatriceBoss.lastMechanic = "";
-  if (DEBUG_BEATRICE_TELEPORT_PREP_TEST) {
+  if (debugFlag("beatriceTeleportPrepTest")) {
     startBeatriceTeleportPrep();
   } else {
     startRandomBeatriceMechanic();
@@ -8283,20 +8316,20 @@ function startGame() {
   player.blessings.miracleMaxHealth = 0;
   player.blessings.miracleReflex = 0;
   player.blessings.miracleWitchTime = 0;
-  if (DEBUG_START_WITH_50_REFLEX) {
+  if (debugFlag("startWith50Reflex")) {
     player.blessings.miracleReflex = Math.round(MAX_MIRACLE_REFLEX / MIRACLE_REFLEX_PER_STACK);
   }
-  if (DEBUG_START_WITH_SUPER_CHARGE) {
+  if (debugFlag("startWithSuperCharge")) {
     player.blessings.superCharge = true;
   }
-  if (DEBUG_START_WITH_CANDY_CATACLYSM) {
+  if (debugFlag("startWithCandyCataclysm")) {
     player.blessings.lambdaKonpeitoSpecial = true;
     player.resolve = 100;
   }
-  if (DEBUG_START_WITH_CRYSTAL_FOLLOWUP) {
+  if (debugFlag("startWithCrystalFollowup")) {
     player.blessings.miracleShardFollowup = true;
   }
-  if (DEBUG_START_WITH_CRYSTAL_SHARD_PLUS) {
+  if (debugFlag("startWithCrystalShardPlus")) {
     player.blessings.miracleCrystalShardPlus = true;
   }
   player.poise = 0;
@@ -18642,6 +18675,7 @@ function drawOverlay() {
     const pauseButtonsY = H / 2 - 28;
     drawRunDetailsButton(false, pauseButtonsY, pauseButtonsX);
     drawBlessingsButton(pauseButtonsY, pauseButtonsX + pauseButtonW + pauseButtonGap);
+    drawDebugMenuOverlay();
   }
   if (state === "loading" || state === "ready" || state === "lost") {
     ctx.fillStyle = "rgba(6, 7, 10, 0.62)";
@@ -18893,6 +18927,210 @@ function pointInBlessingsButton(point) {
     && point.y <= blessingsButton.y + blessingsButton.h;
 }
 
+function pointInRect(point, rect) {
+  return rect
+    && point.x >= rect.x
+    && point.x <= rect.x + rect.w
+    && point.y >= rect.y
+    && point.y <= rect.y + rect.h;
+}
+
+function debugFlag(key) {
+  return Boolean(debugFlags[key]);
+}
+
+function updateDebugMenuChanged() {
+  debugMenu.changed = DEBUG_FLAG_DEFS.some((flag) => Boolean(debugMenu.pending[flag.key]) !== debugFlag(flag.key));
+}
+
+function openDebugMenu() {
+  debugMenu.active = true;
+  debugMenu.pending = Object.fromEntries(DEBUG_FLAG_DEFS.map((flag) => [flag.key, debugFlag(flag.key)]));
+  debugMenu.checkboxRects = [];
+  debugMenu.buttonRect = null;
+  updateDebugMenuChanged();
+}
+
+function closeDebugMenu() {
+  debugMenu.active = false;
+  debugMenu.checkboxRects = [];
+  debugMenu.buttonRect = null;
+  resetDebugCheatProgress();
+}
+
+function applyDebugMenuAndRestart() {
+  for (const flag of DEBUG_FLAG_DEFS) {
+    debugFlags[flag.key] = Boolean(debugMenu.pending[flag.key]);
+  }
+  closeDebugMenu();
+  startGame();
+}
+
+function resetDebugCheatProgress() {
+  debugCheat.alphaIndex = 0;
+  debugCheat.alphaStartedAt = 0;
+  debugCheat.directionIndex = 0;
+  debugCheat.directionStartedAt = 0;
+  debugCheat.lastStickDirection = "";
+}
+
+function advanceDebugCheat(input, sequence, indexKey, startedAtKey) {
+  if (state !== "paused" || debugMenu.active) return false;
+  const now = performance.now();
+  if (!debugCheat[startedAtKey] || now - debugCheat[startedAtKey] > DEBUG_CHEAT_TIMEOUT) {
+    debugCheat[indexKey] = 0;
+    debugCheat[startedAtKey] = 0;
+  }
+  if (input === sequence[debugCheat[indexKey]]) {
+    if (debugCheat[indexKey] === 0) debugCheat[startedAtKey] = now;
+    debugCheat[indexKey] += 1;
+    if (debugCheat[indexKey] >= sequence.length && now - debugCheat[startedAtKey] <= DEBUG_CHEAT_TIMEOUT) {
+      openDebugMenu();
+      resetDebugCheatProgress();
+      return true;
+    }
+    return false;
+  }
+  if (input === sequence[0]) {
+    debugCheat[indexKey] = 1;
+    debugCheat[startedAtKey] = now;
+  } else {
+    debugCheat[indexKey] = 0;
+    debugCheat[startedAtKey] = 0;
+  }
+  return false;
+}
+
+function trackDebugCheatKey(key) {
+  if (state !== "paused" || debugMenu.active) return;
+  if (DEBUG_CHEAT_ALPHA.includes(key)) {
+    advanceDebugCheat(key, DEBUG_CHEAT_ALPHA, "alphaIndex", "alphaStartedAt");
+  }
+  const direction = {
+    arrowup: "up",
+    arrowdown: "down",
+    arrowleft: "left",
+    arrowright: "right"
+  }[key];
+  if (direction) {
+    advanceDebugCheat(direction, DEBUG_CHEAT_DIRECTIONS, "directionIndex", "directionStartedAt");
+  }
+}
+
+function trackDebugCheatStickDirection(direction) {
+  if (state !== "paused" || debugMenu.active) return;
+  if (!direction) {
+    debugCheat.lastStickDirection = "";
+    return;
+  }
+  if (direction === debugCheat.lastStickDirection) return;
+  debugCheat.lastStickDirection = direction;
+  advanceDebugCheat(direction, DEBUG_CHEAT_DIRECTIONS, "directionIndex", "directionStartedAt");
+}
+
+function touchStickDebugDirection() {
+  const x = touchControls.movementX;
+  const y = touchControls.movementY;
+  const magnitude = Math.hypot(x, y);
+  if (magnitude < 0.58) return "";
+  if (Math.abs(y) > Math.abs(x)) return y < 0 ? "up" : "down";
+  return x < 0 ? "left" : "right";
+}
+
+function handleDebugMenuClick(point) {
+  if (!debugMenu.active) return false;
+  for (const rect of debugMenu.checkboxRects) {
+    if (pointInRect(point, rect)) {
+      debugMenu.pending[rect.key] = !debugMenu.pending[rect.key];
+      updateDebugMenuChanged();
+      return true;
+    }
+  }
+  if (pointInRect(point, debugMenu.buttonRect)) {
+    if (debugMenu.changed) applyDebugMenuAndRestart();
+    else closeDebugMenu();
+    return true;
+  }
+  return true;
+}
+
+function drawDebugMenuOverlay() {
+  if (!debugMenu.active) return;
+  const panelW = Math.min(850, W - 120);
+  const panelH = Math.min(540, H - 120);
+  const panelX = (W - panelW) / 2;
+  const panelY = (H - panelH) / 2;
+  const columns = W < 900 ? 1 : 2;
+  const rowH = 34;
+  const headerH = 82;
+  const buttonH = 42;
+  const colGap = 32;
+  const colW = (panelW - 56 - colGap * (columns - 1)) / columns;
+  debugMenu.checkboxRects = [];
+  debugMenu.buttonRect = null;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(1, 2, 6, 0.74)";
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = "rgba(10, 12, 20, 0.96)";
+  ctx.strokeStyle = "rgba(255, 231, 138, 0.88)";
+  ctx.lineWidth = 2;
+  ctx.fillRect(panelX, panelY, panelW, panelH);
+  ctx.strokeRect(panelX + 0.5, panelY + 0.5, panelW - 1, panelH - 1);
+
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.fillStyle = "#fff2c7";
+  ctx.font = "800 34px Segoe UI, Arial";
+  ctx.fillText("Debug Flags", W / 2, panelY + 42);
+  ctx.font = "15px Segoe UI, Arial";
+  ctx.fillStyle = "#d9d0b8";
+  ctx.fillText("Choose flags for the next restart.", W / 2, panelY + 66);
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  DEBUG_FLAG_DEFS.forEach((flag, index) => {
+    const column = columns === 1 ? 0 : index % 2;
+    const row = columns === 1 ? index : Math.floor(index / 2);
+    const x = panelX + 28 + column * (colW + colGap);
+    const y = panelY + headerH + row * rowH;
+    const box = { x, y: y - 12, w: 24, h: 24, key: flag.key };
+    debugMenu.checkboxRects.push({ ...box, x: x - 6, y: y - 18, w: Math.min(colW, panelW - (x - panelX) - 26), h: 32 });
+    ctx.fillStyle = "rgba(255, 255, 255, 0.06)";
+    ctx.fillRect(box.x, box.y, box.w, box.h);
+    ctx.strokeStyle = debugMenu.pending[flag.key] ? "#8fffc1" : "rgba(255, 244, 198, 0.7)";
+    ctx.lineWidth = 2;
+    ctx.strokeRect(box.x + 0.5, box.y + 0.5, box.w - 1, box.h - 1);
+    if (debugMenu.pending[flag.key]) {
+      ctx.strokeStyle = "#8fffc1";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(box.x + 5, box.y + 12);
+      ctx.lineTo(box.x + 10, box.y + 18);
+      ctx.lineTo(box.x + 20, box.y + 6);
+      ctx.stroke();
+    }
+    ctx.fillStyle = "#f5edd4";
+    ctx.font = "700 16px Segoe UI, Arial";
+    ctx.fillText(flag.label, x + 36, y + 1);
+  });
+
+  const buttonW = debugMenu.changed ? 260 : 150;
+  const buttonX = W / 2 - buttonW / 2;
+  const buttonY = panelY + panelH - buttonH - 24;
+  debugMenu.buttonRect = { x: buttonX, y: buttonY, w: buttonW, h: buttonH };
+  ctx.fillStyle = debugMenu.changed ? "rgba(20, 136, 72, 0.92)" : "rgba(105, 108, 116, 0.82)";
+  ctx.strokeStyle = debugMenu.changed ? "rgba(158, 255, 191, 0.9)" : "rgba(230, 230, 230, 0.62)";
+  ctx.lineWidth = 2;
+  ctx.fillRect(buttonX, buttonY, buttonW, buttonH);
+  ctx.strokeRect(buttonX + 0.5, buttonY + 0.5, buttonW - 1, buttonH - 1);
+  ctx.fillStyle = "#fffdf0";
+  ctx.textAlign = "center";
+  ctx.font = "800 17px Segoe UI, Arial";
+  ctx.fillText(debugMenu.changed ? "Restart w/ Debug Flags" : "Cancel", W / 2, buttonY + buttonH / 2 + 1);
+  ctx.restore();
+}
+
 function draw() {
   const shake = screenShakeTimer > 0 ? screenShakeTimer / 0.7 : 0;
   ctx.save();
@@ -19074,6 +19312,7 @@ function togglePause() {
     resetTouchInput();
   } else if (state === "paused") {
     state = "playing";
+    closeDebugMenu();
     keys.clear();
     resetAttackHolds();
     resetTouchInput();
@@ -19460,6 +19699,7 @@ function updateTouchStickFromEvent(event) {
     touchControls.runLatched = false;
     syncTouchRunButtonState();
   }
+  trackDebugCheatStickDirection(touchStickDebugDirection());
   if (touchStickNub) {
     touchStickNub.style.transform = `translate(calc(-50% + ${nx * clamped}px), calc(-50% + ${ny * clamped}px))`;
   }
@@ -19483,6 +19723,10 @@ function handleTouchActionPress(action) {
     return;
   }
   if (action === "pause") {
+    if (debugMenu.active) {
+      closeDebugMenu();
+      return;
+    }
     togglePause();
     return;
   }
@@ -19587,6 +19831,28 @@ window.addEventListener("keydown", (event) => {
     advanceLambdaGameOverDialogue(true);
     return;
   }
+  if (state === "paused") {
+    if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(key)) event.preventDefault();
+    if (debugMenu.active) {
+      if (key === "escape" || key === "p") {
+        event.preventDefault();
+        closeDebugMenu();
+        return;
+      }
+      if (key === "enter" || key === " ") {
+        event.preventDefault();
+        if (debugMenu.changed) applyDebugMenuAndRestart();
+        else closeDebugMenu();
+        return;
+      }
+      return;
+    }
+    trackDebugCheatKey(key);
+    if (debugMenu.active) {
+      event.preventDefault();
+      return;
+    }
+  }
   if (key === "p" || key === "escape") {
     event.preventDefault();
     togglePause();
@@ -19641,6 +19907,10 @@ canvas.addEventListener("wheel", (event) => {
   tutorial.scroll = Math.max(0, tutorial.scroll + event.deltaY * 0.45);
 }, { passive: false });
 canvas.addEventListener("click", (event) => {
+  if (state === "paused" && debugMenu.active) {
+    handleDebugMenuClick(canvasPointFromEvent(event));
+    return;
+  }
   if (state === "bossBlessing") {
     const point = canvasPointFromEvent(event);
     const rects = bossBlessingCardRects();
@@ -19760,6 +20030,7 @@ if (touchStickEl) {
     touchControls.movementY = 0;
     touchControls.stickPointerId = null;
     touchControls.runLatched = false;
+    trackDebugCheatStickDirection("");
     syncTouchRunButtonState();
     if (touchStickNub) touchStickNub.style.transform = "translate(-50%, -50%)";
   };
