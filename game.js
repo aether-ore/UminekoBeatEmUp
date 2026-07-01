@@ -3,6 +3,7 @@ const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
 const healthBar = document.getElementById("healthBar");
+const shannonBarrierBar = document.getElementById("shannonBarrierBar");
 const resolveBar = document.getElementById("resolveBar");
 const resolveMeter = resolveBar.parentElement;
 const waveLabel = document.getElementById("waveLabel");
@@ -578,6 +579,7 @@ const DEBUG_FORCE_BERN_CAT_FORM = false;
 const DEBUG_START_WITH_PLUM_TEA = false;
 const DEBUG_START_WITH_KONPEITO = false;
 const DEBUG_START_WITH_GOLDEN_BROOCH_RIGHT = false;
+const DEBUG_START_WITH_GOLDEN_BROOCH_LEFT = true;
 const DEBUG_START_WITH_50_REFLEX = false;
 const DEBUG_START_WITH_SUPER_CHARGE = false;
 const DEBUG_START_WITH_CANDY_CATACLYSM = false;
@@ -645,7 +647,10 @@ const SHANNON_WALL_SLOW_RANGE = 265;
 const SHANNON_WALL_SLOW_SPEED = 72;
 const SHANNON_WALL_LAUNCH_LIFT = 430;
 const SHANNON_WALL_LAUNCH_DRIFT = 220;
-const SHANNON_BARRIER_HEALTH_FRACTION = 0.25;
+const SHANNON_BARRIER_HEALTH_FRACTION = 0.5;
+const SHANNON_BARRIER_HEALTH_BAR_FRACTION = 0.25;
+const SHANNON_BARRIER_TRIGGER_HEALTH_FRACTION = 0.8;
+const SHANNON_BARRIER_CAST_FREEZE = 0.72;
 const SHANNON_BARRIER_RADIUS = 176;
 const SHANNON_BARRIER_DAMAGE = 10;
 const SHANNON_BARRIER_LAUNCH_LIFT = 310;
@@ -654,11 +659,47 @@ const SHANNON_BARRIER_GROW_TIME = 0.34;
 const SHANNON_BARRIER_FADE_TIME = 0.62;
 const KANON_SUMMON_FREEZE_DURATION = 0.84;
 const KANON_SUMMON_HIT_TIME = 0.32;
-const KANON_SUMMON_DAMAGE = 90;
+const KANON_SUMMON_DAMAGE = 78;
 const KANON_SUMMON_RANGE = 520;
 const KANON_SUMMON_DEPTH = 118;
 const KANON_SUMMON_LAUNCH_LIFT = 470;
 const KANON_SUMMON_LAUNCH_DRIFT = 280;
+const KANON_ATTACK_INTERVAL = 4;
+const KANON_ATTACK_MAX_CHARGE = 300;
+const KANON_ATTACK_DAMAGE = 50;
+const KANON_ATTACK_RANGE = 210;
+const KANON_ATTACK_DEPTH = 108;
+const KANON_ATTACK_LAUNCH_LIFT = 420;
+const KANON_ATTACK_LAUNCH_DRIFT = 250;
+const KANON_ATTACK_TRAVEL_SPEED = 820;
+const KANON_SLASH_ARC_DURATION = 1;
+const KANON_SLASH_ARC_DAMAGE = 20;
+const KANON_SLASH_ARC_RANGE = 260;
+const KANON_SLASH_ARC_DEPTH = 126;
+const KANON_SLASH_ARC_LAUNCH_LIFT = 380;
+const KANON_SLASH_ARC_LAUNCH_DRIFT = 210;
+const KANON_UPPERCUT_DAMAGE = 40;
+const KANON_UPPERCUT_RANGE = 150;
+const KANON_UPPERCUT_DEPTH = 92;
+const KANON_UPPERCUT_LAUNCH_LIFT = 500;
+const KANON_UPPERCUT_LAUNCH_DRIFT = 110;
+const KANON_UPPERCUT_ARC_DAMAGE = 27;
+const KANON_UPPERCUT_ARC_SPEED = 285;
+const KANON_UPPERCUT_ARC_DURATION = 1.15;
+const KANON_UPPERCUT_ARC_RANGE = 190;
+const KANON_UPPERCUT_ARC_DEPTH = 118;
+const KANON_UPPERCUT_ARC_LAUNCH_LIFT = 460;
+const KANON_UPPERCUT_ARC_LAUNCH_DRIFT = 130;
+const KANON_FINISHER_ARC_DURATION = 1.55;
+const KANON_FINISHER_ARC_DAMAGE = 84;
+const KANON_FINISHER_ARC_RANGE = 520;
+const KANON_FINISHER_ARC_DEPTH = 154;
+const KANON_FINISHER_ARC_LAUNCH_LIFT = 520;
+const KANON_FINISHER_ARC_LAUNCH_DRIFT = 300;
+const KANON_RUN_SPEED = 430;
+const KANON_RUN_START_DISTANCE = W * 0.27;
+const KANON_RUN_STOP_DISTANCE = 190;
+const KANON_RUN_RATE = 13;
 const SHANNON_WALK_SPEED = 225;
 const SHANNON_RUN_SPEED = 390;
 const SHANNON_RUN_START_DISTANCE = W * 0.34;
@@ -797,7 +838,19 @@ const shannonFrames = {
 };
 const kanonFrames = {
   summonSlash: [769, 770, 771, 772, 773, 774, 775],
-  idle: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  idle: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  move: [48, 49, 50, 51, 52, 53, 54, 55, 56, 57],
+  moveBack: [58, 59, 60, 61, 62, 63, 64, 65, 66, 67],
+  run: [131, 132, 133, 134, 135, 136, 137, 138, 139, 140, 141],
+  attackStartup: [414, 415, 416],
+  attackTravel: [417, 418, 419],
+  attackActive: [420, 421, 422, 423, 424, 425, 426],
+  attackRecovery: [427, 428],
+  attackUppercutStartup: [394, 395, 396, 397],
+  attackUppercutRise: [398, 399, 400],
+  attackUppercutFall: [401, 402, 403, 404, 405, 406, 407, 408],
+  attackUppercutLand: [409, 410],
+  attackFinisher: [769, 770, 771, 772, 773, 774, 775]
 };
 
 const attackData = {
@@ -1460,6 +1513,7 @@ const lambdaSpecialKonpeitos = [];
 const lambdaSpecialShrapnel = [];
 const lambdaSpecialFinalBursts = [];
 const shannonWalls = [];
+const kanonSlashArcs = [];
 const goatPoundQuakes = [];
 const beatriceStakes = [];
 const beatriceStakeTrails = [];
@@ -2124,7 +2178,6 @@ function damagePlayer(amount) {
   if (amount <= 0) return 0;
   if (player.action === "getUp" || player.getUpTimer > 0) return 0;
   player.shannonBarrierBlockedLastHit = false;
-  if (!playerHasShannonBarrier()) tryTriggerShannonBarrierGuard();
   const scaledAmount = player.blessings.miracleRisk ? amount * 1.5 : amount;
   let remaining = scaledAmount;
   if (playerHasShannonBarrier()) {
@@ -2548,7 +2601,18 @@ const kanonCompanion = {
   facing: 1,
   anim: 0,
   state: "idle",
-  moveSettle: 0
+  moveSettle: 0,
+  attackCharge: 100,
+  attackTimer: 0,
+  attackPhaseTimer: 0,
+  attackTargetX: 0,
+  attackTargetY: FLOOR_Y,
+  attackHitDone: false,
+  attackSegmentsSpent: 0,
+  uppercutHitDone: false,
+  uppercutArcSpawned: false,
+  finisherArcSpawned: false,
+  airOffset: 0
 };
 
 const kanonSummonSlash = {
@@ -2559,6 +2623,9 @@ const kanonSummonSlash = {
   facing: 1,
   didHit: false
 };
+
+const kanonUppercutArcs = [];
+const kanonFinisherArcs = [];
 
 const player = {
   x: 240,
@@ -2638,6 +2705,7 @@ const player = {
   shannonBarrierMax: 0,
   shannonBarrierBlockedLastHit: false,
   shannonBarrierGuardTimer: 0,
+  shannonBarrierFreezeTimer: 0,
   companionSlots: [null, null],
   oneWingedEagleActive: false,
   oneWingedEagleLevel: 0,
@@ -3605,9 +3673,8 @@ function activatePickup(pickup, options = {}) {
     player.goldenBroochLeftActive = true;
     if (firstSummon) summonKanon();
     else {
-      kanonCompanion.state = "summonSlash";
-      kanonCompanion.anim = 0;
-      triggerKanonSummonSlash();
+      addKanonAttackCharge(100);
+      startKanonDashAttack();
     }
     message = "Golden Brooch (Left)";
   } else if (pickup.type === "oneWingedEagle") {
@@ -3679,6 +3746,18 @@ function debugGrantStartingGoldenBroochRight() {
   }
   if (!shannonCompanion.summoned) summonShannon();
   message = "Golden Brooch (Right)";
+  messageTimer = 1.1;
+}
+
+function debugGrantStartingGoldenBroochLeft() {
+  if (!DEBUG_START_WITH_GOLDEN_BROOCH_LEFT) return;
+  player.goldenBroochLeftActive = true;
+  if (!player.itemOrder.includes("goldenBroochLeft")) player.itemOrder.push("goldenBroochLeft");
+  if (player.seenItemTutorials && typeof player.seenItemTutorials.add === "function") {
+    player.seenItemTutorials.add("goldenBroochLeft");
+  }
+  if (!kanonCompanion.summoned) summonKanon();
+  message = "Golden Brooch (Left)";
   messageTimer = 1.1;
 }
 
@@ -3782,6 +3861,11 @@ function addShannonWallCharge(amount = 100) {
   shannonCompanion.wallTimer = companionChargeCooldown(shannonCompanion.wallCharge, SHANNON_WALL_INTERVAL);
 }
 
+function addKanonAttackCharge(amount = 100) {
+  kanonCompanion.attackCharge = clamp((kanonCompanion.attackCharge || 0) + amount, 0, KANON_ATTACK_MAX_CHARGE);
+  kanonCompanion.attackTimer = kanonChargeCooldown();
+}
+
 function updateLambdaKonpeitoCharge(dt) {
   if (!player.konpeitoActive || state !== "playing") return;
   if ((lambdaCompanion.konpeitoCharge || 0) < 100) {
@@ -3804,6 +3888,23 @@ function updateShannonWallGauge(dt) {
     shannonCompanion.wallCharge = Math.min(100, (shannonCompanion.wallCharge || 0) + (dt / SHANNON_WALL_INTERVAL) * 100);
   }
   shannonCompanion.wallTimer = companionChargeCooldown(shannonCompanion.wallCharge || 0, SHANNON_WALL_INTERVAL);
+}
+
+function updateKanonAttackGauge(dt) {
+  if (!player.goldenBroochLeftActive || state !== "playing") return;
+  if ((kanonCompanion.attackCharge || 0) < KANON_ATTACK_MAX_CHARGE) {
+    kanonCompanion.attackCharge = Math.min(KANON_ATTACK_MAX_CHARGE, (kanonCompanion.attackCharge || 0) + (dt / KANON_ATTACK_INTERVAL) * 100);
+  }
+  kanonCompanion.attackTimer = kanonChargeCooldown();
+}
+
+function kanonFullGaugeSegments() {
+  return Math.min(3, Math.floor((kanonCompanion.attackCharge || 0) / 100));
+}
+
+function kanonChargeCooldown() {
+  const charge = kanonCompanion.attackCharge || 0;
+  return Math.max(0, KANON_ATTACK_MAX_CHARGE - clamp(charge, 0, KANON_ATTACK_MAX_CHARGE));
 }
 
 function playerHasShannonBarrier() {
@@ -3839,7 +3940,8 @@ function triggerShannonBarrierBurst() {
     y: player.y,
     life: SHANNON_BARRIER_GROW_TIME + SHANNON_BARRIER_FADE_TIME,
     max: SHANNON_BARRIER_GROW_TIME + SHANNON_BARRIER_FADE_TIME,
-    hit: new Set()
+    hit: new Set(),
+    summon: true
   });
   screenShakeTimer = Math.max(screenShakeTimer, 0.18);
   burst(player.x, player.y - 76, "special");
@@ -3855,10 +3957,17 @@ function triggerShannonBarrierBurst() {
   }
 }
 
-function tryTriggerShannonBarrierGuard() {
+function canTriggerShannonBarrierGuard() {
   if (!player.goldenBroochRightActive || !shannonCompanion.summoned || !shannonCompanion.active) return false;
   if ((shannonCompanion.wallCharge || 0) < 100) return false;
   if (shannonCompanion.state === "summon" || shannonCompanion.state === "wallCast" || shannonCompanion.state === "barrierCast") return false;
+  if (player.hp / Math.max(1, playerMaxHp()) >= SHANNON_BARRIER_TRIGGER_HEALTH_FRACTION) return false;
+  return true;
+}
+
+function tryTriggerShannonBarrierGuard(options = {}) {
+  if (!options.launching) return false;
+  if (!canTriggerShannonBarrierGuard()) return false;
   shannonCompanion.wallCharge = 0;
   shannonCompanion.wallTimer = SHANNON_WALL_INTERVAL;
   shannonCompanion.state = "barrierCast";
@@ -3869,9 +3978,20 @@ function tryTriggerShannonBarrierGuard() {
   shannonCompanion.wallCastSpawned = false;
   shannonCompanion.barrierBestowed = true;
   triggerShannonBarrierBurst();
+  player.shannonBarrierFreezeTimer = Math.max(player.shannonBarrierFreezeTimer || 0, SHANNON_BARRIER_CAST_FREEZE);
+  enemyFreezeTimer = Math.max(enemyFreezeTimer, SHANNON_BARRIER_CAST_FREEZE);
   message = "Shannon's Barrier";
   messageTimer = 1.1;
   return true;
+}
+
+function prepareShannonBarrierForLaunchingHit() {
+  if (playerHasShannonBarrier()) {
+    player.shannonBarrierBlockedLastHit = true;
+    player.shannonBarrierGuardTimer = Math.max(player.shannonBarrierGuardTimer, 0.12);
+    return true;
+  }
+  return tryTriggerShannonBarrierGuard({ launching: true });
 }
 
 function triggerKanonSummonSlash() {
@@ -3904,6 +4024,102 @@ function applyKanonSummonSlashHit() {
     burst(enemy.x, enemy.y - 86, "heavy");
     if (enemy.hp <= 0) defeatEnemy(enemy);
   }
+}
+
+function startKanonDashAttack() {
+  if (!player.goldenBroochLeftActive || !kanonCompanion.summoned || !kanonCompanion.active) return false;
+  const segments = kanonFullGaugeSegments();
+  if (segments < 1) return false;
+  if (kanonCompanion.state === "summonSlash" || kanonCompanion.state.startsWith("attack")) return false;
+  const target = nearestEnemyTo(player.x, player.y);
+  if (!target) return false;
+  kanonCompanion.attackSegmentsSpent = segments;
+  kanonCompanion.attackCharge = Math.max(0, (kanonCompanion.attackCharge || 0) - segments * 100);
+  kanonCompanion.attackTimer = kanonChargeCooldown();
+  kanonCompanion.attackTargetX = target.x;
+  kanonCompanion.attackTargetY = target.y;
+  kanonCompanion.attackHitDone = false;
+  kanonCompanion.uppercutHitDone = false;
+  kanonCompanion.uppercutArcSpawned = false;
+  kanonCompanion.finisherArcSpawned = false;
+  kanonCompanion.airOffset = 0;
+  kanonCompanion.facing = target.x >= kanonCompanion.x ? 1 : -1;
+  kanonCompanion.state = "attackStartup";
+  kanonCompanion.anim = 0;
+  kanonCompanion.attackPhaseTimer = 0;
+  kanonCompanion.moveSettle = 0;
+  return true;
+}
+
+function applyKanonDashAttackHit() {
+  const facing = kanonCompanion.facing || 1;
+  const originX = kanonCompanion.x + facing * 70;
+  const originY = kanonCompanion.y;
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0) continue;
+    const dx = (enemy.x - originX) * facing;
+    const dy = Math.abs(enemy.y - originY);
+    if (dx < -44 || dx > KANON_ATTACK_RANGE || dy > KANON_ATTACK_DEPTH) continue;
+    damageEnemy(enemy, KANON_ATTACK_DAMAGE, { playerDamage: false });
+    launchEnemyUnprorated(enemy, facing, "kanon:dashSlash", KANON_ATTACK_LAUNCH_LIFT, KANON_ATTACK_LAUNCH_DRIFT);
+    burst(enemy.x, enemy.y - 86, "enemy");
+    if (enemy.hp <= 0) defeatEnemy(enemy);
+  }
+  spawnKanonSlashArc(originX, originY, facing);
+  screenShakeTimer = Math.max(screenShakeTimer, 0.16);
+}
+
+function spawnKanonSlashArc(x, y, facing) {
+  kanonSlashArcs.push({
+    x,
+    y,
+    facing: facing || 1,
+    life: KANON_SLASH_ARC_DURATION,
+    max: KANON_SLASH_ARC_DURATION,
+    touched: new Set()
+  });
+}
+
+function applyKanonUppercutHit() {
+  const facing = kanonCompanion.facing || 1;
+  const originX = kanonCompanion.x + facing * 46;
+  const originY = kanonCompanion.y;
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0) continue;
+    const dx = (enemy.x - originX) * facing;
+    const dy = Math.abs(enemy.y - originY);
+    if (dx < -58 || dx > KANON_UPPERCUT_RANGE || dy > KANON_UPPERCUT_DEPTH) continue;
+    damageEnemy(enemy, KANON_UPPERCUT_DAMAGE, { playerDamage: false });
+    launchEnemyUnprorated(enemy, facing, "kanon:uppercut", KANON_UPPERCUT_LAUNCH_LIFT, KANON_UPPERCUT_LAUNCH_DRIFT);
+    burst(enemy.x, enemy.y - 96, "heavy");
+    if (enemy.hp <= 0) defeatEnemy(enemy);
+  }
+  screenShakeTimer = Math.max(screenShakeTimer, 0.14);
+}
+
+function spawnKanonUppercutArc() {
+  const facing = kanonCompanion.facing || 1;
+  kanonUppercutArcs.push({
+    x: kanonCompanion.x + facing * 62,
+    y: kanonCompanion.y,
+    facing,
+    life: KANON_UPPERCUT_ARC_DURATION,
+    max: KANON_UPPERCUT_ARC_DURATION,
+    touched: new Set()
+  });
+}
+
+function spawnKanonFinisherArc() {
+  const facing = kanonCompanion.facing || 1;
+  kanonFinisherArcs.push({
+    x: kanonCompanion.x + facing * 40,
+    y: kanonCompanion.y,
+    facing,
+    life: KANON_FINISHER_ARC_DURATION,
+    max: KANON_FINISHER_ARC_DURATION,
+    touched: new Set()
+  });
+  screenShakeTimer = Math.max(screenShakeTimer, 0.24);
 }
 
 function summonLambda() {
@@ -3990,6 +4206,15 @@ function summonKanon(options = {}) {
   kanonCompanion.anim = 0;
   kanonCompanion.state = options.entrance === false ? "idle" : "summonSlash";
   kanonCompanion.moveSettle = 0;
+  kanonCompanion.attackCharge = 100;
+  kanonCompanion.attackTimer = kanonChargeCooldown();
+  kanonCompanion.attackPhaseTimer = 0;
+  kanonCompanion.attackHitDone = false;
+  kanonCompanion.attackSegmentsSpent = 0;
+  kanonCompanion.uppercutHitDone = false;
+  kanonCompanion.uppercutArcSpawned = false;
+  kanonCompanion.finisherArcSpawned = false;
+  kanonCompanion.airOffset = 0;
   if (options.entrance !== false) triggerKanonSummonSlash();
 }
 
@@ -4383,6 +4608,19 @@ function updateResolveHud(dt = 0) {
   resolveMeter.classList.toggle("resolve-building", value > 0 && value < chargeCost);
   const flash = clamp(resolveSpendFlashTimer / 0.34, 0, 1);
   resolveBar.style.setProperty("--resolve-flash", flash.toFixed(3));
+  updateShannonBarrierHud();
+}
+
+function shannonBarrierHudFraction() {
+  if (!playerHasShannonBarrier()) return 0;
+  return clamp(player.shannonBarrierHp / Math.max(1, player.shannonBarrierMax), 0, 1) * SHANNON_BARRIER_HEALTH_BAR_FRACTION;
+}
+
+function updateShannonBarrierHud() {
+  if (!shannonBarrierBar) return;
+  const fraction = shannonBarrierHudFraction();
+  shannonBarrierBar.style.width = `${fraction * 100}%`;
+  shannonBarrierBar.style.setProperty("--shannon-barrier-opacity", fraction > 0 ? "1" : "0");
 }
 
 function detonateDuoAttack() {
@@ -5332,6 +5570,7 @@ function launchPlayerFromKonpeito(centerX) {
   player.crestAttackHasHit = false;
   player.currentAttack = "";
   player.action = "down";
+  prepareShannonBarrierForLaunchingHit();
   launchActor(player, direction, 360, 135);
   player.x = clamp(player.x + direction * 18, 70, STAGE_W - 90);
   player.konpeitoGlowPending = true;
@@ -6579,6 +6818,18 @@ function dismissCompanionsForBossWave() {
   kanonCompanion.state = "idle";
   kanonCompanion.anim = 0;
   kanonCompanion.moveSettle = 0;
+  kanonCompanion.attackPhaseTimer = 0;
+  kanonCompanion.attackTargetX = 0;
+  kanonCompanion.attackTargetY = FLOOR_Y;
+  kanonCompanion.attackHitDone = false;
+  kanonCompanion.attackSegmentsSpent = 0;
+  kanonCompanion.uppercutHitDone = false;
+  kanonCompanion.uppercutArcSpawned = false;
+  kanonCompanion.finisherArcSpawned = false;
+  kanonCompanion.airOffset = 0;
+  kanonSlashArcs.length = 0;
+  kanonUppercutArcs.length = 0;
+  kanonFinisherArcs.length = 0;
 }
 
 function startBlessingChoice(options, context = "boss") {
@@ -6874,7 +7125,12 @@ function applyLeviathanSlashHit(attack) {
   if (inRing && !isPlayerInvulnerable() && !player.airborne && !player.knockedDown) {
     const direction = Math.sign(player.x - attack.x) || player.facing || 1;
     chainDirection = direction;
+    prepareShannonBarrierForLaunchingHit();
     damagePlayer(BEATRICE_RING_ATTACK_DAMAGE);
+    if (shannonBarrierBlockedHit()) {
+      burst(player.x, player.y - 100, "special");
+      return true;
+    }
     player.invuln = 0.45;
     player.action = "down";
     player.attackLock = 0;
@@ -6910,7 +7166,12 @@ function spawnSatanAerialLaunch(direction) {
 function applySatanAerialLaunchHit(attack) {
   if (state !== "playing" || player.hp <= 0) return;
   const direction = attack.facing || player.facing || 1;
+  prepareShannonBarrierForLaunchingHit();
   damagePlayer(SATAN_AERIAL_DAMAGE);
+  if (shannonBarrierBlockedHit()) {
+    burst(player.x, player.y - Math.max(92, (player.z || 0) + 32), "special");
+    return;
+  }
   if (player.hp <= 0) {
     defeatPlayer();
     return;
@@ -6954,7 +7215,12 @@ function spawnBelphegorGroundBounceSlam(direction) {
 function applyBelphegorGroundBounceSlamHit(attack) {
   if (state !== "playing" || player.hp <= 0) return;
   const direction = attack.impactDirection || player.facing || 1;
+  prepareShannonBarrierForLaunchingHit();
   damagePlayer(BELPHEGOR_SLAM_DAMAGE);
+  if (shannonBarrierBlockedHit()) {
+    burst(player.x, player.y - Math.max(92, (player.z || 0) + 32), "special");
+    return;
+  }
   if (player.hp <= 0) {
     defeatPlayer();
     return;
@@ -7182,7 +7448,12 @@ function applyBeatriceTowerVolleyHit(point) {
   if (Math.hypot(dx, dy) > BEATRICE_TOWER_VOLLEY_RADIUS) return;
   beatriceTowerVolley.hitWaves.push(point.wave);
   const direction = Math.sign(player.x - (beatriceTowerVolley.side < 0 ? cameraX : cameraX + W)) || -beatriceTowerVolley.side || player.facing || 1;
+  prepareShannonBarrierForLaunchingHit();
   damagePlayer(BEATRICE_TOWER_VOLLEY_DAMAGE);
+  if (shannonBarrierBlockedHit()) {
+    burst(player.x, player.y - 94, "special");
+    return;
+  }
   player.invuln = 0.35;
   player.attackLock = 0;
   player.attackLungeRemaining = 0;
@@ -7830,6 +8101,7 @@ function startGame() {
   player.shannonBarrierMax = 0;
   player.shannonBarrierBlockedLastHit = false;
   player.shannonBarrierGuardTimer = 0;
+  player.shannonBarrierFreezeTimer = 0;
   player.companionSlots = [null, null];
   player.oneWingedEagleActive = false;
   player.oneWingedEagleLevel = 0;
@@ -8015,6 +8287,16 @@ function startGame() {
   kanonCompanion.anim = 0;
   kanonCompanion.state = "idle";
   kanonCompanion.moveSettle = 0;
+  kanonCompanion.attackCharge = 100;
+  kanonCompanion.attackTimer = kanonChargeCooldown();
+  kanonCompanion.attackPhaseTimer = 0;
+  kanonCompanion.attackTargetX = 0;
+  kanonCompanion.attackTargetY = FLOOR_Y;
+  kanonCompanion.attackHitDone = false;
+  kanonCompanion.attackSegmentsSpent = 0;
+  kanonCompanion.uppercutHitDone = false;
+  kanonCompanion.uppercutArcSpawned = false;
+  kanonCompanion.airOffset = 0;
   pickups.length = 0;
   absorbingPickups.length = 0;
   crystalShards.length = 0;
@@ -8030,6 +8312,9 @@ function startGame() {
   lambdaSpecialShrapnel.length = 0;
   lambdaSpecialFinalBursts.length = 0;
   shannonWalls.length = 0;
+  kanonSlashArcs.length = 0;
+  kanonUppercutArcs.length = 0;
+  kanonFinisherArcs.length = 0;
   shannonBarrierBursts.length = 0;
   kanonSummonSlash.active = false;
   kanonSummonSlash.timer = 0;
@@ -8058,6 +8343,7 @@ function startGame() {
   debugGrantStartingKonpeito();
   debugGrantStartingPlumTea();
   debugGrantStartingGoldenBroochRight();
+  debugGrantStartingGoldenBroochLeft();
   spawnWave();
 }
 
@@ -8610,6 +8896,7 @@ function startPlayerRunStumble(direction = -player.facing, contactX = player.x, 
 }
 
 function startPlayerGoatRunBump(goat) {
+  prepareShannonBarrierForLaunchingHit();
   if (shannonBarrierBlockedHit()) {
     burst((player.x + goat.x) * 0.5, player.y - 100, "special");
     return false;
@@ -8878,7 +9165,12 @@ function applyGoatChargeHit(enemy) {
   if (!pointInGoatChargePath(enemy, player.x, player.y, 96)) return false;
   if (isPlayerInvulnerable()) return true;
   const wasRunning = player.runState === "running";
+  prepareShannonBarrierForLaunchingHit();
   damagePlayer(GOAT_CHARGE_DAMAGE + Math.floor(wave / 3));
+  if (shannonBarrierBlockedHit()) {
+    burst(player.x, player.y - 110, "special");
+    return true;
+  }
   if (wasRunning) {
     startPlayerRunStumble(Math.sign(enemy.goatChargeDx || enemy.facing) || enemy.facing, player.x, player.y - 110);
     if (player.hp <= 0) defeatPlayer();
@@ -8907,7 +9199,12 @@ function applyGoatPunchHit(enemy) {
   if (!pointInGoatPunch(enemy, player.x, player.y)) return false;
   if (isPlayerInvulnerable()) return false;
   const wasRunning = player.runState === "running";
+  prepareShannonBarrierForLaunchingHit();
   damagePlayer(GOAT_PUNCH_DAMAGE + Math.floor(wave / 4));
+  if (shannonBarrierBlockedHit()) {
+    burst(player.x, player.y - 92, "special");
+    return true;
+  }
   if (wasRunning) {
     startPlayerRunStumble(enemy.facing, player.x, player.y - 92);
     if (player.hp <= 0) defeatPlayer();
@@ -8987,7 +9284,12 @@ function applyGoatPoundHit(enemy) {
   if (!inSlam) return false;
   if (isPlayerInvulnerable()) return false;
   const wasRunning = player.runState === "running";
+  prepareShannonBarrierForLaunchingHit();
   damagePlayer(GOAT_POUND_DAMAGE + Math.floor(wave / 2));
+  if (shannonBarrierBlockedHit()) {
+    burst(player.x, player.y - 96, "special");
+    return true;
+  }
   if (wasRunning) {
     startPlayerRunStumble(Math.sign(dirX) || enemy.facing, player.x, player.y - 96);
     if (player.hp <= 0) defeatPlayer();
@@ -9056,7 +9358,12 @@ function applyGoatDelayedQuakeHit(quake, radius) {
   if (isPlayerInvulnerable()) return false;
   const direction = Math.sign(quake.dirX) || player.facing || 1;
   const wasRunning = player.runState === "running";
+  prepareShannonBarrierForLaunchingHit();
   damagePlayer(Math.max(12, Math.round(GOAT_POUND_DAMAGE * 0.55) + Math.floor(wave / 3)));
+  if (shannonBarrierBlockedHit()) {
+    burst(player.x, player.y - 96, "special");
+    return true;
+  }
   if (wasRunning) {
     startPlayerRunStumble(direction, player.x, player.y - 96);
     if (player.hp <= 0) defeatPlayer();
@@ -9102,6 +9409,7 @@ function attack(kind) {
     player.brakeDrift = 0;
     player.brakeBurstTimer = 0;
     setAction("special", attackData.special.lock);
+    startKanonDashAttack();
     return true;
   }
   if ((kind === "punch" || kind === "kick") && player.attackLock > 0 && player.comboTimer > 0 && player.comboStep > 0 && player.comboStep < 3) {
@@ -9167,6 +9475,7 @@ function attack(kind) {
   player.brakeDrift = 0;
   player.brakeBurstTimer = 0;
   setAction(action, data.lock);
+  startKanonDashAttack();
   if (!data.activeFrames) {
     applyAttackHit(action, data);
     applyCrestEchoHit(action, data);
@@ -9533,7 +9842,12 @@ function applyBeelzebubDropSlashHit(attack) {
   player.x = clamp(attack.x + side * BEATRICE_ASMO_DROP_KICK_CATCH_OFFSET, cameraX + 24, cameraX + W - 24);
   player.y = clampPlayY(attack.y);
   player.z = Math.max(player.z || 0, attack.z || 104);
+  prepareShannonBarrierForLaunchingHit();
   damagePlayer(BEATRICE_ASMO_DROP_KICK_DAMAGE);
+  if (shannonBarrierBlockedHit()) {
+    burst(player.x, player.y - Math.max(84, player.z * 0.45), "special");
+    return true;
+  }
   player.invuln = Math.max(player.invuln, 0.28);
   player.attackLungeRemaining = 0;
   player.currentAttack = "";
@@ -9566,16 +9880,21 @@ function applyBeatriceAsmodeusDropKickHit() {
 function applyAsmodeusUppercutHit(attack) {
   if (state !== "playing" || player.airborne || player.knockedDown) return;
   const side = attack.facing || Math.sign(player.x - attack.x) || player.facing || 1;
+  prepareShannonBarrierForLaunchingHit();
   damagePlayer(16);
+  if (shannonBarrierBlockedHit()) {
+    burst(player.x, player.y - 100, "special");
+    return;
+  }
   player.invuln = 0.45;
   player.attackLungeRemaining = 0;
   player.currentAttack = "";
   player.attackHasHit = false;
   player.crestAttackHasHit = false;
   player.action = "down";
-  launchActor(player, side, BEATRICE_ASMO_UPPERCUT_LIFT, BEATRICE_ASMO_UPPERCUT_DRIFT);
+  const launched = launchActor(player, side, BEATRICE_ASMO_UPPERCUT_LIFT, BEATRICE_ASMO_UPPERCUT_DRIFT);
   resetPlayerCombo();
-  if (player.hp > 0) armBeatriceAsmodeusDropKick(side);
+  if (launched && player.hp > 0) armBeatriceAsmodeusDropKick(side);
   if (player.hp <= 0) defeatPlayer();
 }
 
@@ -10544,6 +10863,21 @@ function updatePlayer(dt) {
   player.shannonBarrierGuardTimer = Math.max(0, (player.shannonBarrierGuardTimer || 0) - dt);
   if (player.shannonBarrierGuardTimer <= 0) player.shannonBarrierBlockedLastHit = false;
   updateDashCooldowns(dt);
+  if (player.shannonBarrierFreezeTimer > 0) {
+    player.shannonBarrierFreezeTimer = Math.max(0, player.shannonBarrierFreezeTimer - dt);
+    player.vx = 0;
+    player.vy = 0;
+    player.airVx = 0;
+    player.attackLungeRemaining = 0;
+    player.runState = "none";
+    player.runTimer = 0;
+    player.runCharge = 0;
+    player.brakeDrift = 0;
+    player.brakeBurstTimer = 0;
+    player.invuln = Math.max(player.invuln, 0.12);
+    cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+    return;
+  }
   if (player.gaapTeleport) {
     player.vx = 0;
     player.vy = 0;
@@ -11704,6 +12038,87 @@ function updateShannonWalls(dt) {
   }
 }
 
+function enemyIsKanonArcRelaunchable(enemy) {
+  return !!(
+    enemy.airborne
+    || enemy.z > 8
+    || enemy.vz < -20
+    || enemy.groundBouncePending
+    || enemy.groundBounceTimer > 0
+  );
+}
+
+function updateKanonSlashArcs(dt) {
+  for (let i = kanonSlashArcs.length - 1; i >= 0; i--) {
+    const arc = kanonSlashArcs[i];
+    const age = clamp(1 - arc.life / arc.max, 0, 1);
+    const range = KANON_SLASH_ARC_RANGE + age * 92;
+    const depth = KANON_SLASH_ARC_DEPTH + age * 34;
+    for (const enemy of enemies) {
+      if (arc.touched.has(enemy)) continue;
+      if (enemy.dead || enemy.spawnGrace > 0) continue;
+      if (!enemyIsKanonArcRelaunchable(enemy)) continue;
+      const dx = (enemy.x - arc.x) * arc.facing;
+      const dy = Math.abs(enemy.y - arc.y);
+      if (dx < -78 || dx > range || dy > depth) continue;
+      arc.touched.add(enemy);
+      damageEnemy(enemy, KANON_SLASH_ARC_DAMAGE, { playerDamage: false });
+      launchEnemyUnprorated(enemy, arc.facing, "kanon:lingeringArc", KANON_SLASH_ARC_LAUNCH_LIFT, KANON_SLASH_ARC_LAUNCH_DRIFT);
+      burst(enemy.x, enemy.y - 84, "enemy");
+      if (enemy.hp <= 0) defeatEnemy(enemy);
+    }
+    arc.life -= dt;
+    if (arc.life <= 0) kanonSlashArcs.splice(i, 1);
+  }
+}
+
+function updateKanonUppercutArcs(dt) {
+  for (let i = kanonUppercutArcs.length - 1; i >= 0; i--) {
+    const arc = kanonUppercutArcs[i];
+    const age = clamp(1 - arc.life / arc.max, 0, 1);
+    arc.x += arc.facing * KANON_UPPERCUT_ARC_SPEED * dt;
+    const range = KANON_UPPERCUT_ARC_RANGE + age * 36;
+    const depth = KANON_UPPERCUT_ARC_DEPTH + age * 24;
+    for (const enemy of enemies) {
+      if (arc.touched.has(enemy)) continue;
+      if (enemy.dead || enemy.spawnGrace > 0) continue;
+      const dx = (enemy.x - arc.x) * arc.facing;
+      const dy = Math.abs(enemy.y - arc.y);
+      if (dx < -48 || dx > range || dy > depth) continue;
+      arc.touched.add(enemy);
+      damageEnemy(enemy, KANON_UPPERCUT_ARC_DAMAGE, { playerDamage: false });
+      launchEnemyUnprorated(enemy, arc.facing, "kanon:uppercutArc", KANON_UPPERCUT_ARC_LAUNCH_LIFT, KANON_UPPERCUT_ARC_LAUNCH_DRIFT);
+      burst(enemy.x, enemy.y - 112, "heavy");
+      if (enemy.hp <= 0) defeatEnemy(enemy);
+    }
+    arc.life -= dt;
+    if (arc.life <= 0 || arc.x < -120 || arc.x > STAGE_W + 120) kanonUppercutArcs.splice(i, 1);
+  }
+}
+
+function updateKanonFinisherArcs(dt) {
+  for (let i = kanonFinisherArcs.length - 1; i >= 0; i--) {
+    const arc = kanonFinisherArcs[i];
+    const age = clamp(1 - arc.life / arc.max, 0, 1);
+    const range = KANON_FINISHER_ARC_RANGE + age * 180;
+    const depth = KANON_FINISHER_ARC_DEPTH + age * 70;
+    for (const enemy of enemies) {
+      if (arc.touched.has(enemy)) continue;
+      if (enemy.dead || enemy.spawnGrace > 0) continue;
+      const dx = (enemy.x - arc.x) * arc.facing;
+      const dy = Math.abs(enemy.y - arc.y);
+      if (dx < -94 || dx > range || dy > depth) continue;
+      arc.touched.add(enemy);
+      damageEnemy(enemy, KANON_FINISHER_ARC_DAMAGE, { playerDamage: false });
+      launchEnemyUnprorated(enemy, arc.facing, "kanon:finisherArc", KANON_FINISHER_ARC_LAUNCH_LIFT, KANON_FINISHER_ARC_LAUNCH_DRIFT);
+      burst(enemy.x, enemy.y - 104, "heavy");
+      if (enemy.hp <= 0) defeatEnemy(enemy);
+    }
+    arc.life -= dt;
+    if (arc.life <= 0) kanonFinisherArcs.splice(i, 1);
+  }
+}
+
 function updateBeatrice(dt) {
   if (!beatriceBoss.active) return;
   if (beatriceBoss.flavor === "defeated") {
@@ -12845,7 +13260,204 @@ function updateKanon(dt) {
     }
     return;
   }
-  kanonCompanion.anim += dt * 4;
+  updateKanonAttackGauge(dt);
+  if (kanonCompanion.state === "attackStartup") {
+    kanonCompanion.attackPhaseTimer += dt;
+    kanonCompanion.facing = kanonCompanion.attackTargetX >= kanonCompanion.x ? 1 : -1;
+    if (kanonCompanion.attackPhaseTimer < 0.2) {
+      kanonCompanion.anim = clamp(kanonCompanion.attackPhaseTimer / 0.1, 0, 2.99);
+    } else if (kanonCompanion.attackPhaseTimer < 0.46) {
+      kanonCompanion.anim = 2.99;
+    } else {
+      kanonCompanion.state = "attackTravel";
+      kanonCompanion.anim = 0;
+      kanonCompanion.attackPhaseTimer = 0;
+    }
+    return;
+  }
+  if (kanonCompanion.state === "attackTravel") {
+    const dx = kanonCompanion.attackTargetX - kanonCompanion.x;
+    const dy = kanonCompanion.attackTargetY - kanonCompanion.y;
+    const dist = Math.hypot(dx, dy);
+    kanonCompanion.facing = dx >= 0 ? 1 : -1;
+    if (dist > 18) {
+      const step = Math.min(dist, KANON_ATTACK_TRAVEL_SPEED * dt);
+      kanonCompanion.x += (dx / dist) * step;
+      kanonCompanion.y += (dy / dist) * step;
+    }
+    kanonCompanion.anim += dt * 14;
+    if (dist <= 24 || kanonCompanion.anim >= kanonFrames.attackTravel.length) {
+      kanonCompanion.state = "attackActive";
+      kanonCompanion.anim = 0;
+      kanonCompanion.attackPhaseTimer = 0;
+      kanonCompanion.attackHitDone = false;
+    }
+    return;
+  }
+  if (kanonCompanion.state === "attackActive") {
+    kanonCompanion.anim += dt * 15;
+    if (!kanonCompanion.attackHitDone && kanonCompanion.anim >= 1.2) {
+      kanonCompanion.attackHitDone = true;
+      applyKanonDashAttackHit();
+    }
+    if (kanonCompanion.anim >= kanonFrames.attackActive.length) {
+      kanonCompanion.state = kanonCompanion.attackSegmentsSpent >= 2 ? "attackUppercutStartup" : "attackRecovery";
+      kanonCompanion.anim = 0;
+      kanonCompanion.attackPhaseTimer = 0;
+      kanonCompanion.uppercutHitDone = false;
+      kanonCompanion.uppercutArcSpawned = false;
+    }
+    return;
+  }
+  if (kanonCompanion.state === "attackUppercutStartup") {
+    kanonCompanion.attackPhaseTimer += dt;
+    kanonCompanion.anim += dt * 10;
+    if (kanonCompanion.anim >= kanonFrames.attackUppercutStartup.length) {
+      kanonCompanion.state = "attackUppercutRise";
+      kanonCompanion.anim = 0;
+      kanonCompanion.attackPhaseTimer = 0;
+      kanonCompanion.uppercutHitDone = false;
+      kanonCompanion.uppercutArcSpawned = false;
+    }
+    return;
+  }
+  if (kanonCompanion.state === "attackUppercutRise") {
+    kanonCompanion.attackPhaseTimer += dt;
+    kanonCompanion.anim += dt * 12;
+    const riseT = clamp(kanonCompanion.attackPhaseTimer / 0.32, 0, 1);
+    kanonCompanion.airOffset = 104 * Math.sin(riseT * Math.PI * 0.5);
+    if (!kanonCompanion.uppercutHitDone && kanonCompanion.anim >= 0.65) {
+      kanonCompanion.uppercutHitDone = true;
+      applyKanonUppercutHit();
+    }
+    if (!kanonCompanion.uppercutArcSpawned && kanonCompanion.anim >= 1.05) {
+      kanonCompanion.uppercutArcSpawned = true;
+      spawnKanonUppercutArc();
+    }
+    if (kanonCompanion.anim >= kanonFrames.attackUppercutRise.length) {
+      kanonCompanion.state = "attackUppercutFall";
+      kanonCompanion.anim = 0;
+      kanonCompanion.attackPhaseTimer = 0;
+    }
+    return;
+  }
+  if (kanonCompanion.state === "attackUppercutFall") {
+    kanonCompanion.attackPhaseTimer += dt;
+    kanonCompanion.anim += dt * 9;
+    const fallT = clamp(kanonCompanion.attackPhaseTimer / 0.72, 0, 1);
+    kanonCompanion.airOffset = 104 * (1 - fallT * fallT);
+    if (kanonCompanion.anim >= kanonFrames.attackUppercutFall.length) {
+      kanonCompanion.state = "attackUppercutLand";
+      kanonCompanion.anim = 0;
+      kanonCompanion.attackPhaseTimer = 0;
+      kanonCompanion.airOffset = 0;
+    }
+    return;
+  }
+  if (kanonCompanion.state === "attackUppercutLand") {
+    kanonCompanion.anim += dt * 11;
+    kanonCompanion.airOffset = 0;
+    if (kanonCompanion.anim >= kanonFrames.attackUppercutLand.length) {
+      kanonCompanion.state = kanonCompanion.attackSegmentsSpent >= 3 ? "attackFinisher" : "attackRecovery";
+      kanonCompanion.anim = 0;
+      kanonCompanion.attackPhaseTimer = 0;
+      kanonCompanion.finisherArcSpawned = false;
+    }
+    return;
+  }
+  if (kanonCompanion.state === "attackFinisher") {
+    kanonCompanion.anim += dt * 10;
+    if (!kanonCompanion.finisherArcSpawned && kanonCompanion.anim >= 1.6) {
+      kanonCompanion.finisherArcSpawned = true;
+      spawnKanonFinisherArc();
+    }
+    if (kanonCompanion.anim >= kanonFrames.attackFinisher.length) {
+      kanonCompanion.state = "attackRecovery";
+      kanonCompanion.anim = 0;
+      kanonCompanion.attackPhaseTimer = 0;
+    }
+    return;
+  }
+  if (kanonCompanion.state === "attackRecovery") {
+    kanonCompanion.airOffset = 0;
+    const follow = companionFollowTarget("kanon");
+    const dx = follow.x - kanonCompanion.x;
+    const dy = follow.y - kanonCompanion.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 6) {
+      const step = Math.min(dist, 430 * dt);
+      kanonCompanion.x += (dx / dist) * step;
+      kanonCompanion.y += (dy / dist) * step;
+    }
+    kanonCompanion.facing = dx >= 0 ? 1 : -1;
+    kanonCompanion.anim += dt * 10;
+    if (kanonCompanion.anim >= kanonFrames.attackRecovery.length && dist <= 18) {
+      kanonCompanion.state = "idle";
+      kanonCompanion.anim = 0;
+      kanonCompanion.moveSettle = 0;
+    }
+    return;
+  }
+  const follow = companionFollowTarget("kanon");
+  const dx = follow.x - kanonCompanion.x;
+  const dy = follow.y - kanonCompanion.y;
+  const dist = Math.hypot(dx, dy);
+  const target = nearestEnemyTo(player.x, player.y);
+  const enemyFacing = target ? (target.x >= kanonCompanion.x ? 1 : -1) : player.facing;
+  const wasMoving = kanonCompanion.state === "move" || kanonCompanion.state === "moveBack";
+  const wasRunning = kanonCompanion.state === "run";
+  const shouldMove = dist > (wasMoving || wasRunning ? 7 : 16);
+  const playerDx = player.x - kanonCompanion.x;
+  const playerDy = player.y - kanonCompanion.y;
+  const playerDist = Math.hypot(playerDx, playerDy);
+  if (wasRunning) {
+    kanonCompanion.facing = playerDx >= 0 ? 1 : -1;
+  } else {
+    kanonCompanion.facing = enemyFacing;
+  }
+  if (shouldMove) {
+    const moveDir = dx >= 0 ? 1 : -1;
+    const shouldStartRun = playerDist >= KANON_RUN_START_DISTANCE;
+    const shouldKeepRunning = kanonCompanion.state === "run" && playerDist > KANON_RUN_STOP_DISTANCE;
+    if (shouldStartRun || shouldKeepRunning) {
+      if (kanonCompanion.state !== "run") kanonCompanion.anim = 0;
+      kanonCompanion.state = "run";
+      kanonCompanion.facing = playerDx >= 0 ? 1 : -1;
+      const step = Math.min(dist, KANON_RUN_SPEED * dt);
+      kanonCompanion.x += (dx / dist) * step;
+      kanonCompanion.y += (dy / dist) * step;
+      kanonCompanion.moveSettle = 0;
+      kanonCompanion.anim += dt * KANON_RUN_RATE;
+      return;
+    }
+    if (wasRunning) {
+      kanonCompanion.facing = enemyFacing;
+      kanonCompanion.state = "move";
+      kanonCompanion.anim = 0;
+      kanonCompanion.moveSettle = 0;
+    }
+    const step = Math.min(dist, 250 * dt);
+    kanonCompanion.x += (dx / dist) * step;
+    kanonCompanion.y += (dy / dist) * step;
+    const nextState = moveDir === kanonCompanion.facing ? "move" : "moveBack";
+    if (kanonCompanion.state !== nextState) kanonCompanion.anim = 0;
+    kanonCompanion.state = nextState;
+    kanonCompanion.moveSettle = 0;
+    kanonCompanion.anim += dt * 9;
+  } else if (wasRunning) {
+    if (kanonCompanion.state !== "idle") kanonCompanion.anim = 0;
+    kanonCompanion.state = "idle";
+    kanonCompanion.facing = enemyFacing;
+    kanonCompanion.moveSettle = 0;
+  } else if (wasMoving && kanonCompanion.moveSettle < 0.12) {
+    kanonCompanion.moveSettle += dt;
+    kanonCompanion.anim += dt * 9;
+  } else {
+    if (kanonCompanion.state !== "idle") kanonCompanion.anim = 0;
+    kanonCompanion.state = "idle";
+    kanonCompanion.moveSettle = 0;
+    kanonCompanion.anim += dt * 4;
+  }
 }
 
 function updateKanonSummonSlash(dt) {
@@ -13078,6 +13690,9 @@ function update(dt) {
     drawLambdaSpecialFinalBursts();
     drawLambdaSpecialShrapnel();
     drawShannonWalls();
+    drawKanonSlashArcs();
+    drawKanonUppercutArcs();
+    drawKanonFinisherArcs();
     drawShannonBarrier();
     drawBeatriceStakeShockwaves();
     drawKonpeitoShots();
@@ -13164,6 +13779,9 @@ function update(dt) {
   updateLambdaSpecialFinalBursts(dt);
   updateLambdaSpecialShrapnel(dt);
   updateShannonWalls(dt);
+  updateKanonSlashArcs(dt);
+  updateKanonUppercutArcs(dt);
+  updateKanonFinisherArcs(dt);
   updateShannonBarrierBursts(dt);
   updateBeatrice(dt);
   if (startBeatriceBarrierTutorial()) {
@@ -13245,7 +13863,7 @@ function drawBackground() {
   const previousSmoothing = ctx.imageSmoothingEnabled;
   ctx.imageSmoothingEnabled = true;
   drawParallaxLayer("sky", { travel: 24, bottom: H * 0.46, heightScale: 0.58, widthScale: 1.06 });
-  drawParallaxLayer("treeline", { travel: 86, bottom: H * 0.52, heightScale: 0.34, widthScale: 1.14, alpha: 0.98 });
+  drawParallaxLayer("treeline", { travel: 86, bottom: H * 0.59, heightScale: 0.34, widthScale: 1.14, alpha: 0.98 });
   drawParallaxLayer("mansion", { travel: 142, bottom: H * 0.58, heightScale: 0.62, widthScale: 1.18 });
   drawParallaxLayer("lawn", { travel: 240, bottom: H * 0.64, heightScale: 0.52, widthScale: 1.18 });
   drawParallaxLayer("stairs", { travel: 320, bottom: H * 0.86, heightScale: 0.54, widthScale: 1.28 });
@@ -14608,12 +15226,66 @@ function drawKanon(alpha = 1) {
   const anchor = kanonFrameAnchors[frame] || { x: img.width * 0.5, y: img.height };
   const scale = 1.22;
   const x = Math.round(kanonCompanion.x - cameraX);
-  const y = Math.round(kanonCompanion.y + 10);
+  const y = Math.round(kanonCompanion.y + 10 - (kanonCompanion.airOffset || 0));
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.translate(x, y);
   ctx.scale(-kanonCompanion.facing, 1);
+  drawKanonAttackGraphicLocal();
   ctx.drawImage(img, -anchor.x * scale, -anchor.y * scale, img.width * scale, img.height * scale);
+  ctx.restore();
+}
+
+function drawKanonAttackGraphicLocal() {
+  if (!kanonCompanion.state.startsWith("attack")) return;
+  const pulse = pulseValue(16);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  if (kanonCompanion.state === "attackTravel" || kanonCompanion.state === "attackStartup") {
+    const t = kanonCompanion.state === "attackTravel" ? 1 : clamp(kanonCompanion.attackPhaseTimer / 0.46, 0, 1);
+    ctx.globalAlpha *= 0.32 + t * 0.38;
+    ctx.fillStyle = "rgba(255, 20, 72, 0.32)";
+    ctx.strokeStyle = `rgba(255, ${70 + pulse * 80}, 120, 0.85)`;
+    ctx.lineWidth = 5 + pulse * 2;
+    ctx.beginPath();
+    ctx.moveTo(-18, -104);
+    ctx.lineTo(-112 - t * 50, -148);
+    ctx.lineTo(-22, -72);
+    ctx.lineTo(46 + t * 30, -92);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+  if (kanonCompanion.state === "attackActive") {
+    const t = clamp(kanonCompanion.anim / Math.max(1, kanonFrames.attackActive.length - 1), 0, 1);
+    ctx.globalAlpha *= 0.72 * (1 - Math.max(0, t - 0.72) / 0.28);
+    ctx.strokeStyle = "rgba(255, 28, 76, 0.92)";
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.ellipse(-84, -112, 176 + t * 56, 86 + t * 18, -0.18, Math.PI * 1.12, Math.PI * 1.9);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255, 180, 210, 0.72)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(-84, -112, 142 + t * 42, 66 + t * 16, -0.18, Math.PI * 1.16, Math.PI * 1.86);
+    ctx.stroke();
+  }
+  if (kanonCompanion.state === "attackUppercutStartup" || kanonCompanion.state === "attackUppercutRise") {
+    const t = kanonCompanion.state === "attackUppercutRise"
+      ? clamp(kanonCompanion.anim / Math.max(1, kanonFrames.attackUppercutRise.length - 1), 0, 1)
+      : clamp(kanonCompanion.anim / Math.max(1, kanonFrames.attackUppercutStartup.length - 1), 0, 1) * 0.55;
+    ctx.globalAlpha *= 0.35 + t * 0.55;
+    ctx.strokeStyle = "rgba(255, 28, 76, 0.92)";
+    ctx.lineWidth = 8 + t * 5;
+    ctx.beginPath();
+    ctx.ellipse(-22, -112 - t * 62, 54 + t * 24, 142 + t * 54, -0.12, Math.PI * 1.18, Math.PI * 1.86);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255, 205, 222, 0.72)";
+    ctx.lineWidth = 3 + t * 2;
+    ctx.beginPath();
+    ctx.ellipse(-18, -112 - t * 54, 34 + t * 18, 112 + t * 36, -0.12, Math.PI * 1.22, Math.PI * 1.82);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -16232,6 +16904,120 @@ function drawShannonWalls() {
   }
 }
 
+function drawKanonSlashArcs() {
+  for (const arc of kanonSlashArcs) {
+    const t = clamp(1 - arc.life / arc.max, 0, 1);
+    const alpha = clamp(arc.life / arc.max, 0, 1);
+    const pulse = 0.5 + Math.sin(performance.now() / 55 + t * 8) * 0.5;
+    const x = arc.x - cameraX;
+    const y = arc.y - 112;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.translate(x, y);
+    ctx.scale(-arc.facing, 1);
+    const glow = ctx.createRadialGradient(-96, 0, 18, -118, 4, 238 + t * 86);
+    glow.addColorStop(0, `rgba(255, 238, 246, ${0.12 * alpha})`);
+    glow.addColorStop(0.35, `rgba(255, 30, 86, ${0.14 * alpha})`);
+    glow.addColorStop(1, "rgba(255, 30, 86, 0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.ellipse(-110 - t * 22, 0, 250 + t * 110, 134 + t * 42, -0.18, Math.PI * 1.03, Math.PI * 1.94);
+    ctx.lineTo(-42, -12);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = `rgba(255, ${44 + pulse * 76}, 92, ${0.9 * alpha})`;
+    ctx.lineWidth = 13 * alpha + 2;
+    ctx.beginPath();
+    ctx.ellipse(-98 - t * 28, 0, 208 + t * 96, 98 + t * 35, -0.18, Math.PI * 1.08, Math.PI * 1.92);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255, 206, 220, ${0.72 * alpha})`;
+    ctx.lineWidth = 4 * alpha + 1;
+    ctx.beginPath();
+    ctx.ellipse(-98 - t * 20, 0, 162 + t * 82, 73 + t * 30, -0.18, Math.PI * 1.14, Math.PI * 1.86);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawKanonUppercutArcs() {
+  for (const arc of kanonUppercutArcs) {
+    const t = clamp(1 - arc.life / arc.max, 0, 1);
+    const alpha = clamp(arc.life / arc.max, 0, 1);
+    const pulse = 0.5 + Math.sin(performance.now() / 62 + t * 10) * 0.5;
+    const x = arc.x - cameraX;
+    const y = arc.y - 118;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.translate(x, y);
+    ctx.scale(arc.facing, 1);
+
+    const glow = ctx.createRadialGradient(64, 0, 18, 78, 0, 210 + t * 72);
+    glow.addColorStop(0, `rgba(255, 235, 246, ${0.14 * alpha})`);
+    glow.addColorStop(0.42, `rgba(255, 26, 82, ${0.18 * alpha})`);
+    glow.addColorStop(1, "rgba(255, 26, 82, 0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.ellipse(66 + t * 22, 0, 194 + t * 82, 92 + t * 30, -0.04, -Math.PI * 0.58, Math.PI * 0.58);
+    ctx.lineTo(34, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = `rgba(255, ${42 + pulse * 78}, 96, ${0.92 * alpha})`;
+    ctx.lineWidth = 12 * alpha + 2;
+    ctx.beginPath();
+    ctx.ellipse(72 + t * 26, 0, 166 + t * 70, 76 + t * 24, -0.04, -Math.PI * 0.58, Math.PI * 0.58);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255, 218, 230, ${0.76 * alpha})`;
+    ctx.lineWidth = 4 * alpha + 1;
+    ctx.beginPath();
+    ctx.ellipse(70 + t * 20, 0, 126 + t * 56, 54 + t * 18, -0.04, -Math.PI * 0.54, Math.PI * 0.54);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawKanonFinisherArcs() {
+  for (const arc of kanonFinisherArcs) {
+    const t = clamp(1 - arc.life / arc.max, 0, 1);
+    const alpha = clamp(arc.life / arc.max, 0, 1);
+    const pulse = 0.5 + Math.sin(performance.now() / 48 + t * 12) * 0.5;
+    const x = arc.x - cameraX;
+    const y = arc.y - 104;
+    const radiusX = 210 + t * 270;
+    const radiusY = 150 + t * 118;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(arc.facing, 1);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.shadowColor = "rgba(255, 24, 70, 0.95)";
+    ctx.shadowBlur = 32 + t * 26;
+
+    const glow = ctx.createRadialGradient(34, 0, 18, 48, 0, radiusX * 1.12);
+    glow.addColorStop(0, `rgba(255, 236, 246, ${0.12 * alpha})`);
+    glow.addColorStop(0.35, `rgba(255, 26, 82, ${0.18 * alpha})`);
+    glow.addColorStop(1, "rgba(255, 26, 82, 0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, radiusX * 1.06, radiusY * 1.08, -0.16, -Math.PI * 0.04, -Math.PI * 0.62, true);
+    ctx.ellipse(0, 0, radiusX * 0.62, radiusY * 0.64, -0.16, -Math.PI * 0.62, -Math.PI * 0.04, false);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = `rgba(255, ${36 + pulse * 86}, 92, ${0.9 * alpha})`;
+    ctx.lineWidth = 20 * alpha + 4;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, radiusX, radiusY, -0.16, -Math.PI * 0.04, -Math.PI * 0.62, true);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255, 222, 232, ${0.72 * alpha})`;
+    ctx.lineWidth = 5 * alpha + 1.5;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, radiusX * 0.86, radiusY * 0.9, -0.16, -Math.PI * 0.06, -Math.PI * 0.58, true);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
 function drawShannonBarrier() {
   for (const barrier of shannonBarrierBursts) {
     const total = barrier.max || 1;
@@ -16247,6 +17033,38 @@ function drawShannonBarrier() {
     const now = performance.now() / 1000;
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
+    if (barrier.summon || barrier.guard) {
+      const baseY = (barrier.y ?? player.y) - 12;
+      const baseX = (barrier.x ?? player.x) - cameraX;
+      const riseT = barrier.guard ? 1 : easedGrow;
+      const pillarH = (barrier.guard ? 150 : 220) * riseT;
+      const pillarW = barrier.guard ? 112 : 146;
+      const pillarAlpha = alpha * (barrier.guard ? 0.76 : 0.64);
+      const grad = ctx.createLinearGradient(baseX, baseY - pillarH, baseX, baseY + 12);
+      grad.addColorStop(0, "rgba(222, 170, 255, 0)");
+      grad.addColorStop(0.28, `rgba(184, 88, 255, ${0.16 * pillarAlpha})`);
+      grad.addColorStop(0.72, `rgba(115, 42, 220, ${0.28 * pillarAlpha})`);
+      grad.addColorStop(1, "rgba(222, 170, 255, 0)");
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.ellipse(baseX, baseY - pillarH, pillarW * 0.5, 20, 0, 0, Math.PI * 2);
+      ctx.lineTo(baseX + pillarW * 0.5, baseY);
+      ctx.ellipse(baseX, baseY, pillarW * 0.5, 20, 0, 0, Math.PI);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = `rgba(237, 204, 255, ${0.66 * pillarAlpha})`;
+      ctx.lineWidth = barrier.guard ? 3 : 4;
+      ctx.beginPath();
+      ctx.ellipse(baseX, baseY, pillarW * 0.56, 22, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(170, 72, 255, ${0.48 * pillarAlpha})`;
+      ctx.beginPath();
+      ctx.moveTo(baseX - pillarW * 0.52, baseY);
+      ctx.lineTo(baseX - pillarW * 0.42, baseY - pillarH);
+      ctx.moveTo(baseX + pillarW * 0.52, baseY);
+      ctx.lineTo(baseX + pillarW * 0.42, baseY - pillarH);
+      ctx.stroke();
+    }
     const dome = ctx.createRadialGradient(x, y, 8, x, y, ry * 1.05);
     dome.addColorStop(0, `rgba(244, 220, 255, ${0.16 * alpha})`);
     dome.addColorStop(0.42, `rgba(177, 86, 255, ${0.18 * alpha})`);
@@ -16608,8 +17426,11 @@ function itemHudDrawers() {
     goldenBroochLeft: {
       label: ITEM_TUTORIALS.goldenBroochLeft.label,
       active: player.goldenBroochLeftActive,
-      cooldown: 0,
-      cooldownMax: 1,
+      cooldown: kanonCompanion.summoned ? kanonChargeCooldown() : KANON_ATTACK_MAX_CHARGE,
+      cooldownMax: KANON_ATTACK_MAX_CHARGE,
+      count: kanonFullGaugeSegments(),
+      showCooldown: true,
+      alwaysShowCount: true,
       icon: (x, y) => drawGoldenBroochLeftIcon(x, y, 24, 0.95)
     },
     oneWingedEagle: {
@@ -16949,9 +17770,19 @@ function drawCanvasMobileHud() {
     ctx.strokeStyle = "rgba(255, 255, 255, 0.26)";
     ctx.lineWidth = 1;
     ctx.strokeRect(barX + 0.5, barY + 0.5, barW - 1, barH - 1);
+    return { barX, barY, barW, barH };
   }
 
-  drawMiniMeter("HP", healthT, 16, [[0, "#cc2738"], [1, "#f07f4f"]]);
+  const hpMeter = drawMiniMeter("HP", healthT, 16, [[0, "#cc2738"], [1, "#f07f4f"]]);
+  const shannonT = shannonBarrierHudFraction();
+  if (shannonT > 0) {
+    ctx.strokeStyle = "rgba(218, 142, 255, 0.94)";
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "rgba(190, 80, 255, 0.86)";
+    ctx.shadowBlur = 10;
+    ctx.strokeRect(hpMeter.barX - 1.5, hpMeter.barY - 2.5, hpMeter.barW * shannonT + 3, hpMeter.barH + 5);
+    ctx.shadowBlur = 0;
+  }
   const resolveStops = player.resolve >= 100
     ? [[0, "#ffe78a"], [0.5, "#f4df84"], [1, "#d09a35"]]
     : player.resolve >= chargedAttackResolveCost()
@@ -17882,6 +18713,9 @@ function draw() {
     drawLambdaSpecialFinalBursts();
     drawLambdaSpecialShrapnel();
     drawShannonWalls();
+    drawKanonSlashArcs();
+    drawKanonUppercutArcs();
+    drawKanonFinisherArcs();
     drawShannonBarrier();
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
@@ -17932,6 +18766,9 @@ function draw() {
     drawLambdaSpecialFinalBursts();
     drawLambdaSpecialShrapnel();
     drawShannonWalls();
+    drawKanonSlashArcs();
+    drawKanonUppercutArcs();
+    drawKanonFinisherArcs();
     drawShannonBarrier();
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
@@ -17981,6 +18818,9 @@ function draw() {
     drawLambdaSpecialFinalBursts();
     drawLambdaSpecialShrapnel();
     drawShannonWalls();
+    drawKanonSlashArcs();
+    drawKanonUppercutArcs();
+    drawKanonFinisherArcs();
     drawShannonBarrier();
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();

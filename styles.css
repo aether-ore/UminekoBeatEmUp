@@ -86,6 +86,20 @@ body {
   overflow: hidden;
 }
 
+.meter-health #shannonBarrierBar {
+  position: absolute;
+  inset: -3px auto -3px 0;
+  width: 0%;
+  height: auto;
+  border: 2px solid rgba(210, 125, 255, 0.9);
+  border-right-width: 3px;
+  background: linear-gradient(90deg, rgba(128, 43, 212, 0.08), rgba(220, 160, 255, 0.16));
+  box-shadow: 0 0 10px rgba(190, 80, 255, 0.78), inset 0 0 8px rgba(246, 225, 255, 0.28);
+  pointer-events: none;
+  transition: width 120ms ease, opacity 120ms ease;
+  opacity: var(--shannon-barrier-opacity, 0);
+}
+
 .meter-gold span {
   background: #45d76f;
 }
