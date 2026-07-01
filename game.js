@@ -26,8 +26,8 @@ const orientationPrompt = document.getElementById("orientationPrompt");
 const W = canvas.width;
 const H = canvas.height;
 const FLOOR_Y = 562;
-const PLAY_AREA_TOP = FLOOR_Y - 94;
-const PLAY_AREA_BOTTOM = H - 46;
+const PLAY_AREA_TOP = FLOOR_Y - 60;
+const PLAY_AREA_BOTTOM = H - 50;
 const STAGE_W = 3600;
 
 const PLAYER_SCALE = 1.45;
@@ -72,6 +72,7 @@ const WAVE_EFFECT_WITCH_CHANCE = 0.12;
 const WAVE_EFFECT_GAAP_CHANCE = 0.16;
 const WAVE_EFFECT_STAMPEDE_CHANCE = 0.18;
 const WAVE_EFFECT_PURGATORIO_CHANCE = 0.12;
+const WAVE_EFFECT_PURGATORIO_START_WAVE = 5;
 const WAVE_EFFECT_PURGATORIO_TEASER_WAVE = 8;
 const DEBUG_FORCE_WAVE_EFFECTS = [];
 const GAAP_PORTAL_RADIUS_X = 104;
@@ -119,10 +120,11 @@ const ITEM_DROP_RATES = {
   konpeito: 0.7,
   plumTea: 0.55,
   oneWingedEagle: 0.45,
-  goldenBroochRight: 0.45
+  goldenBroochRight: 0.45,
+  goldenBroochLeft: 0.45
 };
 const MAX_ACTIVE_COMPANIONS = 2;
-const COMPANION_ITEM_TYPES = new Set(["konpeito", "plumTea", "goldenBroochRight"]);
+const COMPANION_ITEM_TYPES = new Set(["konpeito", "plumTea", "goldenBroochRight", "goldenBroochLeft"]);
 const ITEM_TUTORIALS = {
   crystalShard: {
     title: "Crystal Shard",
@@ -141,8 +143,13 @@ const ITEM_TUTORIALS = {
   },
   goldenBroochRight: {
     title: "Golden Brooch (Right)",
-    label: "BROOCH",
+    label: "BROOCH (R)",
     tip: "Summons Shannon as a companion. Battler can keep up to two companions at once."
+  },
+  goldenBroochLeft: {
+    title: "Golden Brooch (Left)",
+    label: "BROOCH (L)",
+    tip: "Summons Kanon as a companion. On summon, he freezes the field and cuts through enemies in front of Battler."
   },
   oneWingedEagle: {
     title: "One-Winged Eagle Crest",
@@ -599,7 +606,6 @@ const DASH_ATTACK_FLASH_END = 1.08;
 const DASH_ATTACK_MISS_FADE = 0.45;
 const DASH_ATTACK_MARKER_RADIUS = 62;
 const DASH_ATTACK_MARKER_START_RADIUS = 118;
-const DASH_CANCEL_RESOLVE_COST = 25;
 const DASH_CANCEL_DURATION = 0.3;
 const DASH_CANCEL_DISTANCE = 176;
 const RUN_STUMBLE_STUN_TIME = 1.5;
@@ -639,6 +645,20 @@ const SHANNON_WALL_SLOW_RANGE = 265;
 const SHANNON_WALL_SLOW_SPEED = 72;
 const SHANNON_WALL_LAUNCH_LIFT = 430;
 const SHANNON_WALL_LAUNCH_DRIFT = 220;
+const SHANNON_BARRIER_HEALTH_FRACTION = 0.25;
+const SHANNON_BARRIER_RADIUS = 176;
+const SHANNON_BARRIER_DAMAGE = 10;
+const SHANNON_BARRIER_LAUNCH_LIFT = 310;
+const SHANNON_BARRIER_LAUNCH_DRIFT = 150;
+const SHANNON_BARRIER_GROW_TIME = 0.34;
+const SHANNON_BARRIER_FADE_TIME = 0.62;
+const KANON_SUMMON_FREEZE_DURATION = 0.84;
+const KANON_SUMMON_HIT_TIME = 0.32;
+const KANON_SUMMON_DAMAGE = 90;
+const KANON_SUMMON_RANGE = 520;
+const KANON_SUMMON_DEPTH = 118;
+const KANON_SUMMON_LAUNCH_LIFT = 470;
+const KANON_SUMMON_LAUNCH_DRIFT = 280;
 const SHANNON_WALK_SPEED = 225;
 const SHANNON_RUN_SPEED = 390;
 const SHANNON_RUN_START_DISTANCE = W * 0.34;
@@ -772,7 +792,12 @@ const shannonFrames = {
   runStart: [120, 121, 122, 123, 124],
   run: [125, 126, 127, 128, 129, 130, 131, 132, 133, 134],
   runBrake: [136, 137, 138, 139],
-  wallCast: [625, 626, 627, 628, 629, 630, 631, 632, 633, 634]
+  wallCast: [625, 626, 627, 628, 629, 630, 631, 632, 633, 634],
+  barrierCast: [625, 626, 627, 628, 629, 630, 631, 632, 633, 634]
+};
+const kanonFrames = {
+  summonSlash: [769, 770, 771, 772, 773, 774, 775],
+  idle: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 };
 
 const attackData = {
@@ -851,7 +876,18 @@ const lambdaKnockdownAnchors = {};
 const bernImages = {};
 const shannonImages = {};
 const shannonFrameAnchors = {};
+const kanonImages = {};
+const kanonFrameAnchors = {};
 const effectImages = {};
+const backgroundImages = {};
+const BACKGROUND_LAYER_BOUNDS = {
+  sky: [0, 0, 1672, 500],
+  treeline: [0, 171, 1672, 320],
+  mansion: [57, 231, 1518, 571],
+  lawn: [0, 223, 1672, 414],
+  stairs: [68, 243, 1536, 483],
+  foreground: [0, 441, 1672, 500]
+};
 const bernCatFrameBounds = [];
 const bernCatFrameAnchors = [];
 const frameOffsets = {
@@ -2087,9 +2123,31 @@ function damageBeatrice(amount, direction = 0) {
 function damagePlayer(amount) {
   if (amount <= 0) return 0;
   if (player.action === "getUp" || player.getUpTimer > 0) return 0;
+  player.shannonBarrierBlockedLastHit = false;
+  if (!playerHasShannonBarrier()) tryTriggerShannonBarrierGuard();
   const scaledAmount = player.blessings.miracleRisk ? amount * 1.5 : amount;
-  const actual = Math.max(0, Math.min(player.hp, scaledAmount));
-  player.hp -= scaledAmount;
+  let remaining = scaledAmount;
+  if (playerHasShannonBarrier()) {
+    const absorbed = Math.min(player.shannonBarrierHp, remaining);
+    player.shannonBarrierHp = Math.max(0, player.shannonBarrierHp - absorbed);
+    remaining = Math.max(0, remaining - absorbed);
+    player.shannonBarrierBlockedLastHit = absorbed > 0;
+    player.shannonBarrierGuardTimer = Math.max(player.shannonBarrierGuardTimer, 0.16);
+    shannonBarrierBursts.push({
+      x: player.x,
+      y: player.y,
+      life: 0.34,
+      max: 0.34,
+      hit: new Set(),
+      guard: true
+    });
+    if (player.shannonBarrierHp <= 0) {
+      spawnShannonWallShatter(player.x, player.y - 84, player.facing || 1);
+      spawnGoldenButterflies(player.x, player.y - 92, 10);
+    }
+  }
+  const actual = remaining > 0 ? Math.max(0, Math.min(player.hp, remaining)) : 0;
+  player.hp -= remaining;
   if (actual > 0) {
     if (player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0 || player.runStumblePendingDizzy) {
       player.runStumbleTimer = 0;
@@ -2476,7 +2534,30 @@ const shannonCompanion = {
   wallCharge: 100,
   wallTimer: 0,
   wallCastFacing: 1,
-  wallCastSpawned: false
+  wallCastSpawned: false,
+  barrierBestowed: false
+};
+
+const shannonBarrierBursts = [];
+
+const kanonCompanion = {
+  active: false,
+  summoned: false,
+  x: 0,
+  y: FLOOR_Y,
+  facing: 1,
+  anim: 0,
+  state: "idle",
+  moveSettle: 0
+};
+
+const kanonSummonSlash = {
+  active: false,
+  timer: 0,
+  x: 0,
+  y: FLOOR_Y,
+  facing: 1,
+  didHit: false
 };
 
 const player = {
@@ -2552,6 +2633,11 @@ const player = {
   plumTeaActive: false,
   plumTeaBurned: false,
   goldenBroochRightActive: false,
+  goldenBroochLeftActive: false,
+  shannonBarrierHp: 0,
+  shannonBarrierMax: 0,
+  shannonBarrierBlockedLastHit: false,
+  shannonBarrierGuardTimer: 0,
   companionSlots: [null, null],
   oneWingedEagleActive: false,
   oneWingedEagleLevel: 0,
@@ -2637,6 +2723,10 @@ function bernFileName(id) {
 
 function shannonFileName(id) {
   return `assets/shannon/${String(id).padStart(8, "0")}.png`;
+}
+
+function kanonFileName(id) {
+  return `assets/kanon/${String(id).padStart(8, "0")}.png`;
 }
 
 function goatFileName(id) {
@@ -2768,6 +2858,15 @@ function loadImages() {
     };
     img.src = shannonFileName(id);
   }));
+  const kanonLoads = [...new Set(Object.values(kanonFrames).flat())].map((id) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      kanonImages[id] = img;
+      kanonFrameAnchors[id] = imageBottomFootAnchor(img);
+      resolve();
+    };
+    img.src = kanonFileName(id);
+  }));
   const goatLoads = [...new Set(Object.values(goatFrames).flat())].map((id) => new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
@@ -2807,6 +2906,7 @@ function loadImages() {
     ["konpeito", "assets/effects/Konpeito.PNG"],
     ["plumTea", "assets/effects/PlumTea.png"],
     ["goldenBroochRight", "assets/effects/GoldenBroochRight.png"],
+    ["goldenBroochLeft", "assets/effects/GoldenBroochLeft.png"],
     ["oneWingedEagle", "assets/effects/OneWingedEagle.webp"],
     ["oneWingedEagleGlow", "assets/effects/OneWingedEagle - Glow.png"],
     ["beatriceStake", "assets/effects/BeatriceStake.png"],
@@ -2862,12 +2962,27 @@ function loadImages() {
   ].map(([name, src]) => new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
-      effectImages[name] = name === "goldenBroochRight" || name === "beatriceStake" || name === "beatriceTowers" || name.startsWith("asmo") || name.startsWith("beelzebub") || name.startsWith("leviathan") || name.startsWith("satan") || name.startsWith("belphegor") ? removeWhiteBackground(img) : img;
+      effectImages[name] = name === "goldenBroochRight" || name === "goldenBroochLeft" || name === "beatriceStake" || name === "beatriceTowers" || name.startsWith("asmo") || name.startsWith("beelzebub") || name.startsWith("leviathan") || name.startsWith("satan") || name.startsWith("belphegor") ? removeWhiteBackground(img) : img;
       resolve();
     };
     img.src = src;
   }));
-  return Promise.all([...spriteLoads, ...lambdaLoads, ...bernLoads, ...shannonLoads, ...goatLoads, ...beatriceLoads, ...portraitLoads, ...tutorialPortraitLoads, ...effectLoads]).then(() => {
+  const backgroundLoads = [
+    ["sky", "assets/backgrounds/umi_sky.png"],
+    ["mansion", "assets/backgrounds/umi_mansion.png"],
+    ["treeline", "assets/backgrounds/umi_treeline.png"],
+    ["lawn", "assets/backgrounds/umi_lawn.png"],
+    ["stairs", "assets/backgrounds/umi_stairs.png"],
+    ["foreground", "assets/backgrounds/umi_foreground.png"]
+  ].map(([name, src]) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      backgroundImages[name] = img;
+      resolve();
+    };
+    img.src = src;
+  }));
+  return Promise.all([...spriteLoads, ...lambdaLoads, ...bernLoads, ...shannonLoads, ...kanonLoads, ...goatLoads, ...beatriceLoads, ...portraitLoads, ...tutorialPortraitLoads, ...effectLoads, ...backgroundLoads]).then(() => {
     alignGoatIdleFrames();
     prepareBernCatSheet();
   });
@@ -3096,6 +3211,7 @@ function companionIdForItem(type) {
   if (type === "konpeito") return "lambda";
   if (type === "plumTea") return "bern";
   if (type === "goldenBroochRight") return "shannon";
+  if (type === "goldenBroochLeft") return "kanon";
   return "";
 }
 
@@ -3152,6 +3268,7 @@ function companionFollowTarget(id) {
 
 function companionDrawSortY(id, y) {
   if (id === "shannon") return y;
+  if (id === "kanon") return y;
   const slot = companionSlotIndex(id);
   if (slot === 0) return Math.max(y, player.y + 0.35);
   if (slot === 1) return y - 40;
@@ -3167,6 +3284,7 @@ function ownsCompanionItem(type) {
   if (type === "konpeito") return player.konpeitoActive;
   if (type === "plumTea") return player.plumTeaActive && !player.plumTeaBurned;
   if (type === "goldenBroochRight") return player.goldenBroochRightActive;
+  if (type === "goldenBroochLeft") return player.goldenBroochLeftActive;
   return false;
 }
 
@@ -3270,15 +3388,12 @@ function canStartDashCancel() {
     && player.runStumbleTripTimer <= 0
     && player.runStumbleProneTimer <= 0
     && player.getUpTimer <= 0
-    && player.resolve >= DASH_CANCEL_RESOLVE_COST
     && availableDashStocks() > 0;
 }
 
 function startDashCancel() {
   if (!canStartDashCancel()) return false;
   if (!consumeDashStock()) return false;
-  player.resolve = Math.max(0, player.resolve - DASH_CANCEL_RESOLVE_COST);
-  resolveSpendFlashTimer = 0.22;
   player.z = 0;
   player.vz = 0;
   player.airborne = false;
@@ -3485,6 +3600,16 @@ function activatePickup(pickup, options = {}) {
       spawnGoldenButterflies(shannonCompanion.x || player.x, (shannonCompanion.y || player.y) - 86, 18);
     }
     message = "Golden Brooch (Right)";
+  } else if (pickup.type === "goldenBroochLeft") {
+    const firstSummon = !kanonCompanion.summoned;
+    player.goldenBroochLeftActive = true;
+    if (firstSummon) summonKanon();
+    else {
+      kanonCompanion.state = "summonSlash";
+      kanonCompanion.anim = 0;
+      triggerKanonSummonSlash();
+    }
+    message = "Golden Brooch (Left)";
   } else if (pickup.type === "oneWingedEagle") {
     player.oneWingedEagleActive = true;
     player.oneWingedEagleLevel = clamp((player.oneWingedEagleLevel || 0) + 1, 1, EAGLE_CREST_MAX_LEVEL);
@@ -3681,6 +3806,106 @@ function updateShannonWallGauge(dt) {
   shannonCompanion.wallTimer = companionChargeCooldown(shannonCompanion.wallCharge || 0, SHANNON_WALL_INTERVAL);
 }
 
+function playerHasShannonBarrier() {
+  return player.shannonBarrierHp > 0;
+}
+
+function shannonBarrierBlockedHit() {
+  return player.shannonBarrierBlockedLastHit || player.shannonBarrierGuardTimer > 0 || playerHasShannonBarrier();
+}
+
+function spendShannonCompanionAfterBarrier() {
+  player.goldenBroochRightActive = false;
+  removeCompanionItem("goldenBroochRight");
+  shannonCompanion.active = false;
+  shannonCompanion.summoned = false;
+  shannonCompanion.state = "idle";
+  shannonCompanion.anim = 0;
+  shannonCompanion.moveSettle = 0;
+  shannonCompanion.wallCharge = 0;
+  shannonCompanion.wallTimer = SHANNON_WALL_INTERVAL;
+  shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.barrierBestowed = false;
+  spawnGoldenButterflies(shannonCompanion.x || player.x, (shannonCompanion.y || player.y) - 86, 18);
+}
+
+function triggerShannonBarrierBurst() {
+  player.shannonBarrierMax = Math.max(1, playerMaxHp() * SHANNON_BARRIER_HEALTH_FRACTION);
+  player.shannonBarrierHp = player.shannonBarrierMax;
+  player.shannonBarrierBlockedLastHit = true;
+  player.shannonBarrierGuardTimer = 0.18;
+  shannonBarrierBursts.push({
+    x: player.x,
+    y: player.y,
+    life: SHANNON_BARRIER_GROW_TIME + SHANNON_BARRIER_FADE_TIME,
+    max: SHANNON_BARRIER_GROW_TIME + SHANNON_BARRIER_FADE_TIME,
+    hit: new Set()
+  });
+  screenShakeTimer = Math.max(screenShakeTimer, 0.18);
+  burst(player.x, player.y - 76, "special");
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0) continue;
+    const dist = Math.hypot(enemy.x - player.x, (enemy.y - player.y) * 1.45);
+    if (dist > SHANNON_BARRIER_RADIUS) continue;
+    const direction = Math.sign(enemy.x - player.x) || player.facing || 1;
+    damageEnemy(enemy, SHANNON_BARRIER_DAMAGE, { playerDamage: false });
+    launchEnemyUnprorated(enemy, direction, "shannon:barrier", SHANNON_BARRIER_LAUNCH_LIFT, SHANNON_BARRIER_LAUNCH_DRIFT);
+    spawnShannonWallShatter(enemy.x, enemy.y - 86, direction);
+    if (enemy.hp <= 0) defeatEnemy(enemy);
+  }
+}
+
+function tryTriggerShannonBarrierGuard() {
+  if (!player.goldenBroochRightActive || !shannonCompanion.summoned || !shannonCompanion.active) return false;
+  if ((shannonCompanion.wallCharge || 0) < 100) return false;
+  if (shannonCompanion.state === "summon" || shannonCompanion.state === "wallCast" || shannonCompanion.state === "barrierCast") return false;
+  shannonCompanion.wallCharge = 0;
+  shannonCompanion.wallTimer = SHANNON_WALL_INTERVAL;
+  shannonCompanion.state = "barrierCast";
+  shannonCompanion.anim = 0;
+  shannonCompanion.moveSettle = 0;
+  shannonCompanion.facing = player.x >= shannonCompanion.x ? 1 : -1;
+  shannonCompanion.wallCastFacing = shannonCompanion.facing;
+  shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.barrierBestowed = true;
+  triggerShannonBarrierBurst();
+  message = "Shannon's Barrier";
+  messageTimer = 1.1;
+  return true;
+}
+
+function triggerKanonSummonSlash() {
+  const facing = player.facing || 1;
+  stopRunMomentumForAttack();
+  player.vx = 0;
+  player.vy = 0;
+  player.airVx = 0;
+  kanonSummonSlash.active = true;
+  kanonSummonSlash.timer = 0;
+  kanonSummonSlash.x = clamp(player.x + facing * 146, 90, STAGE_W - 130);
+  kanonSummonSlash.y = clampPlayY(player.y + 8);
+  kanonSummonSlash.facing = facing;
+  kanonSummonSlash.didHit = false;
+  enemyFreezeTimer = Math.max(enemyFreezeTimer, KANON_SUMMON_FREEZE_DURATION);
+  screenShakeTimer = Math.max(screenShakeTimer, 0.22);
+}
+
+function applyKanonSummonSlashHit() {
+  const facing = kanonSummonSlash.facing || player.facing || 1;
+  const originX = player.x + facing * 76;
+  const originY = player.y;
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0) continue;
+    const dx = (enemy.x - originX) * facing;
+    const dy = Math.abs(enemy.y - originY);
+    if (dx < -40 || dx > KANON_SUMMON_RANGE || dy > KANON_SUMMON_DEPTH) continue;
+    damageEnemy(enemy, KANON_SUMMON_DAMAGE);
+    launchEnemyUnprorated(enemy, facing, "kanon:summonSlash", KANON_SUMMON_LAUNCH_LIFT, KANON_SUMMON_LAUNCH_DRIFT);
+    burst(enemy.x, enemy.y - 86, "heavy");
+    if (enemy.hp <= 0) defeatEnemy(enemy);
+  }
+}
+
 function summonLambda() {
   runStats.companionsEncountered.add("Lambdadelta");
   if (assignCompanionSlot("lambda") < 0) return;
@@ -3749,7 +3974,23 @@ function summonShannon() {
   shannonCompanion.wallTimer = 0;
   shannonCompanion.wallCastFacing = player.facing;
   shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.barrierBestowed = false;
   spawnGoldenButterflies(shannonCompanion.x, shannonCompanion.y - 86, 20);
+}
+
+function summonKanon(options = {}) {
+  runStats.companionsEncountered.add("Kanon");
+  if (assignCompanionSlot("kanon") < 0) return;
+  const facing = player.facing || 1;
+  kanonCompanion.active = true;
+  kanonCompanion.summoned = true;
+  kanonCompanion.x = clamp(player.x + facing * 146, 90, STAGE_W - 130);
+  kanonCompanion.y = clampPlayY(player.y + 8);
+  kanonCompanion.facing = facing;
+  kanonCompanion.anim = 0;
+  kanonCompanion.state = options.entrance === false ? "idle" : "summonSlash";
+  kanonCompanion.moveSettle = 0;
+  if (options.entrance !== false) triggerKanonSummonSlash();
 }
 
 function restoreOwnedCompanionsForNormalWave() {
@@ -3762,6 +4003,9 @@ function restoreOwnedCompanionsForNormalWave() {
   }
   if (player.goldenBroochRightActive && !shannonCompanion.active) {
     summonShannon();
+  }
+  if (player.goldenBroochLeftActive && !kanonCompanion.active) {
+    summonKanon({ entrance: false });
   }
 }
 
@@ -5227,6 +5471,7 @@ function applyKonpeitoJuggleHit(data) {
 }
 
 function launchActor(actor, direction, lift = 470, drift = 170) {
+  if (actor === player && shannonBarrierBlockedHit()) return false;
   actor.airborne = true;
   actor.knockedDown = false;
   actor.downTime = 0;
@@ -5357,7 +5602,7 @@ function launchEnemyUnprorated(enemy, direction, source, lift = 360, drift = 100
 function triggerShannonWallFollowup() {
   if (!player.goldenBroochRightActive || !shannonCompanion.summoned || !shannonCompanion.active) return false;
   if ((shannonCompanion.wallCharge || 0) < 100) return false;
-  if (shannonCompanion.state === "summon" || shannonCompanion.state === "wallCast") return false;
+  if (shannonCompanion.state === "summon" || shannonCompanion.state === "wallCast" || shannonCompanion.state === "barrierCast") return false;
   shannonCompanion.wallCharge = Math.max(0, (shannonCompanion.wallCharge || 0) - 100);
   shannonCompanion.wallTimer = companionChargeCooldown(shannonCompanion.wallCharge, SHANNON_WALL_INTERVAL);
   shannonCompanion.state = "wallCast";
@@ -5906,8 +6151,12 @@ function addWaveEffect(id) {
 function rollWaveEffects() {
   clearWaveEffects();
   if (waveMode !== "normal" || wave < WAVE_EFFECT_START_WAVE) return;
+  const purgatorioEligible = wave >= WAVE_EFFECT_PURGATORIO_START_WAVE;
   const forced = Array.isArray(DEBUG_FORCE_WAVE_EFFECTS) ? DEBUG_FORCE_WAVE_EFFECTS : [];
-  for (const id of forced) addWaveEffect(id);
+  for (const id of forced) {
+    if (id === "purgatorio" && !purgatorioEligible) continue;
+    addWaveEffect(id);
+  }
   if (!forced.length || !waveEffectActive("witchesIntervention")) {
     if (Math.random() < WAVE_EFFECT_WITCH_CHANCE) addWaveEffect("witchesIntervention");
   }
@@ -5918,7 +6167,7 @@ function rollWaveEffects() {
     if (Math.random() < WAVE_EFFECT_STAMPEDE_CHANCE) addWaveEffect("mortalStampede");
   }
   if (wave === WAVE_EFFECT_PURGATORIO_TEASER_WAVE) addWaveEffect("purgatorio");
-  if (!forced.length || !waveEffectActive("purgatorio")) {
+  if (purgatorioEligible && (!forced.length || !waveEffectActive("purgatorio"))) {
     if (Math.random() < WAVE_EFFECT_PURGATORIO_CHANCE) addWaveEffect("purgatorio");
   }
   if (waveEffectActive("gaapIntervention")) startGaapIntervention();
@@ -6298,6 +6547,9 @@ function dismissCompanionsForBossWave() {
   if (shannonCompanion.active || shannonCompanion.summoned) {
     spawnGoldenButterflies(shannonCompanion.x || player.x, (shannonCompanion.y || player.y) - 86, 22);
   }
+  if (kanonCompanion.active || kanonCompanion.summoned) {
+    spawnGoldenButterflies(kanonCompanion.x || player.x, (kanonCompanion.y || player.y) - 86, 18);
+  }
   lambdaCompanion.active = false;
   lambdaCompanion.summoned = false;
   lambdaCompanion.state = "idle";
@@ -6321,6 +6573,12 @@ function dismissCompanionsForBossWave() {
   shannonCompanion.wallTimer = 0;
   shannonCompanion.wallCastFacing = 1;
   shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.barrierBestowed = false;
+  kanonCompanion.active = false;
+  kanonCompanion.summoned = false;
+  kanonCompanion.state = "idle";
+  kanonCompanion.anim = 0;
+  kanonCompanion.moveSettle = 0;
 }
 
 function startBlessingChoice(options, context = "boss") {
@@ -7567,6 +7825,11 @@ function startGame() {
   player.plumTeaActive = false;
   player.plumTeaBurned = false;
   player.goldenBroochRightActive = false;
+  player.goldenBroochLeftActive = false;
+  player.shannonBarrierHp = 0;
+  player.shannonBarrierMax = 0;
+  player.shannonBarrierBlockedLastHit = false;
+  player.shannonBarrierGuardTimer = 0;
   player.companionSlots = [null, null];
   player.oneWingedEagleActive = false;
   player.oneWingedEagleLevel = 0;
@@ -7746,6 +8009,12 @@ function startGame() {
   shannonCompanion.wallTimer = 0;
   shannonCompanion.wallCastFacing = 1;
   shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.barrierBestowed = false;
+  kanonCompanion.active = false;
+  kanonCompanion.summoned = false;
+  kanonCompanion.anim = 0;
+  kanonCompanion.state = "idle";
+  kanonCompanion.moveSettle = 0;
   pickups.length = 0;
   absorbingPickups.length = 0;
   crystalShards.length = 0;
@@ -7761,6 +8030,10 @@ function startGame() {
   lambdaSpecialShrapnel.length = 0;
   lambdaSpecialFinalBursts.length = 0;
   shannonWalls.length = 0;
+  shannonBarrierBursts.length = 0;
+  kanonSummonSlash.active = false;
+  kanonSummonSlash.timer = 0;
+  kanonSummonSlash.didHit = false;
   goatPoundQuakes.length = 0;
   messageBottles.length = 0;
   summonPillars.length = 0;
@@ -7789,6 +8062,9 @@ function startGame() {
 }
 
 function setAction(name, lock = 0) {
+  if ((name === "hurt" || name === "down" || name === "runTrip" || name === "runDizzy") && shannonBarrierBlockedHit()) {
+    return;
+  }
   if (player.action !== name) {
     player.action = name;
     player.anim = 0;
@@ -8289,6 +8565,10 @@ function applyEnemyAttackHit(enemy) {
 }
 
 function startPlayerRunStumble(direction = -player.facing, contactX = player.x, contactY = player.y - 96) {
+  if (shannonBarrierBlockedHit()) {
+    burst(contactX, contactY, "special");
+    return false;
+  }
   const tripDir = Math.sign(player.facing || player.vx || direction) || 1;
   player.runStumbleTimer = 0;
   player.runStumblePendingDizzy = true;
@@ -8330,6 +8610,10 @@ function startPlayerRunStumble(direction = -player.facing, contactX = player.x, 
 }
 
 function startPlayerGoatRunBump(goat) {
+  if (shannonBarrierBlockedHit()) {
+    burst((player.x + goat.x) * 0.5, player.y - 100, "special");
+    return false;
+  }
   const direction = Math.sign(player.x - goat.x) || -player.facing || 1;
   player.runStumbleTimer = 0;
   player.runStumbleTripTimer = 0;
@@ -9296,6 +9580,10 @@ function applyAsmodeusUppercutHit(attack) {
 }
 
 function startPlayerWallSlam(direction) {
+  if (shannonBarrierBlockedHit()) {
+    burst(player.x, player.y - 118, "special");
+    return false;
+  }
   const side = direction || player.facing || 1;
   player.airborne = false;
   player.knockedDown = false;
@@ -10253,6 +10541,8 @@ function updatePlayer(dt) {
   player.attackLock = Math.max(0, player.attackLock - dt);
   player.invuln = Math.max(0, player.invuln - dt);
   player.dashInvulnTimer = Math.max(0, (player.dashInvulnTimer || 0) - dt);
+  player.shannonBarrierGuardTimer = Math.max(0, (player.shannonBarrierGuardTimer || 0) - dt);
+  if (player.shannonBarrierGuardTimer <= 0) player.shannonBarrierBlockedLastHit = false;
   updateDashCooldowns(dt);
   if (player.gaapTeleport) {
     player.vx = 0;
@@ -12417,6 +12707,13 @@ function updateShannon(dt) {
     return;
   }
   updateShannonWallGauge(dt);
+  if (shannonCompanion.state === "barrierCast") {
+    shannonCompanion.anim += dt * 10;
+    if (shannonCompanion.anim >= shannonFrames.wallCast.length) {
+      spendShannonCompanionAfterBarrier();
+    }
+    return;
+  }
   if (shannonCompanion.state === "wallCast") {
     const previousFrame = Math.floor(shannonCompanion.anim);
     shannonCompanion.anim += dt * 10;
@@ -12538,6 +12835,32 @@ function updateBernReviveHazard(dt) {
   }
 }
 
+function updateKanon(dt) {
+  if (!kanonCompanion.active) return;
+  if (kanonCompanion.state === "summonSlash") {
+    kanonCompanion.anim += dt * 10;
+    if (kanonCompanion.anim >= kanonFrames.summonSlash.length) {
+      kanonCompanion.state = "idle";
+      kanonCompanion.anim = 0;
+    }
+    return;
+  }
+  kanonCompanion.anim += dt * 4;
+}
+
+function updateKanonSummonSlash(dt) {
+  if (!kanonSummonSlash.active) return;
+  kanonSummonSlash.timer += dt;
+  if (!kanonSummonSlash.didHit && kanonSummonSlash.timer >= KANON_SUMMON_HIT_TIME) {
+    kanonSummonSlash.didHit = true;
+    applyKanonSummonSlashHit();
+    screenShakeTimer = Math.max(screenShakeTimer, 0.28);
+  }
+  if (kanonSummonSlash.timer >= KANON_SUMMON_FREEZE_DURATION) {
+    kanonSummonSlash.active = false;
+  }
+}
+
 function update(dt) {
   beatriceBarrierParticleCooldown = Math.max(0, beatriceBarrierParticleCooldown - dt);
   updateParryTipAlert();
@@ -12566,6 +12889,7 @@ function update(dt) {
     updateBeatriceStakeParryLine(dt);
     updateLambda(dt);
     updateShannon(dt);
+    updateKanon(dt);
     updateBernkastel(dt);
     updateKonpeitoGeysers(dt);
     updateKonpeitoDomeBursts(dt);
@@ -12582,6 +12906,7 @@ function update(dt) {
     resetAttackHolds();
     updateLambda(dt);
     updateShannon(dt);
+    updateKanon(dt);
     updateParticles(dt);
     updateAbsorbingPickups(dt);
     updateCrystalTrails(dt);
@@ -12684,6 +13009,25 @@ function update(dt) {
     resetAttackHolds();
     return;
   }
+  if (kanonSummonSlash.active) {
+    resetAttackHolds();
+    player.vx = 0;
+    player.vy = 0;
+    player.airVx = 0;
+    updateKanonSummonSlash(dt);
+    updateKanon(dt);
+    enemyFreezeTimer = Math.max(0, enemyFreezeTimer - dt);
+    updateParticles(dt);
+    screenFlashTimer = Math.max(0, screenFlashTimer - dt);
+    screenShakeTimer = Math.max(0, screenShakeTimer - dt);
+    messageTimer = Math.max(0, messageTimer - dt);
+    healthBar.style.width = `${playerHealthPercent()}%`;
+    updateResolveHud(dt);
+    waveLabel.textContent = currentWaveLabel();
+    scoreLabel.textContent = `Score ${formatStatNumber(displayedScoreValue())}`;
+    updateResolveDuoOutline();
+    return;
+  }
   updateAttackHolds(dt);
   updateDuoCharge(dt);
   if (player.action === "duoCharge") {
@@ -12734,6 +13078,7 @@ function update(dt) {
     drawLambdaSpecialFinalBursts();
     drawLambdaSpecialShrapnel();
     drawShannonWalls();
+    drawShannonBarrier();
     drawBeatriceStakeShockwaves();
     drawKonpeitoShots();
     drawBeatriceTowerVolleyMissiles();
@@ -12819,6 +13164,7 @@ function update(dt) {
   updateLambdaSpecialFinalBursts(dt);
   updateLambdaSpecialShrapnel(dt);
   updateShannonWalls(dt);
+  updateShannonBarrierBursts(dt);
   updateBeatrice(dt);
   if (startBeatriceBarrierTutorial()) {
     healthBar.style.width = `${playerHealthPercent()}%`;
@@ -12840,6 +13186,7 @@ function update(dt) {
   }
   updateLambda(dt);
   updateShannon(dt);
+  updateKanon(dt);
   updateBernReviveHazard(dt);
   updateBernkastel(dt);
   updateKonpeitoGeysers(dt);
@@ -12858,51 +13205,59 @@ function update(dt) {
   updateParryTipAlert();
 }
 
+function drawParallaxLayer(name, options = {}) {
+  const img = backgroundImages[name];
+  if (!img) return;
+  const {
+    travel = 0,
+    alpha = 1,
+    y = 0,
+    bottom = null,
+    widthScale = 1,
+    heightScale = 1
+  } = options;
+  const bounds = BACKGROUND_LAYER_BOUNDS[name] || [0, 0, img.width, img.height];
+  const sourceX = bounds[0];
+  const sourceY = bounds[1];
+  const sourceW = bounds[2];
+  const sourceH = bounds[3];
+  const scale = Math.max(W / sourceW, H / sourceH) * heightScale;
+  const drawW = sourceW * scale * widthScale;
+  const drawH = sourceH * scale;
+  const stageT = clamp(cameraX / Math.max(1, STAGE_W - W), 0, 1);
+  const x = (W - drawW) * 0.5 - (stageT - 0.5) * travel;
+  const drawY = bottom == null ? y : bottom - drawH;
+  ctx.save();
+  ctx.globalAlpha *= alpha;
+  ctx.drawImage(img, sourceX, sourceY, sourceW, sourceH, x, drawY, drawW, drawH);
+  ctx.restore();
+}
+
 function drawBackground() {
   const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, "#141a28");
-  sky.addColorStop(0.52, "#252430");
-  sky.addColorStop(1, "#111014");
+  sky.addColorStop(0, "#75d7ff");
+  sky.addColorStop(0.58, "#d8f4ff");
+  sky.addColorStop(1, "#e9f7ef");
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H);
 
   ctx.save();
-  ctx.translate(-cameraX * 0.22, 0);
-  for (let i = -2; i < 12; i++) {
-    const x = i * 390;
-    ctx.fillStyle = i % 2 ? "#262431" : "#1e2533";
-    ctx.fillRect(x, 150, 260, 330);
-    ctx.fillStyle = "rgba(247, 211, 116, 0.18)";
-    for (let w = 0; w < 4; w++) {
-      ctx.fillRect(x + 32 + w * 48, 188, 22, 168);
-    }
-  }
+  const previousSmoothing = ctx.imageSmoothingEnabled;
+  ctx.imageSmoothingEnabled = true;
+  drawParallaxLayer("sky", { travel: 24, bottom: H * 0.46, heightScale: 0.58, widthScale: 1.06 });
+  drawParallaxLayer("treeline", { travel: 86, bottom: H * 0.52, heightScale: 0.34, widthScale: 1.14, alpha: 0.98 });
+  drawParallaxLayer("mansion", { travel: 142, bottom: H * 0.58, heightScale: 0.62, widthScale: 1.18 });
+  drawParallaxLayer("lawn", { travel: 240, bottom: H * 0.64, heightScale: 0.52, widthScale: 1.18 });
+  drawParallaxLayer("stairs", { travel: 320, bottom: H * 0.86, heightScale: 0.54, widthScale: 1.28 });
+  drawParallaxLayer("foreground", { travel: 470, bottom: H + 8, heightScale: 0.62, widthScale: 1.34 });
+  ctx.imageSmoothingEnabled = previousSmoothing;
   ctx.restore();
 
-  ctx.save();
-  ctx.translate(-cameraX * 0.55, 0);
-  ctx.fillStyle = "#3b3034";
-  for (let i = -1; i < 14; i++) {
-    ctx.fillRect(i * 260, 424, 190, 48);
-    ctx.fillRect(i * 260 + 70, 332, 36, 92);
-  }
-  ctx.restore();
-
-  const floor = ctx.createLinearGradient(0, FLOOR_Y - 42, 0, H);
-  floor.addColorStop(0, "#4b3940");
-  floor.addColorStop(1, "#1b171a");
-  ctx.fillStyle = floor;
+  const floorShade = ctx.createLinearGradient(0, FLOOR_Y - 28, 0, H);
+  floorShade.addColorStop(0, "rgba(255, 255, 255, 0)");
+  floorShade.addColorStop(1, "rgba(20, 28, 24, 0.26)");
+  ctx.fillStyle = floorShade;
   ctx.fillRect(0, FLOOR_Y - 30, W, H - FLOOR_Y + 30);
-
-  ctx.strokeStyle = "rgba(255, 238, 190, 0.13)";
-  ctx.lineWidth = 2;
-  for (let i = -1; i < 18; i++) {
-    const x = i * 128 - (cameraX % 128);
-    ctx.beginPath();
-    ctx.moveTo(x, FLOOR_Y - 26);
-    ctx.lineTo(x - 160, H);
-    ctx.stroke();
-  }
 }
 
 function drawSprite(actor, frameId, scale, enemy = false, action = "") {
@@ -14243,6 +14598,63 @@ function drawShannon() {
   ctx.restore();
 }
 
+function drawKanon(alpha = 1) {
+  if (!kanonCompanion.active) return;
+  drawActorShadow(kanonCompanion, 42);
+  const list = kanonFrames[kanonCompanion.state] || kanonFrames.idle;
+  const frame = list[Math.min(list.length - 1, Math.floor(kanonCompanion.anim) % list.length)];
+  const img = kanonImages[frame];
+  if (!img) return;
+  const anchor = kanonFrameAnchors[frame] || { x: img.width * 0.5, y: img.height };
+  const scale = 1.22;
+  const x = Math.round(kanonCompanion.x - cameraX);
+  const y = Math.round(kanonCompanion.y + 10);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.translate(x, y);
+  ctx.scale(-kanonCompanion.facing, 1);
+  ctx.drawImage(img, -anchor.x * scale, -anchor.y * scale, img.width * scale, img.height * scale);
+  ctx.restore();
+}
+
+function drawKanonSummonCrescent() {
+  if (!kanonSummonSlash.active) return;
+  const t = clamp(kanonSummonSlash.timer / KANON_SUMMON_FREEZE_DURATION, 0, 1);
+  const hitT = clamp(kanonSummonSlash.timer / Math.max(0.01, KANON_SUMMON_HIT_TIME), 0, 1);
+  const alpha = 1 - Math.max(0, t - 0.58) / 0.42;
+  const facing = kanonSummonSlash.facing || 1;
+  const x = player.x - cameraX + facing * 28;
+  const y = player.y - 98;
+  const expandT = t <= 0.42 ? 0 : clamp((t - 0.42) / 0.58, 0, 1);
+  const radiusX = 154 + hitT * 62 + expandT * 112;
+  const radiusY = 118 + hitT * 44 + expandT * 78;
+  const arcStart = -0.04;
+  const arcEnd = -Math.PI * 0.56;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(facing, 1);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.shadowColor = "rgba(255, 24, 70, 0.95)";
+  ctx.shadowBlur = 26 + expandT * 16;
+  ctx.strokeStyle = `rgba(255, 32, 82, ${0.88 * alpha})`;
+  ctx.lineWidth = 18 + 10 * (1 - expandT);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radiusX, radiusY, -0.18, arcStart, arcEnd, true);
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(255, 214, 228, ${0.72 * alpha})`;
+  ctx.lineWidth = 4.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radiusX * 0.88, radiusY * 0.9, -0.18, arcStart - 0.02, arcEnd + 0.06, true);
+  ctx.stroke();
+  ctx.fillStyle = `rgba(255, 20, 62, ${0.13 * alpha})`;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radiusX * 1.03, radiusY * 1.04, -0.18, arcStart, arcEnd, true);
+  ctx.ellipse(0, 0, radiusX * 0.65, radiusY * 0.68, -0.18, arcEnd, arcStart, false);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
 function beatriceFrameListForFlavor(flavor) {
   if (flavor === "stakeCast") return beatriceFrames.stakeCast;
   if (flavor === "puff") return beatriceFrames.puff;
@@ -14463,6 +14875,7 @@ function drawActors(options = {}) {
     ...(lambdaCompanion.active ? [{ type: "lambda", y: companionDrawSortY("lambda", lambdaCompanion.y) }] : []),
     ...(bernCompanion.active ? [{ type: "bern", y: companionDrawSortY("bern", bernCompanion.y) }] : []),
     ...(shannonCompanion.active ? [{ type: "shannon", y: companionDrawSortY("shannon", shannonCompanion.y) }] : []),
+    ...(kanonCompanion.active ? [{ type: "kanon", y: companionDrawSortY("kanon", kanonCompanion.y) }] : []),
     ...enemies
       .filter((enemy) => !enemy.dead || enemy.fall > 0)
       .map((enemy) => ({ type: "enemy", y: enemy.y, enemy }))
@@ -14483,6 +14896,9 @@ function drawActors(options = {}) {
     } else if (actor.type === "shannon") {
       if (skipCompanions) continue;
       drawShannon();
+    } else if (actor.type === "kanon") {
+      if (skipCompanions) continue;
+      drawKanon();
     } else if (actor.type === "beatrice") {
       if (skipBeatrice) continue;
       drawBeatrice();
@@ -15211,7 +15627,15 @@ function drawPlumTeaIcon(x, y, size = 28, alpha = 1) {
 }
 
 function drawGoldenBroochRightIcon(x, y, size = 28, alpha = 1) {
-  const img = effectImages.goldenBroochRight;
+  drawGoldenBroochIcon("goldenBroochRight", x, y, size, alpha);
+}
+
+function drawGoldenBroochLeftIcon(x, y, size = 28, alpha = 1) {
+  drawGoldenBroochIcon("goldenBroochLeft", x, y, size, alpha);
+}
+
+function drawGoldenBroochIcon(type, x, y, size = 28, alpha = 1) {
+  const img = effectImages[type];
   ctx.save();
   ctx.translate(x, y);
   ctx.globalAlpha = alpha;
@@ -15285,6 +15709,8 @@ function drawPickupIcon(type, x, y, bob, pulse, alpha = 1, scale = 1) {
     drawPlumTeaIcon(x, y - 42 * scale, (28 + pulse * 4) * scale, alpha * 0.92);
   } else if (type === "goldenBroochRight") {
     drawGoldenBroochRightIcon(x, y - 42 * scale, (28 + pulse * 5) * scale, alpha * 0.95);
+  } else if (type === "goldenBroochLeft") {
+    drawGoldenBroochLeftIcon(x, y - 42 * scale, (28 + pulse * 5) * scale, alpha * 0.95);
   } else if (type === "oneWingedEagle") {
     drawOneWingedEagleCrest(x, y - 42 * scale, (EAGLE_CREST_PICKUP_SIZE + pulse * 7) * scale, alpha * (0.9 + pulse * 0.1), false, pulse > 0.62);
   } else {
@@ -15617,6 +16043,14 @@ function drawGoatPoundQuakes() {
   }
 }
 
+function updateShannonBarrierBursts(dt) {
+  for (let i = shannonBarrierBursts.length - 1; i >= 0; i--) {
+    const burstEffect = shannonBarrierBursts[i];
+    burstEffect.life -= dt;
+    if (burstEffect.life <= 0) shannonBarrierBursts.splice(i, 1);
+  }
+}
+
 function drawKonpeitoShots() {
   for (const shot of konpeitoShots) {
     const pos = konpeitoShotPosition(shot);
@@ -15792,6 +16226,101 @@ function drawShannonWalls() {
       ctx.beginPath();
       ctx.moveTo(x - SHANNON_WALL_WIDTH * 0.42, yy);
       ctx.quadraticCurveTo(x, yy - 18, x + SHANNON_WALL_WIDTH * 0.42, yy);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
+
+function drawShannonBarrier() {
+  for (const barrier of shannonBarrierBursts) {
+    const total = barrier.max || 1;
+    const age = total - barrier.life;
+    const growT = barrier.guard ? 1 : clamp(age / SHANNON_BARRIER_GROW_TIME, 0, 1);
+    const fadeT = barrier.guard ? 1 - clamp(age / total, 0, 1) : clamp(barrier.life / SHANNON_BARRIER_FADE_TIME, 0, 1);
+    const easedGrow = 1 - Math.pow(1 - growT, 3);
+    const x = (barrier.x ?? player.x) - cameraX;
+    const y = (barrier.y ?? player.y) - 92;
+    const alpha = clamp(fadeT, 0, 1);
+    const rx = 40 + 34 * easedGrow;
+    const ry = 76 + 42 * easedGrow;
+    const now = performance.now() / 1000;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const dome = ctx.createRadialGradient(x, y, 8, x, y, ry * 1.05);
+    dome.addColorStop(0, `rgba(244, 220, 255, ${0.16 * alpha})`);
+    dome.addColorStop(0.42, `rgba(177, 86, 255, ${0.18 * alpha})`);
+    dome.addColorStop(1, "rgba(86, 32, 180, 0)");
+    ctx.fillStyle = dome;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx * 1.2, ry * 1.04, Math.sin(now * 2.8) * 0.18, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(238, 212, 255, ${0.68 * alpha})`;
+    ctx.lineWidth = 3.5 + Math.sin(now * 12) * 0.9;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx, ry, Math.sin(now * 2.8) * 0.18, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(174, 84, 255, ${0.42 * alpha})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx * 0.78, ry * 0.96, -Math.sin(now * 2.8) * 0.2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  if (playerHasShannonBarrier()) {
+    const t = clamp(player.shannonBarrierHp / Math.max(1, player.shannonBarrierMax), 0, 1);
+    const now = performance.now() / 1000;
+    const pulse = 1 + 0.035 * Math.sin(now * 7.5);
+    const rot = now * 2.4;
+    const rx = 116 * pulse;
+    const ry = 62 * pulse;
+    const x = player.x - cameraX;
+    const y = player.y - 94;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const fill = ctx.createRadialGradient(x, y, 10, x, y, ry);
+    fill.addColorStop(0, `rgba(196, 116, 255, ${0.05 * t})`);
+    fill.addColorStop(0.68, `rgba(154, 70, 230, ${0.11 * t})`);
+    fill.addColorStop(1, "rgba(154, 70, 230, 0)");
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx * 1.1, ry * 0.98, Math.sin(rot) * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+
+    const ringCount = 3;
+    for (let i = 0; i < ringCount; i++) {
+      const offset = (i / ringCount) * Math.PI * 2 + rot;
+      const tilt = Math.sin(offset) * 0.2;
+      const frontAlpha = 0.18 + 0.26 * t + i * 0.04;
+      ctx.lineWidth = i === 0 ? 3.6 : 1.8;
+      ctx.strokeStyle = `rgba(214, 156, 255, ${frontAlpha})`;
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx * (1 - i * 0.09), ry * (0.92 + i * 0.02), tilt, offset, offset + Math.PI * 1.2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(115, 42, 190, ${0.12 + 0.18 * t})`;
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx * (1 - i * 0.09), ry * (0.92 + i * 0.02), tilt, offset + Math.PI * 1.2, offset + Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = `rgba(255, 240, 255, ${0.16 + 0.32 * t})`;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 8; i++) {
+      const a = rot * 0.9 + i * Math.PI * 0.25;
+      const px = x + Math.cos(a) * rx * 0.78;
+      const py = y + Math.sin(a) * ry * 0.76;
+      const curl = 7 + 3 * Math.sin(now * 5 + i);
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.bezierCurveTo(
+        px + Math.cos(a + Math.PI * 0.55) * curl,
+        py + Math.sin(a + Math.PI * 0.55) * curl,
+        px + Math.cos(a + Math.PI * 1.15) * curl,
+        py + Math.sin(a + Math.PI * 1.15) * curl,
+        px + Math.cos(a + Math.PI * 1.7) * curl * 0.6,
+        py + Math.sin(a + Math.PI * 1.7) * curl * 0.6
+      );
       ctx.stroke();
     }
     ctx.restore();
@@ -16075,6 +16604,13 @@ function itemHudDrawers() {
       cooldownMax: SHANNON_WALL_INTERVAL,
       showCooldown: true,
       icon: (x, y) => drawGoldenBroochRightIcon(x, y, 24, 0.95)
+    },
+    goldenBroochLeft: {
+      label: ITEM_TUTORIALS.goldenBroochLeft.label,
+      active: player.goldenBroochLeftActive,
+      cooldown: 0,
+      cooldownMax: 1,
+      icon: (x, y) => drawGoldenBroochLeftIcon(x, y, 24, 0.95)
     },
     oneWingedEagle: {
       label: ITEM_TUTORIALS.oneWingedEagle.label,
@@ -17313,7 +17849,58 @@ function draw() {
   if (shake > 0) {
     ctx.translate((Math.random() - 0.5) * 18 * shake, (Math.random() - 0.5) * 12 * shake);
   }
-  if (duoAttack.active) {
+  if (kanonSummonSlash.active) {
+    ctx.save();
+    ctx.filter = "grayscale(1) saturate(0.08) brightness(0.64)";
+    drawBackground();
+    drawPickups();
+    drawAbsorbingPickups();
+    drawMessageBottles();
+    drawSummonPillars();
+    drawShadowPortals();
+    drawGaapPortals();
+    drawKonpeitoGeysers(false);
+    drawKonpeitoDomeBursts(false);
+    drawBeatriceStakeReticles();
+    drawBeatriceBossWalls();
+    drawBeatriceRingTelegraphs();
+    drawBeatriceMeleeKickTelegraph();
+    drawBeatriceGoatRushTelegraphs();
+    drawMortalStampedeTelegraphs();
+    drawBeatriceTowerVolleyTelegraphs();
+    drawBeatriceTowerVolleys();
+    drawActors({ skipCompanions: true });
+    drawKonpeitoGeysers(true);
+    drawSpecialBeam();
+    drawCrystalTrails();
+    drawCrystalShockwaves();
+    drawGoatPoundQuakes();
+    drawCrystalShards();
+    drawKonpeitoShockwaves();
+    drawKonpeitoDomeBursts(true);
+    drawLambdaSpecialKonpeitos();
+    drawLambdaSpecialFinalBursts();
+    drawLambdaSpecialShrapnel();
+    drawShannonWalls();
+    drawShannonBarrier();
+    drawBeatriceStakeShockwaves();
+    drawBeatriceStakeParryLine();
+    drawBeatriceStakeTrails();
+    drawBeatriceTowerVolleyMissiles();
+    drawKonpeitoShots();
+    drawBeatriceStakes();
+    drawBeatriceStakeSparkles();
+    drawBeatriceDefeatWisps();
+    drawParticles();
+    ctx.restore();
+    ctx.save();
+    ctx.fillStyle = "rgba(12, 8, 14, 0.24)";
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+    drawKanonSummonCrescent();
+    const fadeIn = clamp(kanonSummonSlash.timer / 0.24, 0, 1);
+    drawKanon(fadeIn);
+  } else if (duoAttack.active) {
     ctx.save();
     ctx.filter = "grayscale(1) saturate(0.18) brightness(0.82)";
     drawBackground();
@@ -17345,6 +17932,7 @@ function draw() {
     drawLambdaSpecialFinalBursts();
     drawLambdaSpecialShrapnel();
     drawShannonWalls();
+    drawShannonBarrier();
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
     drawBeatriceStakeTrails();
@@ -17393,6 +17981,7 @@ function draw() {
     drawLambdaSpecialFinalBursts();
     drawLambdaSpecialShrapnel();
     drawShannonWalls();
+    drawShannonBarrier();
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
     drawBeatriceStakeTrails();
