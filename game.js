@@ -166,6 +166,9 @@ const ITEM_TUTORIALS = {
 const MAX_MIRACLE_REVIVALS = 3;
 const MIRACLE_REFLEX_PER_STACK = 0.1;
 const MAX_MIRACLE_REFLEX = 0.5;
+const WITCH_COMPANION_BASE_WAVES = 3;
+const WITCH_INTERVENTION_DURATION_BONUS = 3;
+const WITCH_TIME_BLESSING_BONUS = 2;
 
 function clampPlayY(y) {
   return clamp(y, PLAY_AREA_TOP, PLAY_AREA_BOTTOM);
@@ -198,6 +201,12 @@ const LAMBDA_BLESSINGS = [
     source: "Lambdadelta",
     title: "Blessing of Certainty: +5% Damage",
     text: "Battler deals 5% more damage. This blessing can stack."
+  },
+  {
+    id: "lambdaWitchTime",
+    source: "Lambdadelta",
+    title: "Blessing of Certainty: Duration+",
+    text: "Lambdadelta remains summoned for 2 additional completed waves."
   }
 ];
 const BERN_BLESSINGS = [];
@@ -237,6 +246,12 @@ BERN_BLESSINGS.push(
     source: "Bernkastel",
     title: "Blessing of Miracles: +10% Reflex",
     text: "Adds a green grace area to parry timing, making parries more forgiving. Stacks up to 50%."
+  },
+  {
+    id: "miracleWitchTime",
+    source: "Bernkastel",
+    title: "Blessing of Miracles: Duration+",
+    text: "Bernkastel remains summoned for 2 additional completed waves."
   }
 );
 const EAGLE_CREST_DAMAGE_MULTIPLIER = 0.5;
@@ -696,6 +711,11 @@ const KANON_FINISHER_ARC_RANGE = 520;
 const KANON_FINISHER_ARC_DEPTH = 154;
 const KANON_FINISHER_ARC_LAUNCH_LIFT = 520;
 const KANON_FINISHER_ARC_LAUNCH_DRIFT = 300;
+const KANON_RECOVERY_HOP_SPEED = 640;
+const KANON_RECOVERY_HOP_HEIGHT = 255;
+const KANON_RECOVERY_HOP_START_HEIGHT = 118;
+const KANON_RECOVERY_HOP_MIN = 0.78;
+const KANON_RECOVERY_HOP_MAX = 1.16;
 const KANON_RUN_SPEED = 430;
 const KANON_RUN_START_DISTANCE = W * 0.27;
 const KANON_RUN_STOP_DISTANCE = 190;
@@ -845,7 +865,7 @@ const kanonFrames = {
   attackStartup: [414, 415, 416],
   attackTravel: [417, 418, 419],
   attackActive: [420, 421, 422, 423, 424, 425, 426],
-  attackRecovery: [427, 428],
+  attackRecovery: [86, 87, 88, 89, 90, 91, 92, 93, 94],
   attackUppercutStartup: [394, 395, 396, 397],
   attackUppercutRise: [398, 399, 400],
   attackUppercutFall: [401, 402, 403, 404, 405, 406, 407, 408],
@@ -1922,6 +1942,8 @@ function isBlessingRollable(blessing) {
   if (blessing.id === "miracleShardFollowup") return !player.blessings.miracleShardFollowup;
   if (blessing.id === "miracleCrystalShardPlus") return !player.blessings.miracleCrystalShardPlus;
   if (blessing.id === "miracleRisk") return !player.blessings.miracleRisk;
+  if (blessing.id === "lambdaWitchTime") return player.konpeitoActive && lambdaCompanion.active && lambdaCompanion.summoned;
+  if (blessing.id === "miracleWitchTime") return player.plumTeaActive && !player.plumTeaBurned && bernCompanion.active && bernCompanion.summoned;
   return true;
 }
 
@@ -2480,12 +2502,14 @@ function collectedBlessingRows() {
   if (b.superCharge) add("Lambdadelta", "Super Charge", "Charged attacks can spend a dash charge to teleport and create a candy shockwave.", "pink");
   if (b.lambdaKonpeitoSpecial) add("Lambdadelta", "Candy Cataclysm", "Special summons a pulsing konpeito that can be launched and detonated.", "pink");
   if ((b.lambdaDamageUp || 0) > 0) add("Lambdadelta", "Damage Up", `+${Math.round((b.lambdaDamageUp || 0) * 5)}% damage`, "pink");
+  if ((b.lambdaWitchTime || 0) > 0) add("Lambdadelta", "Duration+", `+${(b.lambdaWitchTime || 0) * WITCH_TIME_BLESSING_BONUS} Lambdadelta wave duration`, "pink");
   if ((b.miracleRevival || 0) > 0) add("Bernkastel", "Revival", `${b.miracleRevival} stocked revival${b.miracleRevival === 1 ? "" : "s"}`, "purple");
   if (b.miracleShardFollowup) add("Bernkastel", "Crystal Follow-Up", "Stage 3 attacks call down a delayed crystal shard.", "purple");
   if (b.miracleCrystalShardPlus) add("Bernkastel", "Crystal Shard+", "Crystal shards erupt upward after impact.", "purple");
   if (b.miracleRisk) add("Bernkastel", "Cruel Equation", "+50% damage dealt and +50% damage taken.", "purple");
   if ((b.miracleMaxHealth || 0) > 0) add("Bernkastel", "Max Health Up", `+${Math.round((b.miracleMaxHealth || 0) * 10)}% max health`, "purple");
   if ((b.miracleReflex || 0) > 0) add("Bernkastel", "Reflex", `+${Math.round((b.miracleReflex || 0) * MIRACLE_REFLEX_PER_STACK * 100)}% parry timing grace`, "purple");
+  if ((b.miracleWitchTime || 0) > 0) add("Bernkastel", "Duration+", `+${(b.miracleWitchTime || 0) * WITCH_TIME_BLESSING_BONUS} Bernkastel wave duration`, "purple");
   return rows;
 }
 
@@ -2612,7 +2636,9 @@ const kanonCompanion = {
   uppercutHitDone: false,
   uppercutArcSpawned: false,
   finisherArcSpawned: false,
-  airOffset: 0
+  airOffset: 0,
+  recoveryHopTimer: 0,
+  recoveryHopDuration: 0
 };
 
 const kanonSummonSlash = {
@@ -2697,8 +2723,13 @@ const player = {
   crystalShardStacks: [],
   konpeitoActive: false,
   konpeitoCooldown: 0,
+  lambdaWitchWaves: 0,
+  lambdaWitchStoredBonus: 0,
   plumTeaActive: false,
   plumTeaBurned: false,
+  bernWitchWaves: 0,
+  bernWitchStoredBonus: 0,
+  witchInterventionGuest: "",
   goldenBroochRightActive: false,
   goldenBroochLeftActive: false,
   shannonBarrierHp: 0,
@@ -2714,12 +2745,14 @@ const player = {
     superCharge: false,
     lambdaKonpeitoSpecial: false,
     lambdaDamageUp: 0,
+    lambdaWitchTime: 0,
     miracleRevival: 0,
     miracleShardFollowup: false,
     miracleCrystalShardPlus: false,
     miracleRisk: false,
     miracleMaxHealth: 0,
-    miracleReflex: 0
+    miracleReflex: 0,
+    miracleWitchTime: 0
   },
   poise: 0,
   bernHazardTimer: BERN_REVIVE_HAZARD_INTERVAL,
@@ -2931,6 +2964,13 @@ function loadImages() {
     img.onload = () => {
       kanonImages[id] = img;
       kanonFrameAnchors[id] = imageBottomFootAnchor(img);
+      if (kanonFrames.run.includes(id)) {
+        kanonFrameAnchors[id] = { x: img.width * 0.5, y: kanonFrameAnchors[id].y };
+      } else if (kanonFrames.attackRecovery.includes(id)) {
+        kanonFrameAnchors[id] = id >= 93
+          ? { x: img.width * 0.5, y: kanonFrameAnchors[id].y }
+          : { x: img.width * 0.5, y: img.height * 0.5 };
+      }
       resolve();
     };
     img.src = kanonFileName(id);
@@ -3291,7 +3331,9 @@ function ensureCompanionSlots() {
 
 function companionSlotIndex(id) {
   ensureCompanionSlots();
-  return player.companionSlots.indexOf(id);
+  const slot = player.companionSlots.indexOf(id);
+  if (slot >= 0) return slot;
+  return player.witchInterventionGuest === id ? 2 : -1;
 }
 
 function assignCompanionSlot(id) {
@@ -3320,13 +3362,28 @@ function occupiedCompanionSlotCount() {
   return player.companionSlots.filter(Boolean).length;
 }
 
+function isWitchInterventionGuest(id) {
+  return player.witchInterventionGuest === id;
+}
+
+function lambdaAvailableAsCompanion() {
+  return player.konpeitoActive || isWitchInterventionGuest("lambda");
+}
+
+function bernAvailableAsCompanion() {
+  return (player.plumTeaActive && !player.plumTeaBurned) || isWitchInterventionGuest("bern");
+}
+
 function companionFollowTarget(id) {
   const slot = Math.max(0, companionSlotIndex(id));
   const foreground = slot === 0;
-  const xOffset = foreground ? 152 : 132;
-  const y = foreground
-    ? clampPlayY(player.y + 22)
-    : clampBackgroundCompanionY(player.y - 56);
+  const guest = slot === 2;
+  const xOffset = guest ? 228 : foreground ? 152 : 132;
+  const y = guest
+    ? clampPlayY(player.y - 10)
+    : foreground
+      ? clampPlayY(player.y + 22)
+      : clampBackgroundCompanionY(player.y - 56);
   return {
     slot,
     x: clamp(player.x - player.facing * xOffset, 90, STAGE_W - 130),
@@ -3339,6 +3396,7 @@ function companionDrawSortY(id, y) {
   if (id === "kanon") return y;
   const slot = companionSlotIndex(id);
   if (slot === 0) return Math.max(y, player.y + 0.35);
+  if (slot === 2) return player.y - 20;
   if (slot === 1) return y - 40;
   return y;
 }
@@ -3363,6 +3421,79 @@ function ownedCompanionCount() {
 function canAcquireCompanionItem(type) {
   if (!COMPANION_ITEM_TYPES.has(type)) return true;
   return ownsCompanionItem(type) || ownedCompanionCount() < MAX_ACTIVE_COMPANIONS;
+}
+
+function witchDurationKey(type) {
+  if (type === "konpeito") return "lambdaWitchWaves";
+  if (type === "plumTea") return "bernWitchWaves";
+  return "";
+}
+
+function witchStoredBonusKey(type) {
+  if (type === "konpeito") return "lambdaWitchStoredBonus";
+  if (type === "plumTea") return "bernWitchStoredBonus";
+  return "";
+}
+
+function setInitialWitchDuration(type) {
+  const key = witchDurationKey(type);
+  const bonusKey = witchStoredBonusKey(type);
+  if (!key || player[key] > 0) return;
+  const storedBonus = Math.max(0, player[bonusKey] || 0);
+  player[key] = WITCH_COMPANION_BASE_WAVES + storedBonus;
+  player[bonusKey] = 0;
+}
+
+function extendWitchDuration(type, amount) {
+  const key = witchDurationKey(type);
+  const bonusKey = witchStoredBonusKey(type);
+  if (!key) return;
+  if (ownsCompanionItem(type) || player[key] > 0) {
+    player[key] = Math.max(0, player[key] || 0) + amount;
+  } else {
+    player[bonusKey] = Math.max(0, player[bonusKey] || 0) + amount;
+  }
+}
+
+function expireWitchCompanion(type) {
+  if (type === "konpeito") {
+    player.konpeitoActive = false;
+    player.lambdaWitchWaves = 0;
+    removeCompanionItem("konpeito");
+    lambdaCompanion.active = false;
+    lambdaCompanion.summoned = false;
+    lambdaCompanion.state = "idle";
+    lambdaCompanion.anim = 0;
+    lambdaCompanion.queuedKonpeito = false;
+  } else if (type === "plumTea") {
+    player.plumTeaActive = false;
+    player.plumTeaBurned = false;
+    player.bernWitchWaves = 0;
+    removeCompanionItem("plumTea");
+    bernCompanion.active = false;
+    bernCompanion.summoned = false;
+    bernCompanion.state = "idle";
+    bernCompanion.anim = 0;
+    bernCompanion.queuedCrystal = false;
+    bernCompanion.catForm = false;
+  }
+}
+
+function tickWitchCompanionDurationsForWaveEnd() {
+  const expired = [];
+  if (player.konpeitoActive && lambdaCompanion.summoned && (player.lambdaWitchWaves || 0) > 0) {
+    player.lambdaWitchWaves = Math.max(0, (player.lambdaWitchWaves || 0) - 1);
+    if (player.lambdaWitchWaves <= 0) expired.push("konpeito");
+  }
+  if (player.plumTeaActive && !player.plumTeaBurned && bernCompanion.summoned && (player.bernWitchWaves || 0) > 0) {
+    player.bernWitchWaves = Math.max(0, (player.bernWitchWaves || 0) - 1);
+    if (player.bernWitchWaves <= 0) expired.push("plumTea");
+  }
+  for (const type of expired) expireWitchCompanion(type);
+  if (expired.length) {
+    message = expired.length > 1 ? "The witches take their leave" : expired[0] === "konpeito" ? "Lambdadelta departs" : "Bernkastel departs";
+    messageTimer = 1.35;
+  }
 }
 
 function baseAction(action) {
@@ -3561,6 +3692,7 @@ function maybeAmuseBernkastel() {
     player.bernHazardAmuseKills = 0;
     player.plumTeaBurned = false;
     player.plumTeaActive = false;
+    player.bernWitchWaves = 0;
     removeCompanionItem("plumTea");
     bernCompanion.summoned = false;
     message = "The witch is amused";
@@ -3637,6 +3769,7 @@ function activatePickup(pickup, options = {}) {
   } else if (pickup.type === "konpeito") {
     const firstSummon = !lambdaCompanion.summoned;
     player.konpeitoActive = true;
+    setInitialWitchDuration("konpeito");
     if (firstSummon) summonLambda();
     else {
       addLambdaKonpeitoCharge(100);
@@ -3651,6 +3784,7 @@ function activatePickup(pickup, options = {}) {
     }
     const firstSummon = !bernCompanion.summoned;
     player.plumTeaActive = true;
+    setInitialWitchDuration("plumTea");
     if (firstSummon) summonBernkastel();
     else {
       addBernCrystalCharge(100);
@@ -3716,6 +3850,7 @@ function debugGrantStartingPlumTea() {
   if (!DEBUG_START_WITH_PLUM_TEA) return;
   player.plumTeaActive = true;
   player.plumTeaBurned = false;
+  setInitialWitchDuration("plumTea");
   if (!player.itemOrder.includes("plumTea")) player.itemOrder.push("plumTea");
   if (player.seenItemTutorials && typeof player.seenItemTutorials.add === "function") {
     player.seenItemTutorials.add("plumTea");
@@ -3728,6 +3863,7 @@ function debugGrantStartingPlumTea() {
 function debugGrantStartingKonpeito() {
   if (!DEBUG_START_WITH_KONPEITO) return;
   player.konpeitoActive = true;
+  setInitialWitchDuration("konpeito");
   if (!player.itemOrder.includes("konpeito")) player.itemOrder.push("konpeito");
   if (player.seenItemTutorials && typeof player.seenItemTutorials.add === "function") {
     player.seenItemTutorials.add("konpeito");
@@ -3867,7 +4003,7 @@ function addKanonAttackCharge(amount = 100) {
 }
 
 function updateLambdaKonpeitoCharge(dt) {
-  if (!player.konpeitoActive || state !== "playing") return;
+  if (!lambdaAvailableAsCompanion() || state !== "playing") return;
   if ((lambdaCompanion.konpeitoCharge || 0) < 100) {
     lambdaCompanion.konpeitoCharge = Math.min(100, (lambdaCompanion.konpeitoCharge || 0) + (dt / LAMBDA_KONPEITO_INTERVAL) * 100);
   }
@@ -3875,7 +4011,7 @@ function updateLambdaKonpeitoCharge(dt) {
 }
 
 function updateBernCrystalGauge(dt) {
-  if (!player.plumTeaActive || state !== "playing") return;
+  if (!bernAvailableAsCompanion() || state !== "playing") return;
   if ((bernCompanion.crystalChargeGauge || 0) < 100) {
     bernCompanion.crystalChargeGauge = Math.min(100, (bernCompanion.crystalChargeGauge || 0) + (dt / BERN_CRYSTAL_INTERVAL) * 100);
   }
@@ -4215,15 +4351,17 @@ function summonKanon(options = {}) {
   kanonCompanion.uppercutArcSpawned = false;
   kanonCompanion.finisherArcSpawned = false;
   kanonCompanion.airOffset = 0;
+  kanonCompanion.recoveryHopTimer = 0;
+  kanonCompanion.recoveryHopDuration = 0;
   if (options.entrance !== false) triggerKanonSummonSlash();
 }
 
 function restoreOwnedCompanionsForNormalWave() {
   if (waveMode !== "normal") return;
-  if (player.konpeitoActive && !lambdaCompanion.active) {
+  if (player.konpeitoActive && (player.lambdaWitchWaves || 0) > 0 && !lambdaCompanion.active) {
     summonLambda();
   }
-  if (player.plumTeaActive && !player.plumTeaBurned && !bernCompanion.active) {
+  if (player.plumTeaActive && !player.plumTeaBurned && (player.bernWitchWaves || 0) > 0 && !bernCompanion.active) {
     summonBernkastel();
   }
   if (player.goldenBroochRightActive && !shannonCompanion.active) {
@@ -4548,8 +4686,10 @@ function finishDuoAttack() {
   duoAttack.shardIndex = 0;
   player.duoCharge = 0;
   player.konpeitoActive = false;
+  player.lambdaWitchWaves = 0;
   player.plumTeaActive = false;
   player.plumTeaBurned = false;
+  player.bernWitchWaves = 0;
   player.currentAttack = "";
   player.attackLock = 0;
   setAction("idle");
@@ -5728,6 +5868,7 @@ function launchActor(actor, direction, lift = 470, drift = 170) {
   actor.attack = 0;
   actor.anim = 0;
   if (actor !== player) cancelEnemyAttackTelegraph(actor);
+  return true;
 }
 
 function juggleScaleFor(enemy) {
@@ -6359,6 +6500,7 @@ function waveEffectActive(id) {
 }
 
 function clearWaveEffects() {
+  dismissWitchInterventionGuest({ silent: true });
   waveEffects.active = [];
   waveEffects.gaapPortals = [];
   waveEffects.stampedeTimer = 0;
@@ -6416,9 +6558,55 @@ function rollWaveEffects() {
 }
 
 function grantCompanionItemFromWitch(type) {
-  if (!type || ownsCompanionItem(type) || ownedCompanionCount() >= MAX_ACTIVE_COMPANIONS) return;
+  if (!type) return;
+  if (ownsCompanionItem(type)) {
+    extendWitchDuration(type, WITCH_INTERVENTION_DURATION_BONUS);
+    return;
+  }
+  if (ownedCompanionCount() >= MAX_ACTIVE_COMPANIONS) {
+    summonWitchInterventionGuest(type);
+    return;
+  }
   if (type === "plumTea") player.plumTeaBurned = false;
   activatePickup({ type, x: player.x, y: player.y, bob: 0 }, { skipTutorial: true });
+}
+
+function dismissWitchInterventionGuest(options = {}) {
+  const guest = player.witchInterventionGuest || "";
+  if (!guest) return;
+  if (guest === "lambda" && !player.konpeitoActive) {
+    if (!options.silent) spawnKonpeitoGeyser(lambdaCompanion.x || player.x, lambdaCompanion.y || player.y);
+    lambdaCompanion.active = false;
+    lambdaCompanion.summoned = false;
+    lambdaCompanion.state = "idle";
+    lambdaCompanion.anim = 0;
+    lambdaCompanion.queuedKonpeito = false;
+    lambdaCompanion.castHasFired = false;
+  } else if (guest === "bern" && (!player.plumTeaActive || player.plumTeaBurned)) {
+    if (!options.silent) spawnGoldenButterflies(bernCompanion.x || player.x, (bernCompanion.y || player.y) - 96, 24);
+    bernCompanion.active = false;
+    bernCompanion.summoned = false;
+    bernCompanion.state = "idle";
+    bernCompanion.anim = 0;
+    bernCompanion.queuedCrystal = false;
+    bernCompanion.catForm = false;
+  }
+  player.witchInterventionGuest = "";
+}
+
+function summonWitchInterventionGuest(type) {
+  const id = companionIdForItem(type);
+  if (id !== "lambda" && id !== "bern") return;
+  dismissWitchInterventionGuest({ silent: true });
+  player.witchInterventionGuest = id;
+  if (id === "lambda") {
+    summonLambda();
+    message = "Lambdadelta joins for this wave";
+  } else {
+    summonBernkastel();
+    message = "Bernkastel joins for this wave";
+  }
+  messageTimer = 1.35;
 }
 
 function triggerWitchIntervention() {
@@ -6783,12 +6971,6 @@ function dismissCompanionsForBossWave() {
   if (bernCompanion.active || bernCompanion.summoned) {
     spawnGoldenButterflies(bernCompanion.x || player.x, (bernCompanion.y || player.y) - 96, 26);
   }
-  if (shannonCompanion.active || shannonCompanion.summoned) {
-    spawnGoldenButterflies(shannonCompanion.x || player.x, (shannonCompanion.y || player.y) - 86, 22);
-  }
-  if (kanonCompanion.active || kanonCompanion.summoned) {
-    spawnGoldenButterflies(kanonCompanion.x || player.x, (kanonCompanion.y || player.y) - 86, 18);
-  }
   lambdaCompanion.active = false;
   lambdaCompanion.summoned = false;
   lambdaCompanion.state = "idle";
@@ -6803,33 +6985,6 @@ function dismissCompanionsForBossWave() {
   bernCompanion.crystalTimer = 0;
   bernCompanion.crystalCharge = 0;
   bernCompanion.catForm = false;
-  shannonCompanion.active = false;
-  shannonCompanion.summoned = false;
-  shannonCompanion.state = "idle";
-  shannonCompanion.anim = 0;
-  shannonCompanion.moveSettle = 0;
-  shannonCompanion.wallCharge = 100;
-  shannonCompanion.wallTimer = 0;
-  shannonCompanion.wallCastFacing = 1;
-  shannonCompanion.wallCastSpawned = false;
-  shannonCompanion.barrierBestowed = false;
-  kanonCompanion.active = false;
-  kanonCompanion.summoned = false;
-  kanonCompanion.state = "idle";
-  kanonCompanion.anim = 0;
-  kanonCompanion.moveSettle = 0;
-  kanonCompanion.attackPhaseTimer = 0;
-  kanonCompanion.attackTargetX = 0;
-  kanonCompanion.attackTargetY = FLOOR_Y;
-  kanonCompanion.attackHitDone = false;
-  kanonCompanion.attackSegmentsSpent = 0;
-  kanonCompanion.uppercutHitDone = false;
-  kanonCompanion.uppercutArcSpawned = false;
-  kanonCompanion.finisherArcSpawned = false;
-  kanonCompanion.airOffset = 0;
-  kanonSlashArcs.length = 0;
-  kanonUppercutArcs.length = 0;
-  kanonFinisherArcs.length = 0;
 }
 
 function startBlessingChoice(options, context = "boss") {
@@ -6869,6 +7024,9 @@ function applyBossBlessing(blessing) {
     player.blessings.lambdaKonpeitoSpecial = true;
   } else if (blessing.id === "lambdaDamageUp") {
     player.blessings.lambdaDamageUp = (player.blessings.lambdaDamageUp || 0) + 1;
+  } else if (blessing.id === "lambdaWitchTime") {
+    player.blessings.lambdaWitchTime = (player.blessings.lambdaWitchTime || 0) + 1;
+    extendWitchDuration("konpeito", WITCH_TIME_BLESSING_BONUS);
   } else if (blessing.id === "miracleRevival") {
     player.blessings.miracleRevival = Math.min(MAX_MIRACLE_REVIVALS, (player.blessings.miracleRevival || 0) + 1);
   } else if (blessing.id === "miracleShardFollowup") {
@@ -6887,6 +7045,9 @@ function applyBossBlessing(blessing) {
       Math.round(MAX_MIRACLE_REFLEX / MIRACLE_REFLEX_PER_STACK),
       (player.blessings.miracleReflex || 0) + 1
     );
+  } else if (blessing.id === "miracleWitchTime") {
+    player.blessings.miracleWitchTime = (player.blessings.miracleWitchTime || 0) + 1;
+    extendWitchDuration("plumTea", WITCH_TIME_BLESSING_BONUS);
   }
   message = blessing.title.replace(/^Blessing of (Certainty|Miracles): /, "");
   messageTimer = 1.35;
@@ -8093,8 +8254,13 @@ function startGame() {
   player.crystalShardStacks = [];
   player.konpeitoActive = false;
   player.konpeitoCooldown = 0;
+  player.lambdaWitchWaves = 0;
+  player.lambdaWitchStoredBonus = 0;
   player.plumTeaActive = false;
   player.plumTeaBurned = false;
+  player.bernWitchWaves = 0;
+  player.bernWitchStoredBonus = 0;
+  player.witchInterventionGuest = "";
   player.goldenBroochRightActive = false;
   player.goldenBroochLeftActive = false;
   player.shannonBarrierHp = 0;
@@ -8109,12 +8275,14 @@ function startGame() {
   player.blessings.superCharge = false;
   player.blessings.lambdaKonpeitoSpecial = false;
   player.blessings.lambdaDamageUp = 0;
+  player.blessings.lambdaWitchTime = 0;
   player.blessings.miracleRevival = 0;
   player.blessings.miracleShardFollowup = false;
   player.blessings.miracleCrystalShardPlus = false;
   player.blessings.miracleRisk = false;
   player.blessings.miracleMaxHealth = 0;
   player.blessings.miracleReflex = 0;
+  player.blessings.miracleWitchTime = 0;
   if (DEBUG_START_WITH_50_REFLEX) {
     player.blessings.miracleReflex = Math.round(MAX_MIRACLE_REFLEX / MIRACLE_REFLEX_PER_STACK);
   }
@@ -8296,7 +8464,10 @@ function startGame() {
   kanonCompanion.attackSegmentsSpent = 0;
   kanonCompanion.uppercutHitDone = false;
   kanonCompanion.uppercutArcSpawned = false;
+  kanonCompanion.finisherArcSpawned = false;
   kanonCompanion.airOffset = 0;
+  kanonCompanion.recoveryHopTimer = 0;
+  kanonCompanion.recoveryHopDuration = 0;
   pickups.length = 0;
   absorbingPickups.length = 0;
   crystalShards.length = 0;
@@ -8436,6 +8607,7 @@ function triggerBernRevive() {
   setAction("idle");
   player.plumTeaActive = false;
   player.plumTeaBurned = true;
+  player.bernWitchWaves = 0;
   releaseCompanionSlot("bern");
   player.bernHazardTimer = bernHazardInterval();
   player.bernHazardAmuseKills = 0;
@@ -11666,6 +11838,7 @@ function updateEnemies(dt) {
   if (living === 0 && state === "playing" && waveMode === "normal") {
     bankScoreCombo({ waveEnd: true });
     if (state !== "playing") return;
+    tickWitchCompanionDurationsForWaveEnd();
     wave += 1;
     runStats.wavesCompleted = Math.max(runStats.wavesCompleted, wave - 1);
     healPlayer(16);
@@ -13250,6 +13423,21 @@ function updateBernReviveHazard(dt) {
   }
 }
 
+function enterKanonAttackRecovery() {
+  const follow = companionFollowTarget("kanon");
+  const dist = Math.hypot(follow.x - kanonCompanion.x, follow.y - kanonCompanion.y);
+  kanonCompanion.state = "attackRecovery";
+  kanonCompanion.anim = 0;
+  kanonCompanion.attackPhaseTimer = 0;
+  kanonCompanion.recoveryHopTimer = 0;
+  kanonCompanion.recoveryHopDuration = clamp(
+    dist / KANON_RECOVERY_HOP_SPEED,
+    KANON_RECOVERY_HOP_MIN,
+    KANON_RECOVERY_HOP_MAX
+  );
+  kanonCompanion.airOffset = 0;
+}
+
 function updateKanon(dt) {
   if (!kanonCompanion.active) return;
   if (kanonCompanion.state === "summonSlash") {
@@ -13301,9 +13489,13 @@ function updateKanon(dt) {
       applyKanonDashAttackHit();
     }
     if (kanonCompanion.anim >= kanonFrames.attackActive.length) {
-      kanonCompanion.state = kanonCompanion.attackSegmentsSpent >= 2 ? "attackUppercutStartup" : "attackRecovery";
-      kanonCompanion.anim = 0;
-      kanonCompanion.attackPhaseTimer = 0;
+      if (kanonCompanion.attackSegmentsSpent >= 2) {
+        kanonCompanion.state = "attackUppercutStartup";
+        kanonCompanion.anim = 0;
+        kanonCompanion.attackPhaseTimer = 0;
+      } else {
+        enterKanonAttackRecovery();
+      }
       kanonCompanion.uppercutHitDone = false;
       kanonCompanion.uppercutArcSpawned = false;
     }
@@ -13358,9 +13550,13 @@ function updateKanon(dt) {
     kanonCompanion.anim += dt * 11;
     kanonCompanion.airOffset = 0;
     if (kanonCompanion.anim >= kanonFrames.attackUppercutLand.length) {
-      kanonCompanion.state = kanonCompanion.attackSegmentsSpent >= 3 ? "attackFinisher" : "attackRecovery";
-      kanonCompanion.anim = 0;
-      kanonCompanion.attackPhaseTimer = 0;
+      if (kanonCompanion.attackSegmentsSpent >= 3) {
+        kanonCompanion.state = "attackFinisher";
+        kanonCompanion.anim = 0;
+        kanonCompanion.attackPhaseTimer = 0;
+      } else {
+        enterKanonAttackRecovery();
+      }
       kanonCompanion.finisherArcSpawned = false;
     }
     return;
@@ -13372,29 +13568,40 @@ function updateKanon(dt) {
       spawnKanonFinisherArc();
     }
     if (kanonCompanion.anim >= kanonFrames.attackFinisher.length) {
-      kanonCompanion.state = "attackRecovery";
-      kanonCompanion.anim = 0;
-      kanonCompanion.attackPhaseTimer = 0;
+      enterKanonAttackRecovery();
     }
     return;
   }
   if (kanonCompanion.state === "attackRecovery") {
-    kanonCompanion.airOffset = 0;
+    kanonCompanion.recoveryHopTimer += dt;
     const follow = companionFollowTarget("kanon");
     const dx = follow.x - kanonCompanion.x;
     const dy = follow.y - kanonCompanion.y;
     const dist = Math.hypot(dx, dy);
     if (dist > 6) {
-      const step = Math.min(dist, 430 * dt);
+      const step = Math.min(dist, KANON_RECOVERY_HOP_SPEED * dt);
       kanonCompanion.x += (dx / dist) * step;
       kanonCompanion.y += (dy / dist) * step;
     }
-    kanonCompanion.facing = dx >= 0 ? 1 : -1;
-    kanonCompanion.anim += dt * 10;
-    if (kanonCompanion.anim >= kanonFrames.attackRecovery.length && dist <= 18) {
+    const hopT = clamp(kanonCompanion.recoveryHopTimer / Math.max(0.01, kanonCompanion.recoveryHopDuration || KANON_RECOVERY_HOP_MIN), 0, 1);
+    if (hopT < 0.42) {
+      kanonCompanion.anim = Math.min(2, Math.floor((hopT / 0.42) * 3));
+    } else if (hopT < 0.82) {
+      kanonCompanion.anim = 3 + Math.min(3, Math.floor(((hopT - 0.42) / 0.4) * 4));
+    } else if (hopT < 0.96) {
+      kanonCompanion.anim = 7 + Math.min(1, Math.floor(((hopT - 0.82) / 0.14) * 2));
+    } else {
+      kanonCompanion.anim = kanonFrames.attackRecovery.length - 1;
+    }
+    const baseHop = 4 * hopT * (1 - hopT) * KANON_RECOVERY_HOP_HEIGHT;
+    const preJumpHeight = KANON_RECOVERY_HOP_START_HEIGHT * Math.pow(1 - hopT, 1.55);
+    kanonCompanion.airOffset = baseHop + preJumpHeight;
+    if (dist <= 18 && hopT >= 0.99) {
       kanonCompanion.state = "idle";
       kanonCompanion.anim = 0;
       kanonCompanion.moveSettle = 0;
+      kanonCompanion.airOffset = 0;
+      kanonCompanion.recoveryHopTimer = 0;
     }
     return;
   }
@@ -15220,12 +15427,24 @@ function drawKanon(alpha = 1) {
   if (!kanonCompanion.active) return;
   drawActorShadow(kanonCompanion, 42);
   const list = kanonFrames[kanonCompanion.state] || kanonFrames.idle;
-  const frame = list[Math.min(list.length - 1, Math.floor(kanonCompanion.anim) % list.length)];
+  const frameIndex = Math.floor(kanonCompanion.anim);
+  const frame = kanonCompanion.state === "attackRecovery"
+    ? list[Math.min(list.length - 1, frameIndex)]
+    : list[Math.min(list.length - 1, frameIndex % list.length)];
   const img = kanonImages[frame];
   if (!img) return;
   const anchor = kanonFrameAnchors[frame] || { x: img.width * 0.5, y: img.height };
   const scale = 1.22;
-  const x = Math.round(kanonCompanion.x - cameraX);
+  let recoveryForwardOffset = 0;
+  if (kanonCompanion.state === "attackRecovery") {
+    const recoveryT = clamp(
+      kanonCompanion.recoveryHopTimer / Math.max(0.01, kanonCompanion.recoveryHopDuration || KANON_RECOVERY_HOP_MIN),
+      0,
+      1
+    );
+    recoveryForwardOffset = kanonCompanion.facing * 42 * Math.max(0, 1 - recoveryT / 0.36);
+  }
+  const x = Math.round(kanonCompanion.x + recoveryForwardOffset - cameraX);
   const y = Math.round(kanonCompanion.y + 10 - (kanonCompanion.airOffset || 0));
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -15508,7 +15727,7 @@ function drawBernBarrageArcCrystals() {
 }
 
 function drawBernCooldownCrystals(x, y, frontLayer = true) {
-  if (!player.plumTeaActive || player.plumTeaBurned || !bernCompanion.summoned) return;
+  if (!bernAvailableAsCompanion() || !bernCompanion.summoned) return;
   if (bernCompanion.state !== "idle" && bernCompanion.state !== "move" && bernCompanion.state !== "moveBack") return;
   const progress = clamp((bernCompanion.crystalChargeGauge || 0) / 100, 0, 1);
   const count = Math.min(5, Math.floor(progress * 5.02));
