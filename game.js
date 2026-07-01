@@ -72,6 +72,7 @@ const WAVE_EFFECT_WITCH_CHANCE = 0.12;
 const WAVE_EFFECT_GAAP_CHANCE = 0.16;
 const WAVE_EFFECT_STAMPEDE_CHANCE = 0.18;
 const WAVE_EFFECT_PURGATORIO_CHANCE = 0.12;
+const WAVE_EFFECT_PURGATORIO_TEASER_WAVE = 8;
 const DEBUG_FORCE_WAVE_EFFECTS = [];
 const GAAP_PORTAL_RADIUS_X = 104;
 const GAAP_PORTAL_RADIUS_Y = 38;
@@ -5916,6 +5917,7 @@ function rollWaveEffects() {
   if (!forced.length || !waveEffectActive("mortalStampede")) {
     if (Math.random() < WAVE_EFFECT_STAMPEDE_CHANCE) addWaveEffect("mortalStampede");
   }
+  if (wave === WAVE_EFFECT_PURGATORIO_TEASER_WAVE) addWaveEffect("purgatorio");
   if (!forced.length || !waveEffectActive("purgatorio")) {
     if (Math.random() < WAVE_EFFECT_PURGATORIO_CHANCE) addWaveEffect("purgatorio");
   }
@@ -7051,9 +7053,9 @@ function collapseBeatriceTowerVolleyForParry() {
   for (const tower of beatriceTowerVolley.towers) {
     const x = cameraX + (tower.screenX ?? (tower.side < 0 ? 0 : W));
     const y = tower.y ?? FLOOR_Y;
-    spawnGoldenButterflies(x, y - 260, 38);
-    spawnGoldenButterflies(x, y - 122, 28);
-    spawnAsmodeusGoldenWisps(x, y - 210, 16);
+    spawnGoldenButterflies(x, y - 240, 12);
+    spawnGoldenButterflies(x, y - 126, 8);
+    spawnAsmodeusGoldenWisps(x, y - 200, 5);
   }
   beatriceTowerVolley.phase = "retreat";
   beatriceTowerVolley.timer = 0;
@@ -7070,6 +7072,70 @@ function collapseBeatriceTowerVolleyForParry() {
   beatriceBoss.nextMechanicTimer = 0;
   message = "Counter!";
   messageTimer = 0.85;
+}
+
+function cancelBeatriceMechanicEnemiesForBarrierBreak() {
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    const enemy = enemies[i];
+    if (enemy.bossMechanic !== "beatriceGoatTrial" && enemy.bossMechanic !== "beatriceGoatRush") continue;
+    spawnGoldenButterflies(enemy.x, enemy.y - 62, 10);
+    spawnAsmodeusGoldenWisps(enemy.x, enemy.y - 58, 4);
+    enemies.splice(i, 1);
+  }
+}
+
+function cancelActiveBeatriceAttackForBarrierBreak() {
+  for (const ring of beatriceBoss.rings || []) {
+    spawnGoldenButterflies(ring.x ?? beatriceBoss.x, (ring.y ?? beatriceBoss.y) - 24, 8);
+  }
+  for (const stake of beatriceStakes) {
+    spawnGoldenButterflies(stake.x, stake.y, 7);
+  }
+  for (const attack of leviathanAttacks) {
+    spawnGoldenButterflies(attack.x, attack.y - 42, 9);
+  }
+  for (const attack of beelzebubAttacks) {
+    spawnGoldenButterflies(attack.x, attack.y - (attack.z || 0) - 42, 8);
+  }
+  for (const attack of satanAttacks) {
+    spawnGoldenButterflies(attack.x, attack.y - (attack.z || 0) - 42, 8);
+  }
+  for (const attack of belphegorAttacks) {
+    spawnGoldenButterflies(attack.x, attack.y - (attack.z || 0) - 42, 8);
+  }
+  if (beatriceTowerVolley.active && !beatriceTowerVolley.parryCollapse) {
+    for (const tower of beatriceTowerVolley.towers) {
+      const x = cameraX + (tower.screenX ?? (tower.side < 0 ? 0 : W));
+      const y = tower.y ?? FLOOR_Y;
+      spawnGoldenButterflies(x, y - 224, 10);
+      spawnAsmodeusGoldenWisps(x, y - 188, 4);
+    }
+  }
+  for (const telegraph of beatriceBoss.goatRushTelegraphs || []) {
+    spawnGoldenButterflies(telegraph.x ?? beatriceBoss.x, telegraph.y ?? FLOOR_Y, 6);
+  }
+
+  cancelBeatriceMechanicEnemiesForBarrierBreak();
+  beatriceBoss.wallsActive = false;
+  beatriceBoss.trialGoat = null;
+  beatriceBoss.rewardStakePending = false;
+  beatriceBoss.rings = [];
+  beatriceBoss.ringAttackStarted = false;
+  beatriceBoss.goatRushTelegraphs = [];
+  beatriceBoss.goatRushTimer = 0;
+  beatriceBoss.goatRushSpawned = false;
+  beatriceBoss.stakeCastFired = false;
+  beatriceBoss.towerVolleyStarted = false;
+  resetBeatriceTowerVolley();
+  beatriceStakes.length = 0;
+  beatriceStakeTrails.length = 0;
+  beatriceStakeShockwaves.length = 0;
+  beatriceStakeParryLine.life = 0;
+  beatriceStakeParryPendingHit.active = false;
+  beelzebubAttacks.length = 0;
+  leviathanAttacks.length = 0;
+  satanAttacks.length = 0;
+  belphegorAttacks.length = 0;
 }
 
 function updateBeatriceTowerVolley(dt) {
@@ -9463,6 +9529,7 @@ function damageBeatriceBarrier(amount, direction = 1, contact = null) {
 
 function startBeatriceBarrierBreak(direction = 1) {
   if (!beatriceBoss.active) return false;
+  cancelActiveBeatriceAttackForBarrierBreak();
   beatriceBoss.barrierActive = false;
   beatriceBoss.barrierHp = 0;
   beatriceBoss.vulnerable = false;
@@ -9483,9 +9550,6 @@ function startBeatriceBarrierBreak(direction = 1) {
   beatriceBoss.nextMechanicTimer = BEATRICE_RING_ATTACK_DELAY;
   if (beatriceBoss.waveEffect === "purgatorio") {
     waveEffects.purgatorioDefeated = true;
-    beatriceBoss.rings = [];
-    beatriceStakes.length = 0;
-    leviathanAttacks.length = 0;
   }
   spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 64, 54);
   screenShakeTimer = Math.max(screenShakeTimer, 0.35);
@@ -11950,8 +12014,11 @@ function beatriceStakeParryIndicatorActive() {
   return beatriceStakes.some((stake) => stake.mode === "launch" && playerInBeatriceStakeReticle(stake));
 }
 
-function launchReturnedStakeFromBattler(stake = null) {
+function launchReturnedStakeFromBattler(stake = null, options = {}) {
   if (!beatriceBoss.active) return false;
+  const freezeWorld = options.freezeWorld !== false;
+  const impactBurst = options.impactBurst !== false;
+  const shake = options.shake ?? 0.56;
   const targetX = beatriceBoss.x;
   const targetY = beatriceBoss.y - beatriceBoss.hoverOffset - 70;
   player.action = "stakeParryPose";
@@ -12000,10 +12067,12 @@ function launchReturnedStakeFromBattler(stake = null) {
   beatriceTutorial.stakeParried = true;
   runStats.parriesPerformed += 1;
   grantParryResolve();
-  enemyFreezeTimer = Math.max(enemyFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
-  beatriceStakeParryFreezeTimer = Math.max(beatriceStakeParryFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
-  screenShakeTimer = Math.max(screenShakeTimer, 0.56);
-  burst(player.x, player.y - 96, "special");
+  if (freezeWorld) {
+    enemyFreezeTimer = Math.max(enemyFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
+    beatriceStakeParryFreezeTimer = Math.max(beatriceStakeParryFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
+  }
+  screenShakeTimer = Math.max(screenShakeTimer, shake);
+  if (impactBurst) burst(player.x, player.y - 96, "special");
   return true;
 }
 
@@ -12042,7 +12111,7 @@ function tryLeviathanTowerParry() {
   } else {
     collapseBeatriceTowerVolleyForParry();
   }
-  return launchReturnedStakeFromBattler();
+  return launchReturnedStakeFromBattler(null, { freezeWorld: false, impactBurst: false, shake: 0.28 });
 }
 
 function updateLambda(dt) {
