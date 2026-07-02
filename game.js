@@ -185,6 +185,11 @@ const ITEM_TUTORIALS = {
     title: "Revival",
     label: "REVIVAL",
     tip: "Each charge rewrites one defeat without spending Plum Tea or making the tea go cold."
+  },
+  shannonBarrier: {
+    title: "Barrier",
+    label: "BARRIER",
+    tip: "Shannon bestowed a protective barrier, shielding Battler from harm."
   }
 };
 const MAX_MIRACLE_REVIVALS = 3;
@@ -723,7 +728,8 @@ const SHANNON_WALL_SLOW_SPEED = 72;
 const SHANNON_WALL_LAUNCH_LIFT = 430;
 const SHANNON_WALL_LAUNCH_DRIFT = 220;
 const SHANNON_BARRIER_HEALTH_FRACTION = 0.5;
-const SHANNON_BARRIER_HEALTH_BAR_FRACTION = 0.25;
+const SHANNON_BARRIER_HEALTH_BAR_FRACTION = 0.5;
+const SHANNON_BARRIER_SAVE_GRACE = 0.24;
 const SHANNON_BARRIER_TRIGGER_HEALTH_FRACTION = 0.8;
 const SHANNON_BARRIER_CAST_FREEZE = 0.72;
 const SHANNON_BARRIER_RADIUS = 176;
@@ -2378,6 +2384,19 @@ function damagePlayer(amount) {
   const scaledAmount = player.blessings.miracleRisk ? amount * 1.5 : amount;
   let remaining = scaledAmount;
   if (playerHasShannonBarrier()) {
+    if ((player.shannonBarrierSaveGraceTimer || 0) > 0) {
+      player.shannonBarrierBlockedLastHit = true;
+      player.shannonBarrierGuardTimer = Math.max(player.shannonBarrierGuardTimer, 0.18);
+      shannonBarrierBursts.push({
+        x: player.x,
+        y: player.y,
+        life: 0.28,
+        max: 0.28,
+        hit: new Set(),
+        guard: true
+      });
+      return 0;
+    }
     const absorbed = Math.min(player.shannonBarrierHp, remaining);
     player.shannonBarrierHp = Math.max(0, player.shannonBarrierHp - absorbed);
     remaining = Math.max(0, remaining - absorbed);
@@ -2923,6 +2942,7 @@ const player = {
   shannonBarrierMax: 0,
   shannonBarrierBlockedLastHit: false,
   shannonBarrierGuardTimer: 0,
+  shannonBarrierSaveGraceTimer: 0,
   shannonBarrierFreezeTimer: 0,
   companionSlots: [null, null],
   oneWingedEagleActive: false,
@@ -3631,6 +3651,11 @@ function witchDurationForItem(type) {
 function itemTooltipText(type) {
   const tutorial = ITEM_TUTORIALS[type];
   if (!tutorial) return "";
+  if (type === "shannonBarrier") {
+    const remaining = Math.max(0, Math.ceil(player.shannonBarrierHp || 0));
+    const max = Math.max(1, Math.ceil(player.shannonBarrierMax || playerMaxHp() * SHANNON_BARRIER_HEALTH_FRACTION));
+    return `${tutorial.tip} Strength: ${remaining}/${max}.`;
+  }
   if (type === "konpeito" || type === "plumTea") {
     return `${tutorial.tip} Duration: ${witchDurationForItem(type)} Waves.`;
   }
@@ -4408,6 +4433,7 @@ function triggerShannonBarrierBurst() {
   player.shannonBarrierHp = player.shannonBarrierMax;
   player.shannonBarrierBlockedLastHit = true;
   player.shannonBarrierGuardTimer = 0.18;
+  player.shannonBarrierSaveGraceTimer = SHANNON_BARRIER_SAVE_GRACE;
   shannonBarrierBursts.push({
     x: player.x,
     y: player.y,
@@ -5100,6 +5126,7 @@ function updateShannonBarrierHud() {
   const fraction = shannonBarrierHudFraction();
   shannonBarrierBar.style.width = `${fraction * 100}%`;
   shannonBarrierBar.style.setProperty("--shannon-barrier-opacity", fraction > 0 ? "1" : "0");
+  shannonBarrierBar.style.setProperty("--shannon-barrier-strength", clamp(player.shannonBarrierHp / Math.max(1, player.shannonBarrierMax || 1), 0, 1).toFixed(3));
 }
 
 function detonateDuoAttack() {
@@ -8641,6 +8668,7 @@ function startGame() {
   player.shannonBarrierMax = 0;
   player.shannonBarrierBlockedLastHit = false;
   player.shannonBarrierGuardTimer = 0;
+  player.shannonBarrierSaveGraceTimer = 0;
   player.shannonBarrierFreezeTimer = 0;
   player.companionSlots = [null, null];
   player.oneWingedEagleActive = false;
@@ -11531,6 +11559,7 @@ function updatePlayer(dt) {
   player.invuln = Math.max(0, player.invuln - dt);
   player.dashInvulnTimer = Math.max(0, (player.dashInvulnTimer || 0) - dt);
   player.shannonBarrierGuardTimer = Math.max(0, (player.shannonBarrierGuardTimer || 0) - dt);
+  player.shannonBarrierSaveGraceTimer = Math.max(0, (player.shannonBarrierSaveGraceTimer || 0) - dt);
   if (player.shannonBarrierGuardTimer <= 0) player.shannonBarrierBlockedLastHit = false;
   updateDashCooldowns(dt);
   if (player.shannonBarrierFreezeTimer > 0) {
@@ -14450,6 +14479,7 @@ function update(dt) {
     drawMortalStampedeTelegraphs();
     drawBeatriceTowerVolleyTelegraphs();
     drawBeatriceTowerVolleys();
+    drawShannonBarrier("back");
     drawActors({ skipPlayer: true, skipBeatrice: true });
     drawKonpeitoGeysers(true);
     drawDuoAttackEffects();
@@ -14467,7 +14497,6 @@ function update(dt) {
     drawKanonSlashArcs();
     drawKanonUppercutArcs();
     drawKanonFinisherArcs();
-    drawShannonBarrier();
     drawBeatriceStakeShockwaves();
     drawKonpeitoShots();
     drawBeatriceTowerVolleyMissiles();
@@ -14481,6 +14510,7 @@ function update(dt) {
     ctx.restore();
     drawBeatriceStakeParryLine();
     drawPlayer();
+    drawShannonBarrier("front");
     drawBeatrice();
     drawBeatriceStakeTrails();
     drawBeatriceStakes();
@@ -17845,7 +17875,93 @@ function drawKanonFinisherArcs() {
   }
 }
 
-function drawShannonBarrier() {
+function drawShannonBarrierPersistent(layer = "all") {
+  if (!playerHasShannonBarrier()) return;
+  const t = clamp(player.shannonBarrierHp / Math.max(1, player.shannonBarrierMax), 0, 1);
+  const now = performance.now() / 1000;
+  const pulse = 1 + 0.035 * Math.sin(now * 7.5);
+  const rot = now * 2.4;
+  const rx = 118 * pulse;
+  const ry = 68 * pulse;
+  const x = player.x - cameraX;
+  const y = player.y - 168;
+  const drawBack = layer === "all" || layer === "back";
+  const drawFront = layer === "all" || layer === "front";
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  if (drawBack) {
+    const fill = ctx.createRadialGradient(x, y, 10, x, y, ry);
+    fill.addColorStop(0, `rgba(196, 116, 255, ${0.04 * t})`);
+    fill.addColorStop(0.68, `rgba(154, 70, 230, ${0.09 * t})`);
+    fill.addColorStop(1, "rgba(154, 70, 230, 0)");
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.ellipse(x, y, rx * 1.1, ry * 0.98, Math.sin(rot) * 0.16, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  const ringCount = 3;
+  for (let i = 0; i < ringCount; i++) {
+    const offset = (i / ringCount) * Math.PI * 2 + rot;
+    const tilt = Math.sin(offset) * 0.2;
+    const frontAlpha = 0.2 + 0.28 * t + i * 0.04;
+    const backAlpha = 0.1 + 0.16 * t + i * 0.03;
+    const localRx = rx * (1 - i * 0.09);
+    const localRy = ry * (0.92 + i * 0.02);
+    ctx.lineWidth = i === 0 ? 3.8 : 1.9;
+    if (drawBack) {
+      ctx.strokeStyle = `rgba(134, 54, 220, ${backAlpha})`;
+      ctx.beginPath();
+      ctx.ellipse(x, y, localRx, localRy, tilt, Math.PI, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(226, 184, 255, ${backAlpha * 0.72})`;
+      ctx.beginPath();
+      ctx.ellipse(x, y, localRx * 0.86, localRy * 0.9, -tilt * 0.8, Math.PI * 1.06, Math.PI * 1.94);
+      ctx.stroke();
+    }
+    if (drawFront) {
+      ctx.strokeStyle = `rgba(222, 168, 255, ${frontAlpha})`;
+      ctx.beginPath();
+      ctx.ellipse(x, y, localRx, localRy, tilt, 0, Math.PI);
+      ctx.stroke();
+      ctx.strokeStyle = `rgba(255, 240, 255, ${0.14 + 0.26 * t})`;
+      ctx.beginPath();
+      ctx.ellipse(x, y, localRx * 0.84, localRy * 0.9, -tilt * 0.8, Math.PI * 0.08, Math.PI * 0.92);
+      ctx.stroke();
+    }
+  }
+
+  if (drawFront) {
+    ctx.strokeStyle = `rgba(255, 240, 255, ${0.16 + 0.32 * t})`;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 8; i++) {
+      const a = rot * 0.9 + i * Math.PI * 0.25;
+      const px = x + Math.cos(a) * rx * 0.78;
+      const py = y + Math.sin(a) * ry * 0.76;
+      if (py < y - 2) continue;
+      const curl = 7 + 3 * Math.sin(now * 5 + i);
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.bezierCurveTo(
+        px + Math.cos(a + Math.PI * 0.55) * curl,
+        py + Math.sin(a + Math.PI * 0.55) * curl,
+        px + Math.cos(a + Math.PI * 1.15) * curl,
+        py + Math.sin(a + Math.PI * 1.15) * curl,
+        px + Math.cos(a + Math.PI * 1.7) * curl * 0.6,
+        py + Math.sin(a + Math.PI * 1.7) * curl * 0.6
+      );
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawShannonBarrier(layer = "all") {
+  if (layer === "back") {
+    drawShannonBarrierPersistent("back");
+    return;
+  }
+
   for (const barrier of shannonBarrierBursts) {
     const total = barrier.max || 1;
     const age = total - barrier.life;
@@ -17913,63 +18029,7 @@ function drawShannonBarrier() {
     ctx.restore();
   }
 
-  if (playerHasShannonBarrier()) {
-    const t = clamp(player.shannonBarrierHp / Math.max(1, player.shannonBarrierMax), 0, 1);
-    const now = performance.now() / 1000;
-    const pulse = 1 + 0.035 * Math.sin(now * 7.5);
-    const rot = now * 2.4;
-    const rx = 116 * pulse;
-    const ry = 62 * pulse;
-    const x = player.x - cameraX;
-    const y = player.y - 94;
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    const fill = ctx.createRadialGradient(x, y, 10, x, y, ry);
-    fill.addColorStop(0, `rgba(196, 116, 255, ${0.05 * t})`);
-    fill.addColorStop(0.68, `rgba(154, 70, 230, ${0.11 * t})`);
-    fill.addColorStop(1, "rgba(154, 70, 230, 0)");
-    ctx.fillStyle = fill;
-    ctx.beginPath();
-    ctx.ellipse(x, y, rx * 1.1, ry * 0.98, Math.sin(rot) * 0.16, 0, Math.PI * 2);
-    ctx.fill();
-
-    const ringCount = 3;
-    for (let i = 0; i < ringCount; i++) {
-      const offset = (i / ringCount) * Math.PI * 2 + rot;
-      const tilt = Math.sin(offset) * 0.2;
-      const frontAlpha = 0.18 + 0.26 * t + i * 0.04;
-      ctx.lineWidth = i === 0 ? 3.6 : 1.8;
-      ctx.strokeStyle = `rgba(214, 156, 255, ${frontAlpha})`;
-      ctx.beginPath();
-      ctx.ellipse(x, y, rx * (1 - i * 0.09), ry * (0.92 + i * 0.02), tilt, offset, offset + Math.PI * 1.2);
-      ctx.stroke();
-      ctx.strokeStyle = `rgba(115, 42, 190, ${0.12 + 0.18 * t})`;
-      ctx.beginPath();
-      ctx.ellipse(x, y, rx * (1 - i * 0.09), ry * (0.92 + i * 0.02), tilt, offset + Math.PI * 1.2, offset + Math.PI * 2);
-      ctx.stroke();
-    }
-
-    ctx.strokeStyle = `rgba(255, 240, 255, ${0.16 + 0.32 * t})`;
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 8; i++) {
-      const a = rot * 0.9 + i * Math.PI * 0.25;
-      const px = x + Math.cos(a) * rx * 0.78;
-      const py = y + Math.sin(a) * ry * 0.76;
-      const curl = 7 + 3 * Math.sin(now * 5 + i);
-      ctx.beginPath();
-      ctx.moveTo(px, py);
-      ctx.bezierCurveTo(
-        px + Math.cos(a + Math.PI * 0.55) * curl,
-        py + Math.sin(a + Math.PI * 0.55) * curl,
-        px + Math.cos(a + Math.PI * 1.15) * curl,
-        py + Math.sin(a + Math.PI * 1.15) * curl,
-        px + Math.cos(a + Math.PI * 1.7) * curl * 0.6,
-        py + Math.sin(a + Math.PI * 1.7) * curl * 0.6
-      );
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
+  drawShannonBarrierPersistent(layer === "front" ? "front" : "all");
 }
 
 function drawKonpeitoShockwaves() {
@@ -18232,6 +18292,40 @@ function drawMiracleRevivalIcon(x, y) {
   ctx.restore();
 }
 
+function drawShannonBarrierItemIcon(x, y) {
+  const pulse = pulseValue(6);
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalCompositeOperation = "lighter";
+  const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, 25 + pulse * 5);
+  glow.addColorStop(0, "rgba(246, 226, 255, 0.52)");
+  glow.addColorStop(0.45, "rgba(174, 83, 255, 0.32)");
+  glow.addColorStop(1, "rgba(112, 38, 204, 0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(0, 0, 25 + pulse * 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = `rgba(224, 178, 255, ${0.8 + pulse * 0.16})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 22, 12, -0.35, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = `rgba(118, 46, 218, ${0.62 + pulse * 0.16})`;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 14, 22, 0.24, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = "rgba(235, 214, 255, 0.56)";
+  ctx.beginPath();
+  ctx.moveTo(0, -17);
+  ctx.quadraticCurveTo(14, -6, 8, 15);
+  ctx.quadraticCurveTo(0, 20, -8, 15);
+  ctx.quadraticCurveTo(-14, -6, 0, -17);
+  ctx.fill();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.restore();
+}
+
 function itemHudDrawers() {
   return {
     crystalShard: {
@@ -18294,6 +18388,14 @@ function itemHudDrawers() {
       count: player.blessings.miracleRevival || 0,
       alwaysShowCount: true,
       icon: (x, y) => drawMiracleRevivalIcon(x, y)
+    },
+    shannonBarrier: {
+      label: ITEM_TUTORIALS.shannonBarrier.label,
+      active: playerHasShannonBarrier(),
+      cooldown: Math.max(0, (player.shannonBarrierMax || 1) - (player.shannonBarrierHp || 0)),
+      cooldownMax: Math.max(1, player.shannonBarrierMax || 1),
+      showCooldown: true,
+      icon: (x, y) => drawShannonBarrierItemIcon(x, y)
     }
   };
 }
@@ -18449,6 +18551,9 @@ function drawItemHud() {
   if ((player.blessings.miracleRevival || 0) > 0 && !displayItems.includes("miracleRevival")) {
     displayItems.push("miracleRevival");
   }
+  if (playerHasShannonBarrier() && !displayItems.includes("shannonBarrier")) {
+    displayItems.push("shannonBarrier");
+  }
 
   displayItems.forEach((type, index) => {
     const item = itemDrawers[type];
@@ -18467,7 +18572,12 @@ function drawItemHud() {
 
 function drawScoreComboHud() {
   if (!waveStats.active && !scoreComboHasValue()) return;
-  const itemCount = Math.max(1, player.itemOrder.length + ((player.blessings.miracleRevival || 0) > 0 ? 1 : 0));
+  const itemCount = Math.max(
+    1,
+    player.itemOrder.length
+      + ((player.blessings.miracleRevival || 0) > 0 ? 1 : 0)
+      + (playerHasShannonBarrier() ? 1 : 0)
+  );
   const x = 20;
   const y = 102;
   const w = clamp(itemCount * 66 - 12, 216, 430);
@@ -19818,6 +19928,7 @@ function draw() {
     drawMortalStampedeTelegraphs();
     drawBeatriceTowerVolleyTelegraphs();
     drawBeatriceTowerVolleys();
+    drawShannonBarrier("back");
     drawActors({ skipCompanions: true });
     drawKonpeitoGeysers(true);
     drawSpecialBeam();
@@ -19834,7 +19945,7 @@ function draw() {
     drawKanonSlashArcs();
     drawKanonUppercutArcs();
     drawKanonFinisherArcs();
-    drawShannonBarrier();
+    drawShannonBarrier("front");
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
     drawBeatriceStakeTrails();
@@ -19872,6 +19983,7 @@ function draw() {
     drawMortalStampedeTelegraphs();
     drawBeatriceTowerVolleyTelegraphs();
     drawBeatriceTowerVolleys();
+    drawShannonBarrier("back");
     drawActors({ skipCompanions: true });
     drawKonpeitoGeysers(true);
     drawSpecialBeam();
@@ -19887,7 +19999,7 @@ function draw() {
     drawKanonSlashArcs();
     drawKanonUppercutArcs();
     drawKanonFinisherArcs();
-    drawShannonBarrier();
+    drawShannonBarrier("front");
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
     drawBeatriceStakeTrails();
@@ -19922,6 +20034,7 @@ function draw() {
   drawMortalStampedeTelegraphs();
   drawBeatriceTowerVolleyTelegraphs();
     drawBeatriceTowerVolleys();
+    drawShannonBarrier("back");
     drawActors();
     drawKonpeitoGeysers(true);
     drawDuoAttackEffects();
@@ -19939,7 +20052,7 @@ function draw() {
     drawKanonSlashArcs();
     drawKanonUppercutArcs();
     drawKanonFinisherArcs();
-    drawShannonBarrier();
+    drawShannonBarrier("front");
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
     drawBeatriceStakeTrails();
