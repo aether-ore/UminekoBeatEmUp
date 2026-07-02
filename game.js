@@ -37,6 +37,19 @@ const SPECIAL_BEAM_DAMAGE = 38;
 const PARRY_RESOLVE_GAIN = 15;
 const CHARGED_ATTACK_HOLD_TIME = 0.34;
 const CHARGED_ATTACK_RESOLVE_COST = 25;
+const DODGE_ATTACK_STARTUP_TIME = 0.34;
+const DODGE_ATTACK_ACTIVE_TIME = 0.38;
+const DODGE_ATTACK_HOVER_HEIGHT = 44;
+const DODGE_ATTACK_STARTUP_SPEED = 82;
+const DODGE_ATTACK_BURST_SPEED = 940;
+const DODGE_ATTACK_ACTIVE_DRAG = 9.5;
+const DODGE_ATTACK_ACTIVE_GRAVITY = 2450;
+const DODGE_ATTACK_ACTIVE_START_VZ = 120;
+const DODGE_ATTACK_RANGE = 176;
+const DODGE_ATTACK_DEPTH = 76;
+const DODGE_ATTACK_SHOCKWAVE_OFFSET = 94;
+const DODGE_ATTACK_LAUNCH_LIFT = 285;
+const DODGE_ATTACK_LAUNCH_DRIFT = 120;
 const SUPER_CHARGE_DAMAGE_MULTIPLIER = 1.25;
 const SUPER_CHARGE_SHOCKWAVE_RADIUS = 220;
 const SUPER_CHARGE_SHOCKWAVE_LIFT = 430;
@@ -73,6 +86,8 @@ const WAVE_EFFECT_WITCH_CHANCE = 0.12;
 const WAVE_EFFECT_GAAP_CHANCE = 0.16;
 const WAVE_EFFECT_STAMPEDE_CHANCE = 0.18;
 const WAVE_EFFECT_PURGATORIO_CHANCE = 0.12;
+const WAVE_EFFECT_NIGHTFALL_CHANCE = 0.14;
+const NIGHTFALL_ENEMY_DAMAGE_MULTIPLIER = 1.25;
 const WAVE_EFFECT_PURGATORIO_START_WAVE = 5;
 const WAVE_EFFECT_PURGATORIO_TEASER_WAVE = 8;
 const DEBUG_FORCE_WAVE_EFFECTS = [];
@@ -116,6 +131,15 @@ const PERFECT_SCORE_BASE = 1800;
 const PERFECT_SCORE_PER_WAVE = 220;
 const SCORE_BLESSING_STEP = 30000;
 const SCORE_BLESSING_STEP_GROWTH = 10000;
+const TECHNIQUE_BONUSES = {
+  dashCancel: { label: "Dash Cancel", amount: 500 },
+  launch: { label: "Launch", amount: 300 },
+  groundBounce: { label: "Ground Bounce", amount: 1000 },
+  combo4: { label: "4 Hit Combo", amount: 500 },
+  combo10: { label: "10 Hit Combo", amount: 1500 },
+  parry: { label: "Parry", amount: 2000 },
+  specialFinish: { label: "Special Finish", amount: 3000 }
+};
 const ITEM_DROP_RATES = {
   crystalShard: 1,
   konpeito: 0.7,
@@ -169,6 +193,7 @@ const MAX_MIRACLE_REFLEX = 0.5;
 const WITCH_COMPANION_BASE_WAVES = 3;
 const WITCH_INTERVENTION_DURATION_BONUS = 3;
 const WITCH_TIME_BLESSING_BONUS = 2;
+const WITCH_COMPANION_MAX_WAVES = 5;
 
 function clampPlayY(y) {
   return clamp(y, PLAY_AREA_TOP, PLAY_AREA_BOTTOM);
@@ -188,7 +213,7 @@ const LAMBDA_BLESSINGS = [
     id: "superCharge",
     source: "Lambdadelta",
     title: "Blessing of Certainty: Super Charge",
-    text: "Charged attacks teleport to the nearest enemy and release a stronger candy shockwave if a dash charge is available. Against Beatrice, the shockwave damages her barrier."
+    text: "Charged attacks teleport to the nearest enemy and release a stronger candy shockwave if a dash charge is available."
   },
   {
     id: "lambdaKonpeitoSpecial",
@@ -600,6 +625,7 @@ const DEBUG_START_WITH_SUPER_CHARGE = false;
 const DEBUG_START_WITH_CANDY_CATACLYSM = false;
 const DEBUG_START_WITH_CRYSTAL_FOLLOWUP = false;
 const DEBUG_START_WITH_CRYSTAL_SHARD_PLUS = false;
+const DEBUG_FORCE_NIGHTFALL_WAVE = false;
 const BERN_CAT_FADE_TIME = 0.34;
 const BERN_CAT_SHEET_CELL = 209;
 const BERN_CAT_SHEET_COLS = 6;
@@ -657,6 +683,7 @@ const DEBUG_FLAG_DEFS = [
   { key: "startWithCandyCataclysm", label: "Start With Candy Cataclysm", defaultValue: DEBUG_START_WITH_CANDY_CATACLYSM },
   { key: "startWithCrystalFollowup", label: "Start With Crystal Follow-up", defaultValue: DEBUG_START_WITH_CRYSTAL_FOLLOWUP },
   { key: "startWithCrystalShardPlus", label: "Start With Crystal Shard+", defaultValue: DEBUG_START_WITH_CRYSTAL_SHARD_PLUS },
+  { key: "forceNightfallWave", label: "Force Nightfall Wave", defaultValue: DEBUG_FORCE_NIGHTFALL_WAVE },
   { key: "juggledKonpeitoTargetsLambda", label: "Auto-target Juggled Konpeito To Lambda", defaultValue: DEBUG_JUGGLED_KONPEITO_TARGETS_LAMBDA }
 ];
 const DEBUG_CHEAT_ALPHA = ["w", "w", "s", "s", "a", "d", "a", "d"];
@@ -753,6 +780,8 @@ const KANON_RUN_SPEED = 430;
 const KANON_RUN_START_DISTANCE = W * 0.27;
 const KANON_RUN_STOP_DISTANCE = 190;
 const KANON_RUN_RATE = 13;
+const KANON_SAVE_HEALTH_THRESHOLD = 0.8;
+const KANON_SAVE_INVULN = 1.05;
 const SHANNON_WALK_SPEED = 225;
 const SHANNON_RUN_SPEED = 390;
 const SHANNON_RUN_START_DISTANCE = W * 0.34;
@@ -814,6 +843,7 @@ const frames = {
   runBrake: [106, 107, 108, 109, 110],
   runDodge: [322],
   backDodge: [111, 112, 112, 113],
+  dodgeAttack: [362, 363, 364, 365, 366],
   punch: [217, 218, 219, 220, 221, 222, 223, 224],
   punch1: [193, 194, 195],
   punch2: [217, 218, 219, 220, 221, 222, 223, 224],
@@ -914,6 +944,7 @@ const attackData = {
   punch3: { kind: "punch", stage: 3, lock: 0.72, range: 220, depth: 78, damage: 24, gain: 18, activeFrames: [340, 342, 341], knockdown: true, launch: true, lunge: 118 },
   kick3: { kind: "kick", stage: 3, lock: 1.15, range: 250, depth: 88, damage: 28, gain: 20, activeFrames: [296], knockdown: true, groundBounce: true, launchLift: STAGE3_KICK_BOUNCE_LIFT, launchDrift: STAGE3_KICK_BOUNCE_DRIFT },
   dashPunch: { kind: "dashPunch", lock: 0.34, range: 260, depth: 72, damage: 8, gain: 16, activeFrames: [348, 349], knockdown: true, launch: true, launchLift: 500, launchDrift: 260, lunge: 150 },
+  dodgeAttack: { kind: "dodgeAttack", lock: DODGE_ATTACK_STARTUP_TIME + DODGE_ATTACK_ACTIVE_TIME, range: DODGE_ATTACK_RANGE, depth: DODGE_ATTACK_DEPTH, damage: 8, gain: 8, activeFrames: [366], dodgeAttack: true, launchLift: DODGE_ATTACK_LAUNCH_LIFT, launchDrift: DODGE_ATTACK_LAUNCH_DRIFT },
   special: { lock: 0.7, activeFrames: [] }
 };
 const enemyAttackData = {
@@ -988,6 +1019,7 @@ const effectImages = {};
 const backgroundImages = {};
 const BACKGROUND_LAYER_BOUNDS = {
   sky: [0, 0, 1672, 500],
+  nightfallSky: [0, 0, 1672, 500],
   treeline: [0, 171, 1672, 320],
   mansion: [57, 231, 1518, 571],
   lawn: [0, 223, 1672, 414],
@@ -1057,6 +1089,13 @@ const actionFrameOffsets = {
     111: [0, 0],
     112: [0, 0],
     113: [0, 0]
+  },
+  dodgeAttack: {
+    362: [16, 0],
+    363: [4, 0],
+    364: [-10, 0],
+    365: [-18, 0],
+    366: [-38, 0]
   },
   runDizzy: {
     460: [-1, 0],
@@ -1512,7 +1551,8 @@ const scoreCombo = {
   defeats: 0,
   lastBanked: 0,
   lastMultiplier: 1,
-  perfectEligible: true
+  perfectEligible: true,
+  milestoneBonuses: new Set()
 };
 const waveStats = {
   active: null,
@@ -1524,6 +1564,10 @@ const scoreTick = {
   timer: 0,
   duration: 0.7
 };
+const techniqueBonusPopups = [];
+const techniqueNotifications = [];
+let currentTechniqueEventId = 0;
+const currentTechniqueAwards = new Set();
 const perfectFlourishes = [];
 const beatriceTutorial = {
   active: false,
@@ -1774,6 +1818,90 @@ function resetScoreCombo(perfectEligible = true) {
   scoreCombo.bank = 0;
   scoreCombo.defeats = 0;
   scoreCombo.perfectEligible = perfectEligible;
+  scoreCombo.milestoneBonuses = new Set();
+}
+
+function beginTechniqueEvent() {
+  currentTechniqueEventId += 1;
+  currentTechniqueAwards.clear();
+  return currentTechniqueEventId;
+}
+
+function techniqueBonusAnchor() {
+  if (touchControls?.layoutActive) {
+    const labelY = beatriceBoss.active && waveMode === "boss" ? 86 : 24;
+    return { x: W / 2 - 92, y: labelY + 44 };
+  }
+  return { x: 28, y: 82 };
+}
+
+function refreshTechniqueNotification(label) {
+  const existing = techniqueNotifications.find((notice) => notice.label === label);
+  if (existing) {
+    existing.life = existing.max;
+    existing.pop = 0.16;
+    return;
+  }
+  techniqueNotifications.unshift({
+    label,
+    life: 1.45,
+    max: 1.45,
+    pop: 0.16
+  });
+  if (techniqueNotifications.length > 5) techniqueNotifications.length = 5;
+}
+
+function awardTechniqueBonus(id, label = "", amount = 0, options = {}) {
+  const bonus = TECHNIQUE_BONUSES[id] || { label, amount };
+  const finalLabel = label || bonus.label || id;
+  const finalAmount = Math.round(amount || bonus.amount || 0);
+  if (!finalAmount || finalAmount <= 0) return false;
+  const dedupeKey = options.global ? id : `${currentTechniqueEventId}:${id}`;
+  if (currentTechniqueAwards.has(dedupeKey)) return false;
+  currentTechniqueAwards.add(dedupeKey);
+  scoreCombo.bank += finalAmount;
+  updateWaveComboPeak();
+  const anchor = techniqueBonusAnchor();
+  techniqueBonusPopups.push({
+    label: finalLabel,
+    amount: finalAmount,
+    x: anchor.x,
+    y: anchor.y + Math.min(42, techniqueBonusPopups.length * 10),
+    life: 1.05,
+    max: 1.05,
+    vx: 18 + Math.random() * 16,
+    vy: -34 - Math.random() * 12
+  });
+  refreshTechniqueNotification(finalLabel);
+  return true;
+}
+
+function awardComboMilestoneBonuses() {
+  if (scoreCombo.hits >= 4 && !scoreCombo.milestoneBonuses.has("combo4")) {
+    scoreCombo.milestoneBonuses.add("combo4");
+    awardTechniqueBonus("combo4");
+  }
+  if (scoreCombo.hits >= 10 && !scoreCombo.milestoneBonuses.has("combo10")) {
+    scoreCombo.milestoneBonuses.add("combo10");
+    awardTechniqueBonus("combo10");
+  }
+}
+
+function updateTechniqueBonusAnimations(dt) {
+  for (let i = techniqueBonusPopups.length - 1; i >= 0; i--) {
+    const popup = techniqueBonusPopups[i];
+    popup.life -= dt;
+    popup.x += popup.vx * dt;
+    popup.y += popup.vy * dt;
+    popup.vy -= 10 * dt;
+    if (popup.life <= 0) techniqueBonusPopups.splice(i, 1);
+  }
+  for (let i = techniqueNotifications.length - 1; i >= 0; i--) {
+    const notice = techniqueNotifications[i];
+    notice.life -= dt;
+    notice.pop = Math.max(0, (notice.pop || 0) - dt);
+    if (notice.life <= 0) techniqueNotifications.splice(i, 1);
+  }
 }
 
 function resetScoreProgression() {
@@ -1841,6 +1969,7 @@ function addScoreComboDamage(actualDamage) {
   scoreCombo.hits += 1;
   scoreCombo.bank += Math.max(1, Math.round(actualDamage * COMBO_DAMAGE_SCORE_MULTIPLIER));
   updateWaveComboPeak();
+  awardComboMilestoneBonuses();
 }
 
 function addScoreComboDefeat() {
@@ -1961,7 +2090,7 @@ function scoreRewardItemChoice() {
     source: "Item",
     color: "gold",
     title: tutorial.title,
-    text: tutorial.tip,
+    text: itemTooltipText(type),
     itemReward: true
   };
 }
@@ -1975,8 +2104,19 @@ function isBlessingRollable(blessing) {
   if (blessing.id === "miracleShardFollowup") return !player.blessings.miracleShardFollowup;
   if (blessing.id === "miracleCrystalShardPlus") return !player.blessings.miracleCrystalShardPlus;
   if (blessing.id === "miracleRisk") return !player.blessings.miracleRisk;
-  if (blessing.id === "lambdaWitchTime") return player.konpeitoActive && lambdaCompanion.active && lambdaCompanion.summoned;
-  if (blessing.id === "miracleWitchTime") return player.plumTeaActive && !player.plumTeaBurned && bernCompanion.active && bernCompanion.summoned;
+  if (blessing.id === "lambdaWitchTime") {
+    return player.konpeitoActive
+      && lambdaCompanion.active
+      && lambdaCompanion.summoned
+      && (player.lambdaWitchWaves || 0) < WITCH_COMPANION_MAX_WAVES;
+  }
+  if (blessing.id === "miracleWitchTime") {
+    return player.plumTeaActive
+      && !player.plumTeaBurned
+      && bernCompanion.active
+      && bernCompanion.summoned
+      && (player.bernWitchWaves || 0) < WITCH_COMPANION_MAX_WAVES;
+  }
   return true;
 }
 
@@ -2065,6 +2205,7 @@ function damageEnemy(enemy, amount, options = {}) {
   const scaledAmount = amount * playerOutgoingDamageMultiplier();
   const actual = Math.max(0, Math.min(enemy.hp, scaledAmount));
   enemy.hp -= scaledAmount;
+  if (actual > 0 && options.source) enemy.lastDamageSource = options.source;
   runStats.damageDealt += actual;
   addScoreComboDamage(actual);
   if (actual > 0 && options.playerDamage !== false) notePlayerEnemyDamage();
@@ -2203,7 +2344,7 @@ function applyCrystalShardBeatriceHit(x, y, radius, damage, direction = player.f
   return false;
 }
 
-function damageBeatrice(amount, direction = 0) {
+function damageBeatrice(amount, direction = 0, options = {}) {
   if (!beatriceCanBeDamaged() || amount <= 0) return 0;
   const incomingAmount = amount * playerOutgoingDamageMultiplier();
   const fullDamageCap = beatriceBoss.maxHp * BEATRICE_STUN_FULL_DAMAGE_FRACTION;
@@ -2213,6 +2354,7 @@ function damageBeatrice(amount, direction = 0) {
   const scaledAmount = fullPortion + reducedPortion;
   const actual = Math.max(0, Math.min(beatriceBoss.hp, scaledAmount));
   beatriceBoss.hp -= actual;
+  if (actual > 0 && options.source) beatriceBoss.lastDamageSource = options.source;
   beatriceBoss.stunDamageTaken = (beatriceBoss.stunDamageTaken || 0) + actual;
   runStats.damageDealt += actual;
   addScoreComboDamage(actual);
@@ -2271,6 +2413,10 @@ function damagePlayer(amount) {
     triggerBeatriceHitReaction();
   }
   return actual;
+}
+
+function nightfallEnemyDamage(amount) {
+  return waveEffectActive("nightfall") ? amount * NIGHTFALL_ENEMY_DAMAGE_MULTIPLIER : amount;
 }
 
 function absorbPlayerPoise(amount, launch = false) {
@@ -2671,7 +2817,9 @@ const kanonCompanion = {
   finisherArcSpawned: false,
   airOffset: 0,
   recoveryHopTimer: 0,
-  recoveryHopDuration: 0
+  recoveryHopDuration: 0,
+  savePending: null,
+  saveResolved: false
 };
 
 const kanonSummonSlash = {
@@ -2714,6 +2862,12 @@ const player = {
   stage3KickAir: false,
   stage3KickTimer: 0,
   stage3KickVz: 0,
+  dodgeAttackTimer: 0,
+  dodgeAttackVz: 0,
+  dodgeAttackOriginX: 0,
+  dodgeAttackOriginY: 0,
+  dodgeAttackHitTargets: new Set(),
+  dodgeAttackHitBeatrice: false,
   airborne: false,
   vz: 0,
   airVx: 0,
@@ -3110,6 +3264,7 @@ function loadImages() {
   }));
   const backgroundLoads = [
     ["sky", "assets/backgrounds/umi_sky.png"],
+    ["nightfallSky", "assets/backgrounds/umi_nightfall_sky.png"],
     ["mansion", "assets/backgrounds/umi_mansion.png"],
     ["treeline", "assets/backgrounds/umi_treeline.png"],
     ["lawn", "assets/backgrounds/umi_lawn.png"],
@@ -3468,12 +3623,26 @@ function witchStoredBonusKey(type) {
   return "";
 }
 
+function witchDurationForItem(type) {
+  const key = witchDurationKey(type);
+  return key ? Math.max(0, Math.floor(player[key] || 0)) : 0;
+}
+
+function itemTooltipText(type) {
+  const tutorial = ITEM_TUTORIALS[type];
+  if (!tutorial) return "";
+  if (type === "konpeito" || type === "plumTea") {
+    return `${tutorial.tip} Duration: ${witchDurationForItem(type)} Waves.`;
+  }
+  return tutorial.tip;
+}
+
 function setInitialWitchDuration(type) {
   const key = witchDurationKey(type);
   const bonusKey = witchStoredBonusKey(type);
   if (!key || player[key] > 0) return;
   const storedBonus = Math.max(0, player[bonusKey] || 0);
-  player[key] = WITCH_COMPANION_BASE_WAVES + storedBonus;
+  player[key] = Math.min(WITCH_COMPANION_MAX_WAVES, WITCH_COMPANION_BASE_WAVES + storedBonus);
   player[bonusKey] = 0;
 }
 
@@ -3482,9 +3651,12 @@ function extendWitchDuration(type, amount) {
   const bonusKey = witchStoredBonusKey(type);
   if (!key) return;
   if (ownsCompanionItem(type) || player[key] > 0) {
-    player[key] = Math.max(0, player[key] || 0) + amount;
+    player[key] = Math.min(WITCH_COMPANION_MAX_WAVES, Math.max(0, player[key] || 0) + amount);
   } else {
-    player[bonusKey] = Math.max(0, player[bonusKey] || 0) + amount;
+    player[bonusKey] = Math.min(
+      Math.max(0, WITCH_COMPANION_MAX_WAVES - WITCH_COMPANION_BASE_WAVES),
+      Math.max(0, player[bonusKey] || 0) + amount
+    );
   }
 }
 
@@ -3626,6 +3798,8 @@ function canStartDashCancel() {
 function startDashCancel() {
   if (!canStartDashCancel()) return false;
   if (!consumeDashStock()) return false;
+  beginTechniqueEvent();
+  awardTechniqueBonus("dashCancel");
   player.z = 0;
   player.vz = 0;
   player.airborne = false;
@@ -3739,6 +3913,7 @@ function defeatEnemy(enemy) {
   if (enemy.dead) return;
   const resolvesBeatriceTrial = enemy.bossMechanic === "beatriceGoatTrial";
   const wasAirborne = enemy.airborne;
+  const specialFinish = isBattlerSpecialSource(enemy.lastDamageSource || "") && isFinalRequiredEnemyDefeat(enemy);
   enemy.dead = true;
   enemy.knockedDown = false;
   enemy.hurt = 0;
@@ -3765,6 +3940,7 @@ function defeatEnemy(enemy) {
   maybeDropEnemyItem(enemy);
   runStats.enemiesDefeated += 1;
   addScoreComboDefeat();
+  if (specialFinish) awardTechniqueBonus("specialFinish");
   if (resolvesBeatriceTrial) resolveBeatriceGoatTrial();
 }
 
@@ -4074,6 +4250,134 @@ function kanonFullGaugeSegments() {
 function kanonChargeCooldown() {
   const charge = kanonCompanion.attackCharge || 0;
   return Math.max(0, KANON_ATTACK_MAX_CHARGE - clamp(charge, 0, KANON_ATTACK_MAX_CHARGE));
+}
+
+function canTriggerKanonParrySave() {
+  if (!player.goldenBroochLeftActive || !kanonCompanion.summoned || !kanonCompanion.active) return false;
+  if ((kanonCompanion.attackCharge || 0) < 100) return false;
+  if (player.hp / Math.max(1, playerMaxHp()) >= KANON_SAVE_HEALTH_THRESHOLD) return false;
+  if (kanonCompanion.state === "summonSlash" || kanonCompanion.state.startsWith("attack")) return false;
+  if (kanonCompanion.savePending) return false;
+  return state === "playing";
+}
+
+function spendKanonCompanionAfterSave() {
+  player.goldenBroochLeftActive = false;
+  removeCompanionItem("goldenBroochLeft");
+  spawnGoldenButterflies(kanonCompanion.x || player.x, (kanonCompanion.y || player.y) - 86, 18);
+  kanonCompanion.active = false;
+  kanonCompanion.summoned = false;
+  kanonCompanion.state = "idle";
+  kanonCompanion.anim = 0;
+  kanonCompanion.moveSettle = 0;
+  kanonCompanion.attackCharge = 0;
+  kanonCompanion.attackTimer = KANON_ATTACK_MAX_CHARGE;
+  kanonCompanion.attackSegmentsSpent = 0;
+  kanonCompanion.savePending = null;
+  kanonCompanion.saveResolved = false;
+}
+
+function resolveSavedEnemyParry(context) {
+  const direction = Math.sign((context.enemy?.x ?? player.x + player.facing) - player.x) || player.facing || 1;
+  beginTechniqueEvent();
+  runStats.parriesPerformed += 1;
+  grantParryResolve();
+  awardTechniqueBonus("parry");
+  startGoatParryCounter("punch", direction);
+  enemyFreezeTimer = Math.max(enemyFreezeTimer, 0.72);
+  screenShakeTimer = Math.max(screenShakeTimer, 0.32);
+  message = "Kanon Save";
+  messageTimer = 0.9;
+}
+
+function resolveKanonSavedParry() {
+  const context = kanonCompanion.savePending;
+  if (!context || kanonCompanion.saveResolved) return;
+  kanonCompanion.saveResolved = true;
+  player.invuln = Math.max(player.invuln, KANON_SAVE_INVULN);
+  if (context.type === "stake") {
+    launchReturnedStakeFromBattler(context.stake, { freezeWorld: true, impactBurst: false, shake: 0.36 });
+  } else if (context.type === "leviathan") {
+    const ring = context.ring;
+    if (ring) {
+      ring.detonated = true;
+      ring.leviathanSpawned = false;
+    }
+    if (ring?.source === "purgatorio") {
+      beatriceBoss.rings = [];
+      waveEffects.purgatorioDefeated = true;
+      beatriceBoss.mechanic = "purgatorio";
+    } else {
+      collapseBeatriceTowerVolleyForParry();
+    }
+    launchReturnedStakeFromBattler(null, { freezeWorld: false, impactBurst: false, shake: 0.26 });
+  } else if (context.type === "melee") {
+    resolveBeatriceMeleeKickParry();
+  } else if (context.type === "bern") {
+    const direction = bernCompanion.x >= player.x ? 1 : -1;
+    beginTechniqueEvent();
+    runStats.parriesPerformed += 1;
+    grantParryResolve();
+    awardTechniqueBonus("parry");
+    startBernParryCounterPunch(direction);
+    bernCompanion.state = "hazardParried";
+    bernCompanion.anim = 0;
+    bernCompanion.parryVx = direction * 360;
+    bernCompanion.parryVz = 360;
+    bernCompanion.parryZ = 0;
+    bernCompanion.parryFade = BERN_HAZARD_PARRY_LAUNCH_DURATION;
+    bernCompanion.parryFailed = false;
+    bernCompanion.parryFailFade = 0;
+    bernCompanion.crystalHasFired = true;
+    enemyFreezeTimer = Math.max(enemyFreezeTimer, 0.72);
+    screenShakeTimer = Math.max(screenShakeTimer, 0.32);
+    bernParryOverlayTimer = 0.56;
+    burst(bernCompanion.x, bernCompanion.y - 180, "special");
+  } else if (context.type === "goat") {
+    const enemy = context.enemy;
+    resolveSavedEnemyParry(context);
+    if (enemy && !enemy.dead) {
+      if (enemy.bossMechanic === "beatriceGoatTrial") {
+        enemy.hp = 0;
+        burst(enemy.x, enemy.y - 150, "special");
+        defeatEnemy(enemy);
+      } else {
+        enemy.goatAction = "idle";
+        enemy.goatHasHit = false;
+        enemy.goatParryFailed = false;
+        enemy.goatParryFailFade = 0;
+        enemy.goatHurtAnim = 0;
+        enemy.goatArmorHits = 0;
+        enemy.goatArmorFlash = 0;
+        enemy.hurt = 0;
+        enemy.anim = 0;
+        cancelEnemyAttackTelegraph(enemy, 0.55);
+        burst(enemy.x, enemy.y - 150, "special");
+      }
+    }
+  }
+}
+
+function startKanonParrySave(context) {
+  if (!canTriggerKanonParrySave()) return false;
+  const facing = player.facing || 1;
+  kanonCompanion.attackCharge = Math.max(0, (kanonCompanion.attackCharge || 0) - 100);
+  kanonCompanion.attackTimer = kanonChargeCooldown();
+  kanonCompanion.x = clamp(player.x + facing * 146, 90, STAGE_W - 130);
+  kanonCompanion.y = clampPlayY(player.y + 8);
+  kanonCompanion.facing = facing;
+  kanonCompanion.state = "summonSlash";
+  kanonCompanion.anim = 0;
+  kanonCompanion.moveSettle = 0;
+  kanonCompanion.attackPhaseTimer = 0;
+  kanonCompanion.airOffset = 0;
+  kanonCompanion.savePending = context;
+  kanonCompanion.saveResolved = false;
+  player.invuln = Math.max(player.invuln, KANON_SAVE_INVULN);
+  triggerKanonSummonSlash();
+  message = "Kanon Save";
+  messageTimer = 0.9;
+  return true;
 }
 
 function playerHasShannonBarrier() {
@@ -4386,6 +4690,8 @@ function summonKanon(options = {}) {
   kanonCompanion.airOffset = 0;
   kanonCompanion.recoveryHopTimer = 0;
   kanonCompanion.recoveryHopDuration = 0;
+  kanonCompanion.savePending = null;
+  kanonCompanion.saveResolved = false;
   if (options.entrance !== false) triggerKanonSummonSlash();
 }
 
@@ -5116,6 +5422,7 @@ function tryBernHazardParry() {
   if (bernCompanion.state !== "hazardTeleportIn" && bernCompanion.state !== "hazardCharge") return false;
   if (bernCompanion.parryFailed) return false;
   if (!bernHazardParryReady()) {
+    if (startKanonParrySave({ type: "bern" })) return true;
     bernCompanion.parryFailed = true;
     bernCompanion.parryFailFade = BERN_HAZARD_PARRY_FAIL_FADE;
     message = "Parry failed";
@@ -5124,8 +5431,10 @@ function tryBernHazardParry() {
     return true;
   }
   const direction = bernCompanion.x >= player.x ? 1 : -1;
+  beginTechniqueEvent();
   runStats.parriesPerformed += 1;
   grantParryResolve();
+  awardTechniqueBonus("parry");
   startBernParryCounterPunch(direction);
   bernCompanion.state = "hazardParried";
   bernCompanion.anim = 0;
@@ -5167,8 +5476,10 @@ function resolveBeatriceMeleeKickParry() {
   spawnAsmodeusGoldenWisps(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 14);
   screenShakeTimer = Math.max(screenShakeTimer, 0.18);
   enemyFreezeTimer = Math.max(enemyFreezeTimer, 0.45);
+  beginTechniqueEvent();
   runStats.parriesPerformed += 1;
   grantParryResolve();
+  awardTechniqueBonus("parry");
   const barrierDirection = Math.sign(beatriceBoss.x - player.x) || beatriceBoss.facing || 1;
   const barrierBroken = damageBeatriceBarrier(BEATRICE_MELEE_PARRY_BARRIER_DAMAGE, barrierDirection);
   if (!barrierBroken) {
@@ -5179,6 +5490,7 @@ function resolveBeatriceMeleeKickParry() {
 
 function failBeatriceMeleeKickParry() {
   if (!beatriceBoss.active || beatriceBoss.flavor !== "meleeKick") return false;
+  if (startKanonParrySave({ type: "melee" })) return true;
   beatriceBoss.meleeKickParryFailed = true;
   beatriceBoss.meleeKickParryFailFade = BEATRICE_MELEE_KICK_PARRY_FAIL_FADE;
   const activeIndex = Math.max(0, beatriceFrames.meleeKick.indexOf(273));
@@ -5357,6 +5669,7 @@ function tryGoatPoundParry(kind) {
       ? goatPoundParryTimingReady(enemy)
       : goatPunchParryTimingReady(enemy);
     if (!timingReady) {
+      if (startKanonParrySave({ type: "goat", enemy, kind })) return true;
       enemy.goatParryFailed = true;
       enemy.goatParryFailFade = GOAT_POUND_PARRY_FAIL_FADE;
       message = "Parry failed";
@@ -5365,8 +5678,10 @@ function tryGoatPoundParry(kind) {
       return true;
     }
     const direction = enemy.x >= player.x ? 1 : -1;
+    beginTechniqueEvent();
     runStats.parriesPerformed += 1;
     grantParryResolve();
+    awardTechniqueBonus("parry");
     startGoatParryCounter(kind, direction);
     if (enemy.bossMechanic === "beatriceGoatTrial") {
       enemy.hp = 0;
@@ -5913,6 +6228,16 @@ function isBattlerOwnedSource(source = "") {
   return source.startsWith("battler");
 }
 
+function isBattlerSpecialSource(source = "") {
+  return source.startsWith("battler:special")
+    || source.startsWith("battler:lambdaKonpeitoSpecial");
+}
+
+function isFinalRequiredEnemyDefeat(enemy) {
+  if (waveMode !== "normal" || !enemyCountsForWaveCompletion(enemy)) return false;
+  return enemies.every((other) => other === enemy || other.dead || !enemyCountsForWaveCompletion(other));
+}
+
 function resetBattlerLaunchComboFlags(target) {
   target.battlerLaunchSpent = false;
   target.battlerGroundBounceSpent = false;
@@ -5990,6 +6315,7 @@ function launchEnemy(enemy, direction, lift = 470, drift = 170, source = "unknow
     enemy.juggleCount = 0;
   }
   enemy.launchSource = source;
+  if (isBattlerOwnedSource(source)) awardTechniqueBonus("launch");
   return true;
 }
 
@@ -6009,6 +6335,7 @@ function launchEnemyUnprorated(enemy, direction, source, lift = 360, drift = 100
   }
   enemy.juggleCount = 0;
   enemy.launchSource = source;
+  if (isBattlerOwnedSource(source)) awardTechniqueBonus("launch");
   return true;
 }
 
@@ -6078,6 +6405,7 @@ function groundBounceEnemy(enemy, direction, source, lift = STAGE3_KICK_BOUNCE_L
   enemy.groundBounceSource = source;
   enemy.groundBounceLift = lift;
   enemy.groundBounceDrift = drift;
+  if (isBattlerOwnedSource(source)) awardTechniqueBonus("groundBounce");
   return true;
 }
 
@@ -6177,6 +6505,13 @@ function launchFrame(actor) {
 }
 
 function currentPlayerActionFrame() {
+  if (player.action === "dodgeAttack") {
+    if (player.dodgeAttackTimer < DODGE_ATTACK_STARTUP_TIME) {
+      const startupT = clamp(player.dodgeAttackTimer / DODGE_ATTACK_STARTUP_TIME, 0, 0.999);
+      return frames.dodgeAttack[Math.min(3, Math.floor(startupT * 4))];
+    }
+    return 366;
+  }
   if (player.action === "kick3" && player.stage3KickAir) {
     if (player.stage3KickTimer < 0.12) return 91;
     if (player.stage3KickTimer < 0.23) return 294;
@@ -6525,7 +6860,8 @@ const WAVE_EFFECT_DEFS = {
   witchesIntervention: { label: "Witch's Intervention", kind: "beneficial", color: "#46e978" },
   gaapIntervention: { label: "Gaap's Intervention", kind: "chaotic", color: "#b27cff" },
   mortalStampede: { label: "Mortal Stampede", kind: "negative", color: "#ff565f" },
-  purgatorio: { label: "Purgatorio", kind: "negative", color: "#ff565f" }
+  purgatorio: { label: "Purgatorio", kind: "negative", color: "#ff565f" },
+  nightfall: { label: "Nightfall", kind: "negative", color: "#ff565f" }
 };
 
 function waveEffectActive(id) {
@@ -6564,7 +6900,9 @@ function addWaveEffect(id) {
 
 function rollWaveEffects() {
   clearWaveEffects();
-  if (waveMode !== "normal" || wave < WAVE_EFFECT_START_WAVE) return;
+  if (waveMode !== "normal") return;
+  if (debugFlag("forceNightfallWave")) addWaveEffect("nightfall");
+  if (wave < WAVE_EFFECT_START_WAVE) return;
   const purgatorioEligible = wave >= WAVE_EFFECT_PURGATORIO_START_WAVE;
   const forced = Array.isArray(DEBUG_FORCE_WAVE_EFFECTS) ? DEBUG_FORCE_WAVE_EFFECTS : [];
   for (const id of forced) {
@@ -6579,6 +6917,9 @@ function rollWaveEffects() {
   }
   if (!forced.length || !waveEffectActive("mortalStampede")) {
     if (Math.random() < WAVE_EFFECT_STAMPEDE_CHANCE) addWaveEffect("mortalStampede");
+  }
+  if (!forced.length || !waveEffectActive("nightfall")) {
+    if (Math.random() < WAVE_EFFECT_NIGHTFALL_CHANCE) addWaveEffect("nightfall");
   }
   if (wave === WAVE_EFFECT_PURGATORIO_TEASER_WAVE) addWaveEffect("purgatorio");
   if (purgatorioEligible && (!forced.length || !waveEffectActive("purgatorio"))) {
@@ -7320,7 +7661,7 @@ function applyLeviathanSlashHit(attack) {
     const direction = Math.sign(player.x - attack.x) || player.facing || 1;
     chainDirection = direction;
     prepareShannonBarrierForLaunchingHit();
-    damagePlayer(BEATRICE_RING_ATTACK_DAMAGE);
+    damagePlayer(nightfallEnemyDamage(BEATRICE_RING_ATTACK_DAMAGE));
     if (shannonBarrierBlockedHit()) {
       burst(player.x, player.y - 100, "special");
       return true;
@@ -7361,7 +7702,7 @@ function applySatanAerialLaunchHit(attack) {
   if (state !== "playing" || player.hp <= 0) return;
   const direction = attack.facing || player.facing || 1;
   prepareShannonBarrierForLaunchingHit();
-  damagePlayer(SATAN_AERIAL_DAMAGE);
+  damagePlayer(nightfallEnemyDamage(SATAN_AERIAL_DAMAGE));
   if (shannonBarrierBlockedHit()) {
     burst(player.x, player.y - Math.max(92, (player.z || 0) + 32), "special");
     return;
@@ -7410,7 +7751,7 @@ function applyBelphegorGroundBounceSlamHit(attack) {
   if (state !== "playing" || player.hp <= 0) return;
   const direction = attack.impactDirection || player.facing || 1;
   prepareShannonBarrierForLaunchingHit();
-  damagePlayer(BELPHEGOR_SLAM_DAMAGE);
+  damagePlayer(nightfallEnemyDamage(BELPHEGOR_SLAM_DAMAGE));
   if (shannonBarrierBlockedHit()) {
     burst(player.x, player.y - Math.max(92, (player.z || 0) + 32), "special");
     return;
@@ -7643,7 +7984,7 @@ function applyBeatriceTowerVolleyHit(point) {
   beatriceTowerVolley.hitWaves.push(point.wave);
   const direction = Math.sign(player.x - (beatriceTowerVolley.side < 0 ? cameraX : cameraX + W)) || -beatriceTowerVolley.side || player.facing || 1;
   prepareShannonBarrierForLaunchingHit();
-  damagePlayer(BEATRICE_TOWER_VOLLEY_DAMAGE);
+    damagePlayer(nightfallEnemyDamage(BEATRICE_TOWER_VOLLEY_DAMAGE));
   if (shannonBarrierBlockedHit()) {
     burst(player.x, player.y - 94, "special");
     return;
@@ -8737,7 +9078,7 @@ function triggerSuperChargeShockwave(kind, data, skippedEnemies = new Set(), ski
     if (enemy.dead || enemy.spawnGrace > 0 || skippedEnemies.has(enemy)) continue;
     if (superChargeShockwaveDistance(enemy.x, enemy.y, x, y) > SUPER_CHARGE_SHOCKWAVE_RADIUS) continue;
     const direction = Math.sign(enemy.x - player.x) || player.facing;
-    damageEnemy(enemy, damage);
+    damageEnemy(enemy, damage, { source });
     launchEnemyByBattlerRules(
       enemy,
       direction,
@@ -8754,7 +9095,7 @@ function triggerSuperChargeShockwave(kind, data, skippedEnemies = new Set(), ski
 
   if (!skipBeatrice && beatriceCanBeDamaged() && superChargeShockwaveDistance(beatriceBoss.x, beatriceBoss.y, x, y) <= SUPER_CHARGE_SHOCKWAVE_RADIUS) {
     const direction = Math.sign(beatriceBoss.x - player.x) || player.facing;
-    const dealt = damageBeatrice(damage, direction);
+    const dealt = damageBeatrice(damage, direction, { source });
     if (dealt > 0) {
       launchBeatriceByBattlerRules(direction, source, data.launchLift || BEATRICE_LAUNCH_LIFT, data.launchDrift || BEATRICE_LAUNCH_DRIFT);
       if (beatriceBoss.hp <= 0) {
@@ -8780,7 +9121,83 @@ function triggerSuperChargeShockwave(kind, data, skippedEnemies = new Set(), ski
   return { hit, defeated };
 }
 
+function applyDodgeAttackHit(data) {
+  let hit = false;
+  const canGainResolve = !player.attackHasHit;
+  const source = "battler:dodgeAttack";
+  const activeT = clamp(((player.dodgeAttackTimer || 0) - DODGE_ATTACK_STARTUP_TIME) / DODGE_ATTACK_ACTIVE_TIME, 0, 1);
+  const waveT = 1 - Math.pow(1 - activeT, 2.2);
+  const radius = Math.max(18, data.range * waveT);
+  const centerX = player.x + player.facing * DODGE_ATTACK_SHOCKWAVE_OFFSET;
+  const centerY = player.dodgeAttackOriginY || player.y;
+  const depth = data.depth * (0.9 + waveT * 0.35);
+  const touched = player.dodgeAttackHitTargets || (player.dodgeAttackHitTargets = new Set());
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0 || (!enemy.airborne && enemy.hurt > 0)) continue;
+    if (touched.has(enemy)) continue;
+    const forward = (enemy.x - player.x) * player.facing;
+    if (forward < -28) continue;
+    const allowance = enemy.type === "goat" ? 48 : 30;
+    const dx = enemy.x - centerX;
+    const dy = (enemy.y - centerY) * 1.18;
+    const nx = dx / Math.max(1, radius + allowance);
+    const ny = dy / Math.max(1, depth + allowance * 0.35);
+    if (nx * nx + ny * ny > 1) continue;
+    touched.add(enemy);
+    const wasBounceable = canGroundBounceTarget(enemy);
+    const uninterruptibleRushGoat = isUninterruptibleBeatriceRushGoat(enemy);
+    damageEnemy(enemy, data.damage, { source });
+    if (uninterruptibleRushGoat) {
+      enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.16);
+    } else if (wasBounceable) {
+      groundBounceEnemyByBattlerRules(enemy, player.facing, source, data.launchLift, data.launchDrift);
+    } else {
+      launchEnemyByBattlerRules(enemy, player.facing, source, data.launchLift, data.launchDrift);
+    }
+    player.combo += 1;
+    hit = true;
+    burst(enemy.x, enemy.y - (enemy.type === "goat" ? 182 : 92), "special");
+    if (enemy.hp <= 0) {
+      defeatEnemy(enemy);
+    }
+  }
+  if (!player.dodgeAttackHitBeatrice && beatriceCanBeDamaged()) {
+    const box = beatriceHurtbox();
+    const beatriceCenterX = box.x + box.w * 0.5;
+    const beatriceCenterY = box.y + box.h * 0.5;
+    const forward = (beatriceCenterX - player.x) * player.facing;
+    const dx = beatriceCenterX - centerX;
+    const dy = (beatriceCenterY - centerY) * 0.72;
+    const nx = dx / Math.max(1, radius + 44);
+    const ny = dy / Math.max(1, depth + 70);
+    if (forward >= -36 && nx * nx + ny * ny <= 1) {
+      player.dodgeAttackHitBeatrice = true;
+      const wasBounceable = canGroundBounceBeatrice();
+      const dealt = damageBeatrice(data.damage, player.facing, { source });
+      if (dealt > 0) {
+        if (wasBounceable) {
+          groundBounceBeatriceByBattlerRules(player.facing, source, data.launchLift, data.launchDrift);
+        } else if (beatriceBoss.flavor === "launched") {
+          extendBeatriceLaunch(player.facing, source, data.launchLift, data.launchDrift);
+        } else {
+          launchBeatriceByBattlerRules(player.facing, source, data.launchLift || BEATRICE_LAUNCH_LIFT, data.launchDrift || BEATRICE_LAUNCH_DRIFT);
+        }
+        player.combo += 1;
+        hit = true;
+        if (beatriceBoss.hp <= 0) {
+          defeatBeatriceBoss();
+        }
+      }
+    }
+  }
+  if (hit && data.gain && canGainResolve) {
+    player.resolve = clamp(player.resolve + data.gain * RESOLVE_GAIN_MULTIPLIER, 0, 100);
+  }
+  return hit;
+}
+
 function applyAttackHit(kind, data) {
+  if (data?.dodgeAttack) return applyDodgeAttackHit(data);
   let hit = false;
   let defeatedTarget = false;
   const superCharged = isSuperChargedAttack(kind, data);
@@ -8801,7 +9218,7 @@ function applyAttackHit(kind, data) {
     if (rectsTouch(hitbox, hurtbox)) {
       directEnemyHits.add(enemy);
       const groundBounceReady = data.groundBounce && canGroundBounceTarget(enemy);
-      damageEnemy(enemy, attackDamage);
+      damageEnemy(enemy, attackDamage, { source });
       const forceLaunch = player.goatParryCounter && (kind === "punch3" || kind === "kick3");
       const uninterruptibleRushGoat = isUninterruptibleBeatriceRushGoat(enemy);
       const goatArmoredHit = !uninterruptibleRushGoat && enemy.type === "goat" && !enemy.airborne && enemy.goatArmorHits < 1 && (data.stage || 1) < 2;
@@ -8863,7 +9280,7 @@ function applyAttackHit(kind, data) {
   if (beatriceCanBeDamaged() && rectsTouch(hitbox, beatriceHurtbox())) {
     const source = `battler:${kind}`;
     beatriceDirectHit = true;
-    const dealt = damageBeatrice(attackDamage, player.facing);
+    const dealt = damageBeatrice(attackDamage, player.facing, { source });
     if (dealt > 0) {
       const groundBounceReady = data.groundBounce && canGroundBounceBeatrice();
       if (groundBounceReady) {
@@ -8933,7 +9350,7 @@ function applyCrestEchoHit(kind, data) {
     const groundBounceReady = data.groundBounce && canGroundBounceTarget(enemy);
     const uninterruptibleRushGoat = isUninterruptibleBeatriceRushGoat(enemy);
     const goatArmoredHit = !uninterruptibleRushGoat && enemy.type === "goat" && !enemy.airborne && enemy.goatArmorHits < 1 && (data.stage || 1) < 2;
-    damageEnemy(enemy, data.damage * EAGLE_CREST_DAMAGE_MULTIPLIER);
+    damageEnemy(enemy, data.damage * EAGLE_CREST_DAMAGE_MULTIPLIER, { source });
     burst(enemy.x, enemy.y - (enemy.type === "goat" ? 180 : 82), "special");
 
     if (goatArmoredHit) {
@@ -9020,7 +9437,7 @@ function applyEnemyAttackHit(enemy) {
   const contactY = player.y - 148;
   const wasRunning = player.runState === "running";
 
-  const damage = data.damage + Math.floor(wave / 2);
+  const damage = nightfallEnemyDamage(data.damage + Math.floor(wave / 2));
   damagePlayer(damage);
   if (absorbPlayerPoise(damage, false)) {
     player.invuln = Math.max(player.invuln, 0.12);
@@ -9371,7 +9788,7 @@ function applyGoatChargeHit(enemy) {
   if (isPlayerInvulnerable()) return true;
   const wasRunning = player.runState === "running";
   prepareShannonBarrierForLaunchingHit();
-  damagePlayer(GOAT_CHARGE_DAMAGE + Math.floor(wave / 3));
+  damagePlayer(nightfallEnemyDamage(GOAT_CHARGE_DAMAGE + Math.floor(wave / 3)));
   if (shannonBarrierBlockedHit()) {
     burst(player.x, player.y - 110, "special");
     return true;
@@ -9405,7 +9822,7 @@ function applyGoatPunchHit(enemy) {
   if (isPlayerInvulnerable()) return false;
   const wasRunning = player.runState === "running";
   prepareShannonBarrierForLaunchingHit();
-  damagePlayer(GOAT_PUNCH_DAMAGE + Math.floor(wave / 4));
+  damagePlayer(nightfallEnemyDamage(GOAT_PUNCH_DAMAGE + Math.floor(wave / 4)));
   if (shannonBarrierBlockedHit()) {
     burst(player.x, player.y - 92, "special");
     return true;
@@ -9469,6 +9886,47 @@ function resetPlayerForGoatHit() {
   resetPlayerCombo();
 }
 
+function startNeutralDodgeAttack() {
+  if (player.runState !== "dodging" || !player.neutralDodge) return false;
+  if (player.attackLock > 0 || player.airborne || player.knockedDown) return false;
+  beginTechniqueEvent();
+  player.comboTimer = 0;
+  player.comboQueuedKind = "";
+  player.goatParryCounter = false;
+  player.currentAttack = "dodgeAttack";
+  player.attackConsumesResolve = false;
+  player.pendingResolveAttack = false;
+  player.crestAttackHasHit = false;
+  player.superChargeShockwaveDone = false;
+  player.superChargeAttackActive = false;
+  player.pendingSuperChargeAttack = false;
+  player.poise = 0;
+  player.attackLungeRemaining = 0;
+  player.stage3KickAir = false;
+  player.stage3KickTimer = 0;
+  player.stage3KickVz = 0;
+  player.dodgeAttackTimer = 0;
+  player.dodgeAttackVz = 0;
+  player.dodgeAttackOriginX = 0;
+  player.dodgeAttackOriginY = player.y;
+  player.dodgeAttackHitTargets = new Set();
+  player.dodgeAttackHitBeatrice = false;
+  player.attackHasHit = false;
+  player.runState = "none";
+  player.runLocked = false;
+  player.runTimer = 0;
+  player.runCharge = 0;
+  player.neutralDodge = false;
+  player.dodgeDuration = DASH_TAP_DODGE_HOP_DURATION;
+  player.brakeDrift = 0;
+  player.brakeBurstTimer = 0;
+  player.invuln = Math.max(player.invuln, 0.08);
+  player.dashInvulnTimer = Math.max(player.dashInvulnTimer || 0, 0.08);
+  player.z = Math.max(player.z || 0, DODGE_ATTACK_HOVER_HEIGHT * 0.62);
+  setAction("dodgeAttack", attackData.dodgeAttack.lock);
+  return true;
+}
+
 function applyGoatPoundHit(enemy) {
   if (enemy.spawnGrace > 0 || player.airborne || player.knockedDown || state !== "playing") return false;
   const dirX = enemy.goatPoundDx || enemy.facing || 1;
@@ -9490,7 +9948,7 @@ function applyGoatPoundHit(enemy) {
   if (isPlayerInvulnerable()) return false;
   const wasRunning = player.runState === "running";
   prepareShannonBarrierForLaunchingHit();
-  damagePlayer(GOAT_POUND_DAMAGE + Math.floor(wave / 2));
+  damagePlayer(nightfallEnemyDamage(GOAT_POUND_DAMAGE + Math.floor(wave / 2)));
   if (shannonBarrierBlockedHit()) {
     burst(player.x, player.y - 96, "special");
     return true;
@@ -9564,7 +10022,7 @@ function applyGoatDelayedQuakeHit(quake, radius) {
   const direction = Math.sign(quake.dirX) || player.facing || 1;
   const wasRunning = player.runState === "running";
   prepareShannonBarrierForLaunchingHit();
-  damagePlayer(Math.max(12, Math.round(GOAT_POUND_DAMAGE * 0.55) + Math.floor(wave / 3)));
+  damagePlayer(nightfallEnemyDamage(Math.max(12, Math.round(GOAT_POUND_DAMAGE * 0.55) + Math.floor(wave / 3))));
   if (shannonBarrierBlockedHit()) {
     burst(player.x, player.y - 96, "special");
     return true;
@@ -9587,10 +10045,12 @@ function attack(kind) {
   if (state !== "playing") return false;
   if (player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0 || player.action === "getUp") return false;
   if ((kind === "punch" || kind === "kick") && tryGoatPoundParry(kind)) return true;
+  if ((kind === "punch" || kind === "kick") && startNeutralDodgeAttack()) return true;
   if (kind === "special") {
     if (player.resolve < 100 || player.airborne || player.knockedDown || player.action === "hurt" || player.action === "runTrip" || player.action === "getUp" || player.action === "special" || player.action === "specialBeam" || player.action === "duoCharge" || duoAttack.active) {
       return false;
     }
+    beginTechniqueEvent();
     player.comboTimer = 0;
     player.comboQueuedKind = "";
     player.goatParryCounter = false;
@@ -9639,6 +10099,7 @@ function attack(kind) {
   }
   const data = attackData[action];
   if (!data) return false;
+  beginTechniqueEvent();
   if (action === "dashPunch" && touchControls.runLatched) {
     touchControls.runLatched = false;
     touchControls.runHeld = false;
@@ -10048,7 +10509,7 @@ function applyBeelzebubDropSlashHit(attack) {
   player.y = clampPlayY(attack.y);
   player.z = Math.max(player.z || 0, attack.z || 104);
   prepareShannonBarrierForLaunchingHit();
-  damagePlayer(BEATRICE_ASMO_DROP_KICK_DAMAGE);
+  damagePlayer(nightfallEnemyDamage(BEATRICE_ASMO_DROP_KICK_DAMAGE));
   if (shannonBarrierBlockedHit()) {
     burst(player.x, player.y - Math.max(84, player.z * 0.45), "special");
     return true;
@@ -10086,7 +10547,7 @@ function applyAsmodeusUppercutHit(attack) {
   if (state !== "playing" || player.airborne || player.knockedDown) return;
   const side = attack.facing || Math.sign(player.x - attack.x) || player.facing || 1;
   prepareShannonBarrierForLaunchingHit();
-  damagePlayer(16);
+  damagePlayer(nightfallEnemyDamage(16));
   if (shannonBarrierBlockedHit()) {
     burst(player.x, player.y - 100, "special");
     return;
@@ -10127,7 +10588,7 @@ function applyBeatriceMeleeKickHit() {
   if (state !== "playing" || player.airborne || player.knockedDown || isPlayerInvulnerable()) return false;
   if (!playerInBeatriceMeleeKickTelegraph()) return false;
   const side = beatriceBoss.facing || Math.sign(player.x - beatriceBoss.x) || 1;
-  damagePlayer(BEATRICE_MELEE_KICK_DAMAGE);
+  damagePlayer(nightfallEnemyDamage(BEATRICE_MELEE_KICK_DAMAGE));
   player.attackLock = 0;
   player.attackLungeRemaining = 0;
   player.attackHasHit = false;
@@ -10177,6 +10638,7 @@ function launchBeatrice(direction, lift = BEATRICE_LAUNCH_LIFT, drift = BEATRICE
   beatriceBoss.downTime = 0;
   beatriceBoss.stunIdleTimer = BEATRICE_STUN_IDLE_TIMEOUT;
   if (beatriceBoss.stunDamageTimer <= 0) beatriceBoss.stunDamageTimer = BEATRICE_STUN_DAMAGE_TIMEOUT;
+  if (isBattlerOwnedSource(source)) awardTechniqueBonus("launch");
   return true;
 }
 
@@ -10238,6 +10700,7 @@ function groundBounceBeatrice(direction, source, lift = STAGE3_KICK_BOUNCE_LIFT,
   beatriceBoss.groundBounceDrift = drift;
   beatriceBoss.stunIdleTimer = BEATRICE_STUN_IDLE_TIMEOUT;
   if (beatriceBoss.stunDamageTimer <= 0) beatriceBoss.stunDamageTimer = BEATRICE_STUN_DAMAGE_TIMEOUT;
+  if (isBattlerOwnedSource(source)) awardTechniqueBonus("groundBounce");
   return true;
 }
 
@@ -10458,6 +10921,7 @@ function startBeatriceVictoryFlourish() {
 
 function defeatBeatriceBoss() {
   if (!beatriceBoss.active || beatriceBoss.flavor === "defeated") return;
+  const specialFinish = isBattlerSpecialSource(beatriceBoss.lastDamageSource || "");
   const startY = beatriceBoss.y;
   clearBeatriceBossMechanics();
   beatriceBoss.hp = 0;
@@ -10493,6 +10957,7 @@ function defeatBeatriceBoss() {
   beatriceBoss.meleeKickParryFailed = false;
   beatriceBoss.meleeKickParryFailFade = 0;
   runStats.bossesDefeated += 1;
+  if (specialFinish) awardTechniqueBonus("specialFinish");
   const y = beatriceBoss.y - 58;
   spawnBeatriceAfterimage(beatriceBoss.defeatTargetX, beatriceBoss.defeatTargetY, 0.7, beatriceFrames.defeatMove[0]);
   spawnGoldenButterflies(beatriceBoss.x, y, 48);
@@ -10635,7 +11100,7 @@ function applySpecialBeam(dt) {
     const contactX = (Math.max(beam.x, hurtbox.x) + Math.min(beam.x + beam.w, hurtbox.x + hurtbox.w)) * 0.5;
     const contactY = (Math.max(beam.y, hurtbox.y) + Math.min(beam.y + beam.h, hurtbox.y + hurtbox.h)) * 0.5;
     spawnBeamContactSparks(contactX, contactY, dt);
-    damageEnemy(enemy, SPECIAL_BEAM_DAMAGE * dt);
+    damageEnemy(enemy, SPECIAL_BEAM_DAMAGE * dt, { source: "battler:specialBeam" });
     if (isUninterruptibleBeatriceRushGoat(enemy)) {
       enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.08);
     } else {
@@ -10672,7 +11137,7 @@ function damageLambdaSpecialArea(x, y, radius, damage, source, options = {}) {
     if (enemy.dead || enemy.spawnGrace > 0) continue;
     const dist = Math.hypot(enemy.x - x, (enemy.y - y) * 1.15);
     if (dist > radius) continue;
-    damageEnemy(enemy, damage);
+    damageEnemy(enemy, damage, { source });
     const uninterruptibleRushGoat = isUninterruptibleBeatriceRushGoat(enemy);
     if (uninterruptibleRushGoat) {
       enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
@@ -10702,7 +11167,7 @@ function damageLambdaSpecialArea(x, y, radius, damage, source, options = {}) {
     const closestY = clamp(y - 82, box.y, box.y + box.h);
     if (Math.hypot(closestX - x, closestY - (y - 82)) <= radius) {
       const direction = Math.sign(beatriceBoss.x - x) || player.facing || 1;
-      damageBeatrice(damage, direction);
+      damageBeatrice(damage, direction, { source });
       if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
     }
   } else if (circleTouchesBeatriceBarrier(x, y - 82, radius)) {
@@ -10970,7 +11435,7 @@ function updateLambdaSpecialFinalBursts(dt) {
       const dist = Math.hypot(enemy.x - wave.x, (hurtY - (wave.y - 72)) * 0.78);
       if (dist > radius) continue;
       wave.touched.add(enemyIndex);
-      damageEnemy(enemy, wave.damage);
+      damageEnemy(enemy, wave.damage, { source: "battler:lambdaKonpeitoSpecialFinalBurst" });
       if (isUninterruptibleBeatriceRushGoat(enemy)) {
         enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.22);
       } else {
@@ -10991,7 +11456,7 @@ function updateLambdaSpecialFinalBursts(dt) {
       const centerY = box.y + box.h * 0.5;
       if (Math.hypot(centerX - wave.x, (centerY - (wave.y - 72)) * 0.78) <= radius) {
         wave.hitBeatrice = true;
-        damageBeatrice(wave.damage, Math.sign(beatriceBoss.x - wave.x) || player.facing || 1);
+        damageBeatrice(wave.damage, Math.sign(beatriceBoss.x - wave.x) || player.facing || 1, { source: "battler:lambdaKonpeitoSpecialFinalBurst" });
         if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
       }
     } else if (!wave.hitBeatrice && circleTouchesBeatriceBarrier(wave.x, wave.y - 72, radius)) {
@@ -11016,7 +11481,7 @@ function updateLambdaSpecialShrapnel(dt) {
       const hurtY = enemy.y - (enemy.z || 0) - 72;
       if (Math.hypot(enemy.x - pos.x, (hurtY - pos.y) * 0.82) > LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_RADIUS) continue;
       shard.hitEnemies.add(enemyIndex);
-      damageEnemy(enemy, LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE);
+      damageEnemy(enemy, LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE, { source: "battler:lambdaKonpeitoSpecialShrapnel" });
       if (isUninterruptibleBeatriceRushGoat(enemy)) {
         enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.12);
       } else {
@@ -11029,7 +11494,7 @@ function updateLambdaSpecialShrapnel(dt) {
       const box = beatriceHurtbox();
       if (pos.x >= box.x && pos.x <= box.x + box.w && pos.y >= box.y && pos.y <= box.y + box.h) {
         shard.hitBeatrice = true;
-        damageBeatrice(LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE, Math.sign(beatriceBoss.x - player.x) || player.facing || 1);
+        damageBeatrice(LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE, Math.sign(beatriceBoss.x - player.x) || player.facing || 1, { source: "battler:lambdaKonpeitoSpecialShrapnel" });
         if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
       }
     } else if (!shard.hitBeatrice && circleTouchesBeatriceBarrier(pos.x, pos.y, LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_RADIUS)) {
@@ -11320,6 +11785,63 @@ function updatePlayer(dt) {
       player.meleeParryRecoilVx = 0;
       player.currentAttack = "";
       setAction("idle");
+    }
+    cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+    return;
+  }
+  if (player.action === "dodgeAttack") {
+    const previousTimer = player.dodgeAttackTimer || 0;
+    player.dodgeAttackTimer += dt;
+    player.runState = "none";
+    player.runLocked = false;
+    player.runTimer = 0;
+    player.runCharge = 0;
+    player.neutralDodge = false;
+    player.dodgeDuration = DASH_TAP_DODGE_HOP_DURATION;
+    player.brakeDrift = 0;
+    player.brakeBurstTimer = 0;
+    player.attackLock = Math.max(player.attackLock, 0.04);
+    player.vy = 0;
+    if (player.dodgeAttackTimer < DODGE_ATTACK_STARTUP_TIME) {
+      const t = clamp(player.dodgeAttackTimer / DODGE_ATTACK_STARTUP_TIME, 0, 1);
+      const hover = Math.sin(t * Math.PI) * 10;
+      player.z = Math.max(player.z || 0, DODGE_ATTACK_HOVER_HEIGHT + hover);
+      player.x = clamp(player.x + player.facing * DODGE_ATTACK_STARTUP_SPEED * dt, 80, STAGE_W - 120);
+      player.vx = player.facing * DODGE_ATTACK_STARTUP_SPEED;
+      player.anim = t * 4;
+    } else {
+      const activeT = clamp((player.dodgeAttackTimer - DODGE_ATTACK_STARTUP_TIME) / DODGE_ATTACK_ACTIVE_TIME, 0, 1);
+      const crossedActive = previousTimer < DODGE_ATTACK_STARTUP_TIME;
+      if (crossedActive) {
+        player.z = Math.max(player.z || 0, DODGE_ATTACK_HOVER_HEIGHT);
+        player.dodgeAttackVz = DODGE_ATTACK_ACTIVE_START_VZ;
+        player.vx = player.facing * DODGE_ATTACK_BURST_SPEED;
+        player.dodgeAttackOriginX = player.x;
+        player.dodgeAttackOriginY = player.y;
+        player.dodgeAttackHitTargets = new Set();
+        player.dodgeAttackHitBeatrice = false;
+      }
+      player.x = clamp(player.x + player.vx * dt, 80, STAGE_W - 120);
+      player.vx *= Math.max(0, 1 - DODGE_ATTACK_ACTIVE_DRAG * dt);
+      player.z = Math.max(0, (player.z || 0) + (player.dodgeAttackVz || DODGE_ATTACK_ACTIVE_START_VZ) * dt);
+      player.dodgeAttackVz = (player.dodgeAttackVz || DODGE_ATTACK_ACTIVE_START_VZ) - DODGE_ATTACK_ACTIVE_GRAVITY * dt;
+      player.anim = 4;
+      player.attackHasHit = applyAttackHit("dodgeAttack", attackData.dodgeAttack) || player.attackHasHit;
+      if (activeT >= 1 || player.z <= 0) {
+        player.z = 0;
+        player.vx = 0;
+        player.dodgeAttackTimer = 0;
+        player.dodgeAttackVz = 0;
+        player.dodgeAttackOriginX = 0;
+        player.dodgeAttackOriginY = player.y;
+        player.dodgeAttackHitTargets = new Set();
+        player.dodgeAttackHitBeatrice = false;
+        player.attackLock = 0;
+        player.currentAttack = "";
+        player.attackHasHit = false;
+        player.crestAttackHasHit = false;
+        setAction("idle");
+      }
     }
     cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
     return;
@@ -11825,6 +12347,8 @@ function updateEnemies(dt) {
     enemy.attackTelegraph = Math.max(0, (enemy.attackTelegraph || 0) - dt);
     enemy.attack = Math.max(0, enemy.attack - (enemy.attackTelegraph > 0 ? 0 : dt));
     if (enemy.attack > 0) {
+      if (!enemy.attackFacing) enemy.attackFacing = enemy.facing || (player.x >= enemy.x ? 1 : -1);
+      enemy.facing = enemy.attackFacing;
       if (enemy.attackTelegraph > 0) {
         enemy.anim = 0;
       } else {
@@ -11836,6 +12360,7 @@ function updateEnemies(dt) {
           enemy.attackHasHit = applyEnemyAttackHit(enemy);
         }
       }
+      continue;
     } else if (enemy.hurt > 0) {
       enemy.anim += dt * 14;
     }
@@ -11851,10 +12376,6 @@ function updateEnemies(dt) {
     }
     const dist = Math.hypot(dx, dy);
 
-    if (enemy.attack > 0) {
-      continue;
-    }
-
     if (enemy.hurt <= 0 && dist > 1 && (routeTarget || dist > ENEMY_ATTACK_START_RANGE)) {
       enemy.x += (dx / dist) * enemy.speed * dt;
       enemy.y += (dy / dist) * enemy.speed * 0.55 * dt;
@@ -11864,6 +12385,8 @@ function updateEnemies(dt) {
       enemy.attack = enemyAttackData[enemy.attackKind].lock;
       enemy.attackHasHit = false;
       enemy.attackTelegraph = ENEMY_ATTACK_TELEGRAPH_TIME;
+      enemy.attackFacing = player.x >= enemy.x ? 1 : -1;
+      enemy.facing = enemy.attackFacing;
       enemy.anim = 0;
       enemy.cooldown = 0.92 + Math.random() * 0.5;
     }
@@ -12976,8 +13499,10 @@ function launchReturnedStakeFromBattler(stake = null, options = {}) {
   beatriceStakeParryLine.x2 = targetX + (lineDx / lineLen) * 210;
   beatriceStakeParryLine.y2 = targetY + (lineDy / lineLen) * 210;
   beatriceTutorial.stakeParried = true;
+  beginTechniqueEvent();
   runStats.parriesPerformed += 1;
   grantParryResolve();
+  awardTechniqueBonus("parry");
   if (freezeWorld) {
     enemyFreezeTimer = Math.max(enemyFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
     beatriceStakeParryFreezeTimer = Math.max(beatriceStakeParryFreezeTimer, BEATRICE_STAKE_RETURN_FREEZE);
@@ -12994,6 +13519,7 @@ function tryBeatriceStakeParry() {
     if (stake.mode !== "launch") continue;
     if (!beatriceStakeParryReady(stake)) {
       if (playerInBeatriceStakeReticle(stake)) {
+        if (startKanonParrySave({ type: "stake", stake })) return true;
         triggerAsmodeusStakeHit(stake);
         beatriceStakeShockwaves.push({ x: stake.targetX, y: stake.targetY, life: BEATRICE_STAKE_SHOCKWAVE_TIME, max: BEATRICE_STAKE_SHOCKWAVE_TIME });
         spawnGoldenSparkles(stake.x, stake.y, 18);
@@ -13009,8 +13535,13 @@ function tryBeatriceStakeParry() {
 
 function tryLeviathanTowerParry() {
   if (state !== "playing") return false;
-  const ring = leviathanTowerParryRings().find(leviathanTowerParryReady);
-  if (!ring) return false;
+  const rings = leviathanTowerParryRings();
+  const ring = rings.find(leviathanTowerParryReady);
+  if (!ring) {
+    const failedRing = rings.find((candidate) => playerInLeviathanRing(candidate));
+    if (failedRing && startKanonParrySave({ type: "leviathan", ring: failedRing })) return true;
+    return false;
+  }
   ring.detonated = true;
   ring.leviathanSpawned = false;
   if (ring.source === "purgatorio") {
@@ -13706,10 +14237,12 @@ function updateKanonSummonSlash(dt) {
   if (!kanonSummonSlash.didHit && kanonSummonSlash.timer >= KANON_SUMMON_HIT_TIME) {
     kanonSummonSlash.didHit = true;
     applyKanonSummonSlashHit();
+    resolveKanonSavedParry();
     screenShakeTimer = Math.max(screenShakeTimer, 0.28);
   }
   if (kanonSummonSlash.timer >= KANON_SUMMON_FREEZE_DURATION) {
     kanonSummonSlash.active = false;
+    if (kanonCompanion.savePending) spendKanonCompanionAfterSave();
   }
 }
 
@@ -13717,6 +14250,7 @@ function update(dt) {
   beatriceBarrierParticleCooldown = Math.max(0, beatriceBarrierParticleCooldown - dt);
   updateParryTipAlert();
   updateDisplayedScore(dt);
+  updateTechniqueBonusAnimations(dt);
   updatePerfectFlourishes(dt);
   if (scoreBlessingWaitingForPerfectFlourish && perfectFlourishes.length === 0) {
     maybeStartScoreBlessingChoice();
@@ -14092,17 +14626,24 @@ function drawParallaxLayer(name, options = {}) {
 }
 
 function drawBackground() {
+  const nightfall = waveEffectActive("nightfall");
   const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0, "#75d7ff");
-  sky.addColorStop(0.58, "#d8f4ff");
-  sky.addColorStop(1, "#e9f7ef");
+  if (nightfall) {
+    sky.addColorStop(0, "#070b24");
+    sky.addColorStop(0.58, "#140d34");
+    sky.addColorStop(1, "#1e163a");
+  } else {
+    sky.addColorStop(0, "#75d7ff");
+    sky.addColorStop(0.58, "#d8f4ff");
+    sky.addColorStop(1, "#e9f7ef");
+  }
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H);
 
   ctx.save();
   const previousSmoothing = ctx.imageSmoothingEnabled;
   ctx.imageSmoothingEnabled = true;
-  drawParallaxLayer("sky", { travel: 24, bottom: H * 0.46, heightScale: 0.58, widthScale: 1.06 });
+  drawParallaxLayer(nightfall ? "nightfallSky" : "sky", { travel: 24, bottom: H * 0.46, heightScale: 0.58, widthScale: 1.06 });
   drawParallaxLayer("treeline", { travel: 86, bottom: H * 0.59, heightScale: 0.34, widthScale: 1.14, alpha: 0.98 });
   drawParallaxLayer("mansion", { travel: 142, bottom: H * 0.58, heightScale: 0.62, widthScale: 1.18 });
   drawParallaxLayer("lawn", { travel: 240, bottom: H * 0.64, heightScale: 0.52, widthScale: 1.18 });
@@ -14116,6 +14657,7 @@ function drawBackground() {
   floorShade.addColorStop(1, "rgba(20, 28, 24, 0.26)");
   ctx.fillStyle = floorShade;
   ctx.fillRect(0, FLOOR_Y - 30, W, H - FLOOR_Y + 30);
+  drawNightfallOverlay();
 }
 
 function drawSprite(actor, frameId, scale, enemy = false, action = "") {
@@ -14163,6 +14705,9 @@ function drawSprite(actor, frameId, scale, enemy = false, action = "") {
         : telegraphing
           ? `grayscale(1) brightness(${tellPulse ? 1.05 : 0.78}) contrast(1.12) sepia(0.35) saturate(1.8) hue-rotate(310deg)`
           : "grayscale(1) brightness(0.74) contrast(1.06)";
+    if (waveEffectActive("nightfall")) {
+      ctx.filter = `${ctx.filter} brightness(0.82) sepia(0.22) saturate(1.35) hue-rotate(230deg)`;
+    }
   } else if (actor.invuln > 0) {
     ctx.globalAlpha = Math.sin(performance.now() / 45) > 0 ? 0.58 : 1;
   }
@@ -15181,6 +15726,7 @@ function drawBeatriceTowerVolleys() {
 function drawPlayer() {
   drawActorShadow(player, 78);
   const frame = player.airborne ? launchFrame(player) : currentPlayerActionFrame();
+  drawDodgeAttackShockwave();
   drawDashAttackTimingMarker();
   const dashFlash = dashAttackFlashProgress();
   if (dashFlash > 0) {
@@ -16032,6 +16578,39 @@ function drawEagleCrestEcho() {
   const height = EAGLE_CREST_ECHO_HEIGHT * (active ? 1 : readyScale);
   const width = baseWidth * (active ? 1 : readyScale);
   drawOneWingedEagleCrest(x, y, height, alpha, player.facing > 0, active, width);
+}
+
+function drawDodgeAttackShockwave() {
+  if (player.action !== "dodgeAttack" || (player.dodgeAttackTimer || 0) < DODGE_ATTACK_STARTUP_TIME) return;
+  const activeT = clamp(((player.dodgeAttackTimer || 0) - DODGE_ATTACK_STARTUP_TIME) / DODGE_ATTACK_ACTIVE_TIME, 0, 1);
+  const waveT = 1 - Math.pow(1 - activeT, 2.2);
+  const fade = 1 - activeT;
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 34);
+  const radius = Math.max(1, DODGE_ATTACK_RANGE * waveT);
+  const depth = DODGE_ATTACK_DEPTH * (0.9 + waveT * 0.35);
+  const originX = player.x - cameraX + player.facing * DODGE_ATTACK_SHOCKWAVE_OFFSET;
+  const originY = player.dodgeAttackOriginY || player.y;
+  ctx.save();
+  ctx.translate(originX, originY + 10);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.globalAlpha = (0.12 + pulse * 0.04) * fade;
+  const gradient = ctx.createRadialGradient(0, 0, 10, 0, 0, Math.max(1, radius * 0.95));
+  gradient.addColorStop(0, "rgba(255, 255, 255, 0.34)");
+  gradient.addColorStop(0.62, "rgba(255, 255, 255, 0.18)");
+  gradient.addColorStop(1, "rgba(255, 255, 255, 0)");
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radius * 0.95, depth, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.globalAlpha = (0.38 + pulse * 0.08) * fade;
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.78)";
+  ctx.lineWidth = 3;
+  ctx.shadowBlur = 16;
+  ctx.shadowColor = "rgba(255, 255, 255, 0.72)";
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radius * 0.95, depth, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawSpecialBeam() {
@@ -17524,7 +18103,7 @@ function drawBernParryOverlay() {
   ctx.restore();
 }
 
-function drawItemBox(x, y, active, label, drawIcon, cooldown = 0, cooldownMax = 1, count = 0, showCooldown = false, alwaysShowCount = false) {
+function drawItemBox(x, y, active, label, drawIcon, cooldown = 0, cooldownMax = 1, count = 0, showCooldown = false, alwaysShowCount = false, durationBadge = 0) {
   ctx.save();
   ctx.globalAlpha = active ? 1 : 0.42;
   ctx.fillStyle = "rgba(7, 12, 19, 0.72)";
@@ -17571,6 +18150,22 @@ function drawItemBox(x, y, active, label, drawIcon, cooldown = 0, cooldownMax = 
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(String(count), x + 45, y + 45);
+    ctx.textBaseline = "alphabetic";
+  }
+  if (active && durationBadge > 0) {
+    const maxed = durationBadge >= WITCH_COMPANION_MAX_WAVES;
+    ctx.fillStyle = "rgba(5, 14, 22, 0.86)";
+    ctx.strokeStyle = maxed ? "rgba(94, 255, 125, 0.95)" : "rgba(255, 238, 143, 0.88)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(x + 9, y + 9, 9, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = maxed ? "#6dff8b" : "#fff0a6";
+    ctx.font = "900 12px Segoe UI, Arial";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(String(durationBadge), x + 9, y + 9);
     ctx.textBaseline = "alphabetic";
   }
   ctx.fillStyle = active ? "#eaffff" : "#87949c";
@@ -17653,6 +18248,7 @@ function itemHudDrawers() {
       cooldown: lambdaCompanion.summoned ? companionChargeCooldown(lambdaCompanion.konpeitoCharge || 0, LAMBDA_KONPEITO_INTERVAL) : 0,
       cooldownMax: LAMBDA_KONPEITO_INTERVAL,
       showCooldown: true,
+      durationBadge: witchDurationForItem("konpeito"),
       icon: (x, y) => drawKonpeitoCandy(x, y, 20, Math.floor(performance.now() / 120) % KONPEITO_FRAME_COUNT, performance.now() / 800, 0.95)
     },
     plumTea: {
@@ -17661,6 +18257,7 @@ function itemHudDrawers() {
       cooldown: bernCompanion.summoned ? companionChargeCooldown(bernCompanion.crystalChargeGauge || 0, BERN_CRYSTAL_INTERVAL) : 0,
       cooldownMax: BERN_CRYSTAL_INTERVAL,
       showCooldown: true,
+      durationBadge: witchDurationForItem("plumTea"),
       icon: (x, y) => drawPlumTeaIcon(x, y, 19, 0.95)
     },
     goldenBroochRight: {
@@ -17758,7 +18355,7 @@ function drawItemTooltip(type, anchorX, anchorY) {
   const w = 292;
   const titleFont = "800 17px Segoe UI, Arial";
   const bodyFont = "600 14px Segoe UI, Arial";
-  const bodyLines = wrappedTextLines(tutorial.tip, w - 30, bodyFont);
+  const bodyLines = wrappedTextLines(itemTooltipText(type), w - 30, bodyFont);
   const h = 62 + bodyLines.length * 19;
   const x = clamp(anchorX, 14, W - w - 14);
   const y = Math.min(anchorY, H - h - 18);
@@ -17858,7 +18455,7 @@ function drawItemHud() {
     if (!item) return;
     const x = 20 + index * 66;
     const y = 18;
-    drawItemBox(x, y, item.active, item.label, item.icon, item.cooldown, item.cooldownMax, item.count || 0, item.showCooldown, item.alwaysShowCount);
+    drawItemBox(x, y, item.active, item.label, item.icon, item.cooldown, item.cooldownMax, item.count || 0, item.showCooldown, item.alwaysShowCount, item.durationBadge || 0);
     if (mouse.inside && mouse.x >= x && mouse.x <= x + 54 && mouse.y >= y && mouse.y <= y + 76) {
       hoverType = type;
       hoverX = x;
@@ -17937,6 +18534,58 @@ function drawPerfectEligibilityStar(x, y, perfect) {
     ctx.lineTo(0, outer + 4);
     ctx.stroke();
   }
+  ctx.restore();
+}
+
+function drawTechniqueBonuses() {
+  if (!techniqueBonusPopups.length && !techniqueNotifications.length) return;
+  ctx.save();
+  ctx.textBaseline = "middle";
+  for (const popup of techniqueBonusPopups) {
+    const t = 1 - clamp(popup.life / popup.max, 0, 1);
+    const alpha = clamp(popup.life / 0.32, 0, 1);
+    const scale = 0.9 + (1 - Math.abs(0.5 - t) * 2) * 0.12;
+    ctx.save();
+    ctx.translate(popup.x, popup.y);
+    ctx.scale(scale, scale);
+    ctx.textAlign = "left";
+    ctx.font = "900 17px Segoe UI, Arial";
+    ctx.shadowColor = "rgba(255, 218, 94, 0.72)";
+    ctx.shadowBlur = 10;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = `rgba(18, 8, 0, ${0.72 * alpha})`;
+    ctx.fillStyle = `rgba(255, 240, 164, ${alpha})`;
+    const text = `${popup.label} +${formatStatNumber(popup.amount)}`;
+    ctx.strokeText(text, 0, 0);
+    ctx.fillText(text, 0, 0);
+    ctx.restore();
+  }
+
+  const baseX = touchControls?.layoutActive ? W - 192 : 22;
+  const baseY = touchControls?.layoutActive ? 132 : 156;
+  ctx.font = "900 14px Segoe UI, Arial";
+  techniqueNotifications.forEach((notice, index) => {
+    const t = 1 - clamp(notice.life / notice.max, 0, 1);
+    const alpha = clamp(notice.life / 0.34, 0, 1);
+    const pop = clamp((notice.pop || 0) / 0.16, 0, 1);
+    const w = Math.max(124, ctx.measureText(notice.label).width + 34);
+    const x = baseX - (1 - alpha) * 22;
+    const y = baseY + index * 34 - t * 8;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "rgba(6, 8, 15, 0.76)";
+    ctx.strokeStyle = `rgba(255, 211, 87, ${0.55 + pop * 0.28})`;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = "rgba(255, 211, 87, 0.36)";
+    ctx.shadowBlur = 8 + pop * 10;
+    ctx.fillRect(x, y, w, 26);
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, 25);
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#fff0b6";
+    ctx.shadowBlur = 0;
+    ctx.fillText(notice.label, x + 12, y + 14);
+    ctx.restore();
+  });
   ctx.restore();
 }
 
@@ -18225,6 +18874,22 @@ function drawMortalStampedeTelegraphs() {
     ctx.fillStyle = `rgba(255, 86, 76, ${0.18 + chargeT * 0.44})`;
     ctx.fillRect(fillX, y, fillW, h);
   }
+  ctx.restore();
+}
+
+function drawNightfallOverlay() {
+  if (!waveEffectActive("nightfall")) return;
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  const gradient = ctx.createLinearGradient(0, 0, 0, H);
+  gradient.addColorStop(0, "rgba(5, 12, 42, 0.5)");
+  gradient.addColorStop(0.48, "rgba(4, 9, 31, 0.4)");
+  gradient.addColorStop(1, "rgba(2, 5, 18, 0.3)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = "multiply";
+  ctx.fillStyle = "rgba(8, 18, 58, 0.28)";
+  ctx.fillRect(0, 0, W, H);
   ctx.restore();
 }
 
@@ -18641,6 +19306,7 @@ function drawOverlay() {
     drawCanvasMobileHud();
     drawItemHud();
     drawScoreComboHud();
+    drawTechniqueBonuses();
     if (state === "playing" || state === "paused") drawDashCooldownHud();
     drawWaveEffectBadges();
   }
@@ -18811,7 +19477,7 @@ function drawItemTutorialOverlay() {
   const panelX = (W - panelW) / 2;
   const panelY = (H - panelH) / 2 + 12;
   const bodyFont = "600 18px Segoe UI, Arial";
-  const lines = wrappedTextLines(tutorial.tip, panelW - 190, bodyFont);
+  const lines = wrappedTextLines(itemTooltipText(itemTutorial.type), panelW - 190, bodyFont);
   ctx.save();
   ctx.fillStyle = "rgba(4, 7, 12, 0.68)";
   ctx.fillRect(0, 0, W, H);
