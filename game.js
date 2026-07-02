@@ -14371,26 +14371,26 @@ function drawBeatriceMeleeKickTelegraph() {
   const pulse = pulseValue(12);
   ctx.save();
   ctx.globalAlpha = failFade;
-  ctx.globalCompositeOperation = "lighter";
-  ctx.fillStyle = beatriceBoss.meleeKickParryFailed ? "rgba(84, 84, 84, 0.24)" : "rgba(78, 0, 14, 0.28)";
+  ctx.fillStyle = beatriceBoss.meleeKickParryFailed ? "rgba(84, 84, 84, 1)" : "rgba(72, 5, 9, 0.5)";
   ctx.strokeStyle = beatriceBoss.meleeKickParryFailed
     ? "rgba(174, 174, 174, 0.54)"
     : playerInside
-      ? `rgba(255, 222, 83, ${0.58 + pulse * 0.24})`
-      : `rgba(255, 48, 68, ${0.5 + pulse * 0.18})`;
+      ? "rgba(255, 222, 83, 1)"
+      : `rgba(255, 70, 58, ${0.5 + pulse * 0.22})`;
   ctx.lineWidth = playerInside ? 4 : 2.5;
   ctx.fillRect(x, y, zone.w, zone.h);
   ctx.strokeRect(x, y, zone.w, zone.h);
   ctx.fillStyle = beatriceBoss.meleeKickParryFailed
-    ? "rgba(150, 150, 150, 0.16)"
-    : `rgba(255, 70, 74, ${0.1 + activeT * 0.38})`;
+    ? "rgba(150, 150, 150, 1)"
+    : `rgba(255, 86, 76, ${0.18 + activeT * 0.44})`;
   if (facing < 0) {
     ctx.fillRect(x + zone.w * (1 - activeT), y, zone.w * activeT, zone.h);
   } else {
     ctx.fillRect(x, y, zone.w * activeT, zone.h);
   }
   if (playerInside && !beatriceBoss.meleeKickParryFailed) {
-    ctx.strokeStyle = "rgba(255, 244, 155, 0.42)";
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = "rgba(255, 244, 155, 1)";
     ctx.lineWidth = 8;
     ctx.strokeRect(x - 3, y - 3, zone.w + 6, zone.h + 6);
   }
@@ -14623,15 +14623,13 @@ function drawBattlerEnemyAttackTelegraph(enemy, fade = 1) {
   if (!enemy || enemy.type === "goat" || enemy.dead || enemy.spawnGrace > 0 || enemy.attack <= 0 || (enemy.attackTelegraph || 0) <= 0) return;
   const t = 1 - clamp(enemy.attackTelegraph / ENEMY_ATTACK_TELEGRAPH_TIME, 0, 1);
   const pulse = 0.5 + Math.sin(performance.now() / 62) * 0.5;
-  const alpha = fade * (0.28 + t * 0.24 + pulse * 0.1);
   const baseX = enemy.x - cameraX + enemy.facing * 38;
   const baseY = enemy.y;
 
   ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = "rgba(82, 6, 12, 0.42)";
-  ctx.strokeStyle = `rgba(255, 78, 70, ${0.56 + pulse * 0.22})`;
+  ctx.globalAlpha = fade;
+  ctx.fillStyle = "rgba(72, 5, 9, 0.5)";
+  ctx.strokeStyle = `rgba(255, 70, 58, ${0.5 + pulse * 0.22})`;
   ctx.lineWidth = 2;
   ctx.translate(baseX, baseY);
   ctx.scale(enemy.facing, 1);
@@ -14644,7 +14642,7 @@ function drawBattlerEnemyAttackTelegraph(enemy, fade = 1) {
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = `rgba(255, 88, 72, ${0.12 + t * 0.28})`;
+    ctx.fillStyle = `rgba(255, 86, 76, ${0.18 + t * 0.44})`;
     ctx.beginPath();
     ctx.moveTo(0, -r * ENEMY_KICK_TELEGRAPH_Y_SCALE * t);
     ctx.ellipse(0, 0, r * t, r * ENEMY_KICK_TELEGRAPH_Y_SCALE * t, 0, -Math.PI / 2, Math.PI / 2);
@@ -14655,7 +14653,7 @@ function drawBattlerEnemyAttackTelegraph(enemy, fade = 1) {
     const depth = ENEMY_PUNCH_TELEGRAPH_DEPTH;
     ctx.fillRect(0, -depth, range, depth * 2);
     ctx.strokeRect(0, -depth, range, depth * 2);
-    ctx.fillStyle = `rgba(255, 88, 72, ${0.1 + t * 0.26})`;
+    ctx.fillStyle = `rgba(255, 86, 76, ${0.18 + t * 0.44})`;
     ctx.fillRect(0, -depth, range * t, depth * 2);
   }
   ctx.restore();
@@ -14989,30 +14987,30 @@ function drawBeatriceRingTelegraphs() {
     const y = ring.y;
     const radiusY = ring.radius * 0.42;
     ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.fillStyle = "rgba(84, 0, 12, 0.22)";
-    ctx.strokeStyle = `rgba(255, 42, 62, ${0.6 + pulse * 0.18})`;
+    ctx.fillStyle = "rgba(72, 5, 9, 0.5)";
+    ctx.strokeStyle = `rgba(255, 70, 58, ${0.5 + pulse * 0.22})`;
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.ellipse(x, y, ring.radius, radiusY, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = `rgba(255, 69, 72, ${0.12 + visibleT * 0.42})`;
+    ctx.fillStyle = `rgba(255, 86, 76, ${0.18 + visibleT * 0.44})`;
     ctx.beginPath();
     ctx.ellipse(x, y, ring.radius * visibleT, radiusY * visibleT, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = `rgba(255, 218, 218, ${0.18 + visibleT * 0.42})`;
+    ctx.strokeStyle = "rgba(255, 218, 218, 1)";
     ctx.lineWidth = 1.5 + visibleT * 2;
     ctx.beginPath();
     ctx.ellipse(x, y, ring.radius * (0.72 + visibleT * 0.28), radiusY * (0.72 + visibleT * 0.28), 0, 0, Math.PI * 2);
     ctx.stroke();
     if (ring.radius <= 28) {
-      ctx.fillStyle = `rgba(255, 235, 235, ${0.18 + visibleT * 0.48})`;
+      ctx.fillStyle = "rgba(255, 235, 235, 1)";
       ctx.beginPath();
       ctx.ellipse(x, y, ring.radius * visibleT, radiusY * visibleT, 0, 0, Math.PI * 2);
       ctx.fill();
     }
     if (beatriceBoss.mechanic === "towerVolley" || beatriceBoss.mechanic === "purgatorioLeviathan") {
+      ctx.globalCompositeOperation = "lighter";
       const timingRadius = leviathanRingParryTimingRadius(ring);
       const ready = leviathanTowerParryReady(ring);
       drawReflexParryGraceRing(x, y, BEATRICE_TOWER_LEVIATHAN_PARRY_RING_RADIUS, BEATRICE_TOWER_LEVIATHAN_PARRY_WINDOW, 0.82, 1.25);
@@ -15042,7 +15040,6 @@ function drawBeatriceGoatRushTelegraphs() {
   if (!beatriceBoss.active || beatriceBoss.mechanic !== "goatRush") return;
   const pulse = pulseValue(13);
   ctx.save();
-  ctx.globalCompositeOperation = "lighter";
   for (const lane of beatriceBoss.goatRushTelegraphs) {
     if (lane.spawned) continue;
     const chargeT = clamp((beatriceBoss.goatRushTimer - lane.startAt) / BEATRICE_GOAT_RUSH_TELEGRAPH_TIME, 0, 1);
@@ -15053,20 +15050,20 @@ function drawBeatriceGoatRushTelegraphs() {
     const fullW = W + 40;
     const fillW = fullW * chargeT;
     const fillX = lane.direction === 1 ? fullX : fullX + fullW - fillW;
-    ctx.fillStyle = "rgba(74, 5, 12, 0.48)";
-    ctx.strokeStyle = `rgba(255, 58, 54, ${0.52 + pulse * 0.24})`;
+    ctx.fillStyle = "rgba(72, 5, 9, 0.5)";
+    ctx.strokeStyle = `rgba(255, 70, 58, ${0.5 + pulse * 0.22})`;
     ctx.lineWidth = 2;
     ctx.fillRect(fullX, y, fullW, h);
     ctx.strokeRect(fullX, y, fullW, h);
-    ctx.fillStyle = `rgba(255, 84, 76, ${0.16 + chargeT * 0.46})`;
+    ctx.fillStyle = `rgba(255, 86, 76, ${0.18 + chargeT * 0.44})`;
     ctx.fillRect(fillX, y, fillW, h);
-    ctx.strokeStyle = `rgba(255, 228, 214, ${0.22 + chargeT * 0.48})`;
+    ctx.strokeStyle = "rgba(255, 228, 214, 1)";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(fillX, y + h * 0.5);
     ctx.lineTo(fillX + fillW, y + h * 0.5);
     ctx.stroke();
-    ctx.fillStyle = `rgba(255, 225, 205, ${0.22 + chargeT * 0.38})`;
+    ctx.fillStyle = "rgba(255, 225, 205, 1)";
     const arrowX = lane.direction === 1 ? fullX + 18 : fullX + fullW - 18;
     const arrowDir = lane.direction;
     ctx.beginPath();
@@ -15084,7 +15081,6 @@ function drawBeatriceTowerVolleyTelegraphs() {
   const volley = beatriceTowerVolley;
   const pulse = pulseValue(14);
   ctx.save();
-  ctx.globalCompositeOperation = "lighter";
   for (const point of volley.points) {
     if (point.struck) continue;
     const pointT = clamp((volley.timer - point.delay + BEATRICE_TOWER_VOLLEY_TELEGRAPH_TIME) / BEATRICE_TOWER_VOLLEY_TELEGRAPH_TIME, 0, 1);
@@ -15092,14 +15088,14 @@ function drawBeatriceTowerVolleyTelegraphs() {
     const x = point.x - cameraX;
     const y = point.y;
     const radius = BEATRICE_TOWER_VOLLEY_RADIUS;
-    ctx.fillStyle = "rgba(70, 0, 14, 0.24)";
-    ctx.strokeStyle = `rgba(255, 40, 58, ${0.42 + pulse * 0.16})`;
-    ctx.lineWidth = 1.4;
+    ctx.fillStyle = "rgba(72, 5, 9, 0.5)";
+    ctx.strokeStyle = `rgba(255, 70, 58, ${0.5 + pulse * 0.22})`;
+    ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.ellipse(x, y, radius, radius * 0.45, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = `rgba(255, 70, 70, ${0.1 + pointT * 0.28})`;
+    ctx.fillStyle = `rgba(255, 86, 76, ${0.18 + pointT * 0.44})`;
     ctx.beginPath();
     ctx.ellipse(x, y, radius * pointT, radius * 0.45 * pointT, 0, 0, Math.PI * 2);
     ctx.fill();
@@ -16265,14 +16261,14 @@ function drawBeatriceStakeReticles() {
     const pulse = pulseValue(11);
     const ready = stake.parryWindow > 0;
     ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.strokeStyle = ready ? `rgba(255, 238, 118, ${0.62 + pulse * 0.28})` : `rgba(255, 54, 72, ${0.56 + pulse * 0.22})`;
-    ctx.fillStyle = "rgba(255, 30, 48, 0.1)";
+    ctx.strokeStyle = ready ? "rgba(255, 238, 118, 1)" : `rgba(255, 70, 58, ${0.5 + pulse * 0.22})`;
+    ctx.fillStyle = "rgba(72, 5, 9, 0.5)";
     ctx.lineWidth = ready ? 4 : 3;
     ctx.beginPath();
     ctx.ellipse(x, y, BEATRICE_STAKE_RETICLE_RADIUS, BEATRICE_STAKE_RETICLE_RADIUS * 0.34, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
+    if (ready) ctx.globalCompositeOperation = "lighter";
     ctx.beginPath();
     ctx.ellipse(x, y, BEATRICE_STAKE_RETICLE_RADIUS * (0.56 + pulse * 0.08), BEATRICE_STAKE_RETICLE_RADIUS * (0.2 + pulse * 0.03), 0, 0, Math.PI * 2);
     ctx.stroke();
@@ -18211,7 +18207,6 @@ function drawMortalStampedeTelegraphs() {
   if (!waveEffectActive("mortalStampede") || !waveEffects.stampedeTelegraphs.length) return;
   const pulse = pulseValue(13);
   ctx.save();
-  ctx.globalCompositeOperation = "lighter";
   for (const lane of waveEffects.stampedeTelegraphs) {
     if (lane.spawned) continue;
     const chargeT = clamp(lane.timer / MORTAL_STAMPEDE_TELEGRAPH_TIME, 0, 1);
@@ -18222,12 +18217,12 @@ function drawMortalStampedeTelegraphs() {
     const fullW = W + 40;
     const fillW = fullW * chargeT;
     const fillX = lane.direction === 1 ? fullX : fullX + fullW - fillW;
-    ctx.fillStyle = "rgba(74, 5, 12, 0.48)";
-    ctx.strokeStyle = `rgba(255, 58, 54, ${0.52 + pulse * 0.24})`;
+    ctx.fillStyle = "rgba(72, 5, 9, 0.5)";
+    ctx.strokeStyle = `rgba(255, 70, 58, ${0.5 + pulse * 0.22})`;
     ctx.lineWidth = 2;
     ctx.fillRect(fullX, y, fullW, h);
     ctx.strokeRect(fullX, y, fullW, h);
-    ctx.fillStyle = `rgba(255, 84, 76, ${0.16 + chargeT * 0.46})`;
+    ctx.fillStyle = `rgba(255, 86, 76, ${0.18 + chargeT * 0.44})`;
     ctx.fillRect(fillX, y, fillW, h);
   }
   ctx.restore();
