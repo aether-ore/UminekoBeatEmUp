@@ -35,6 +35,10 @@ const PLAYER_SCALE = 1.45;
 const SPECIAL_BEAM_DRAIN = 42;
 const SPECIAL_BEAM_DAMAGE = 38;
 const PARRY_RESOLVE_GAIN = 15;
+const WITCH_TIME_DURATION = 1;
+const WITCH_TIME_ENEMY_TIME_SCALE = 0.5;
+const WITCH_TIME_RESOLVE_REGEN_PER_SECOND = 18;
+const WITCH_TIME_REVERSAL_RESOLVE_MULTIPLIER = 1.25;
 const CHARGED_ATTACK_HOLD_TIME = 0.34;
 const CHARGED_ATTACK_RESOLVE_COST = 25;
 const DODGE_ATTACK_STARTUP_TIME = 0.34;
@@ -50,11 +54,18 @@ const DODGE_ATTACK_DEPTH = 76;
 const DODGE_ATTACK_SHOCKWAVE_OFFSET = 94;
 const DODGE_ATTACK_LAUNCH_LIFT = 285;
 const DODGE_ATTACK_LAUNCH_DRIFT = 120;
+const DODGE_ATTACK_RESOLVE_COST = 25;
+const DODGE_ATTACK_DAMAGE = 22;
 const SUPER_CHARGE_DAMAGE_MULTIPLIER = 1.25;
 const SUPER_CHARGE_SHOCKWAVE_RADIUS = 220;
 const SUPER_CHARGE_SHOCKWAVE_LIFT = 430;
 const SUPER_CHARGE_SHOCKWAVE_DRIFT = 150;
 const SUPER_CHARGE_BEATRICE_BARRIER_FRACTION = 0.25;
+const SUPER_CHARGE_TRAVEL_DURATION = 0.38;
+const SUPER_CHARGE_SHRINK_DURATION = 0.12;
+const SUPER_CHARGE_REAPPEAR_DURATION = 0.12;
+const SUPER_CHARGE_KONPEITO_RING_LIFE = 0.42;
+const SUPER_CHARGE_TARGET_STOP_OFFSET = 168;
 const RESOLVE_GAIN_MULTIPLIER = 0.5;
 const DUO_CHARGE_TIME = 1.35;
 const DUO_STAGE_DURATION = 0.78;
@@ -139,19 +150,33 @@ const TECHNIQUE_BONUSES = {
   combo4: { label: "4 Hit Combo", amount: 500 },
   combo10: { label: "10 Hit Combo", amount: 1500 },
   parry: { label: "Parry", amount: 2000 },
+  witchTime: { label: "Witch Time", amount: 1000 },
   specialFinish: { label: "Special Finish", amount: 3000 }
 };
 const ITEM_DROP_RATES = {
   crystalShard: 1,
+  resolveFlame: 0.65,
+  resolveFlameLarge: 0.12,
   konpeito: 0.7,
   plumTea: 0.55,
   oneWingedEagle: 0.45,
   goldenBroochRight: 0.45,
   goldenBroochLeft: 0.45
 };
+const TRANSIENT_ENEMY_DROP_TYPES = new Set(["resolveFlame", "resolveFlameLarge"]);
+const RESOLVE_FLAME_GAIN = 10;
+const RESOLVE_FLAME_LARGE_GAIN = 25;
+const BEATRICE_BOSS_RESOLVE_PICKUP_LIFE = 24;
+const BEATRICE_BOSS_RESOLVE_PICKUP_EDGE_PAD = 132;
+const BEATRICE_BOSS_RESOLVE_MECHANICS = new Set(["teleportAttack", "goatTrial", "goatRush", "towerVolley", "ringAttack"]);
 const MAX_ACTIVE_COMPANIONS = 2;
 const COMPANION_ITEM_TYPES = new Set(["konpeito", "plumTea", "goldenBroochRight", "goldenBroochLeft"]);
 const ITEM_TUTORIALS = {
+  resolveFlame: {
+    title: "Resolve Flame",
+    label: "RESOLVE",
+    tip: "Restores Resolve when picked up. Resolve can be consumed to unleash powerful Special attacks capable of destroying the witch's magical barrier."
+  },
   crystalShard: {
     title: "Crystal Shard",
     label: "SHARD",
@@ -261,6 +286,12 @@ BERN_BLESSINGS.push(
     text: "Crystal shards erupt upward after impact, catching enemies in a second strike."
   },
   {
+    id: "miracleWitchHuntingStake",
+    source: "Bernkastel",
+    title: "Blessing of Miracles: Witch-hunting Stake",
+    text: "Stage 3 punch erupts into a cyan geyser and fires three angled crystal stakes, one of which can pierce Beatrice's barrier."
+  },
+  {
     id: "miracleRisk",
     source: "Bernkastel",
     title: "Blessing of Miracles: Cruel Equation",
@@ -310,6 +341,18 @@ const CRYSTAL_SHARD_PLUS_RADIUS = 96;
 const CRYSTAL_SHARD_PLUS_LIFT = 330;
 const CRYSTAL_SHARD_PLUS_DRIFT = 78;
 const CRYSTAL_SHARD_PLUS_EXIT_MARGIN = 170;
+const WITCH_HUNTING_STAKE_GEYSER_DAMAGE = 18;
+const WITCH_HUNTING_STAKE_GEYSER_RANGE = 292;
+const WITCH_HUNTING_STAKE_GEYSER_DEPTH = 116;
+const WITCH_HUNTING_STAKE_GEYSER_LIFT = 430;
+const WITCH_HUNTING_STAKE_GEYSER_DRIFT = 150;
+const WITCH_HUNTING_STAKE_GEYSER_LIFE = 0.48;
+const WITCH_HUNTING_STAKE_SHARD_DAMAGE = 18;
+const WITCH_HUNTING_STAKE_SHARD_SPEED = 760;
+const WITCH_HUNTING_STAKE_SHARD_LIFE = 0.95;
+const WITCH_HUNTING_STAKE_SHARD_RADIUS = 42;
+const WITCH_HUNTING_STAKE_BARRIER_SHARD_RADIUS = 60;
+const WITCH_HUNTING_STAKE_BARRIER_DAMAGE_FRACTION = 0.25;
 const GOAT_POUND_DAMAGE = 32;
 const GOAT_POUND_DETECTION_RANGE = 210;
 const GOAT_POUND_RANGE = 138;
@@ -322,6 +365,7 @@ const GOAT_POUND_LIFT = 500;
 const GOAT_POUND_DRIFT = 210;
 const GOAT_POUND_QUAKE_DELAY = 0.16;
 const GOAT_POUND_QUAKE_DURATION = 0.42;
+const GOAT_POUND_QUAKE_HIT_DURATION = 0.22;
 const GOAT_POUND_QUAKE_RANGE = 260;
 const GOAT_POUND_QUAKE_SEMICIRCLE_Y_SCALE = 0.58;
 const GOAT_POUND_QUAKE_MAX_LANE_ANGLE = Math.PI / 7;
@@ -390,7 +434,7 @@ const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_DAMAGE = 24;
 const LAMBDA_SPECIAL_KONPEITO_SHRAPNEL_RADIUS = 46;
 const LAMBDA_SPECIAL_KONPEITO_DURATION = 1.62;
 const LAMBDA_SPECIAL_KONPEITO_HIT_RADIUS = 52;
-const LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_DAMAGE = 150;
+const LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_DAMAGE = 80;
 const LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_DURATION = 0.58;
 const LAMBDA_SPECIAL_KONPEITO_FINAL_BURST_RADIUS = Math.hypot(W, H) * 1.16;
 const LAMBDA_SPECIAL_KONPEITO_LAUNCH_SPEED = 760;
@@ -631,7 +675,9 @@ const DEBUG_START_WITH_SUPER_CHARGE = false;
 const DEBUG_START_WITH_CANDY_CATACLYSM = false;
 const DEBUG_START_WITH_CRYSTAL_FOLLOWUP = false;
 const DEBUG_START_WITH_CRYSTAL_SHARD_PLUS = false;
+const DEBUG_START_WITH_WITCH_HUNTING_STAKE = false;
 const DEBUG_FORCE_NIGHTFALL_WAVE = false;
+const DEBUG_FORCE_FIRST_ENEMY_RESOLVE_DROP = false;
 const BERN_CAT_FADE_TIME = 0.34;
 const BERN_CAT_SHEET_CELL = 209;
 const BERN_CAT_SHEET_COLS = 6;
@@ -689,7 +735,9 @@ const DEBUG_FLAG_DEFS = [
   { key: "startWithCandyCataclysm", label: "Start With Candy Cataclysm", defaultValue: DEBUG_START_WITH_CANDY_CATACLYSM },
   { key: "startWithCrystalFollowup", label: "Start With Crystal Follow-up", defaultValue: DEBUG_START_WITH_CRYSTAL_FOLLOWUP },
   { key: "startWithCrystalShardPlus", label: "Start With Crystal Shard+", defaultValue: DEBUG_START_WITH_CRYSTAL_SHARD_PLUS },
+  { key: "startWithWitchHuntingStake", label: "Start With Witch-hunting Stake", defaultValue: DEBUG_START_WITH_WITCH_HUNTING_STAKE },
   { key: "forceNightfallWave", label: "Force Nightfall Wave", defaultValue: DEBUG_FORCE_NIGHTFALL_WAVE },
+  { key: "forceFirstEnemyResolveDrop", label: "First Enemy Drops Resolve Flame", defaultValue: DEBUG_FORCE_FIRST_ENEMY_RESOLVE_DROP },
   { key: "juggledKonpeitoTargetsLambda", label: "Auto-target Juggled Konpeito To Lambda", defaultValue: DEBUG_JUGGLED_KONPEITO_TARGETS_LAMBDA }
 ];
 const DEBUG_CHEAT_ALPHA = ["w", "w", "s", "s", "a", "d", "a", "d"];
@@ -750,6 +798,7 @@ const KANON_SUMMON_ATTACK_START_OFFSET = 42;
 const KANON_SUMMON_ATTACK_END_OFFSET = 126;
 const KANON_ATTACK_INTERVAL = 4;
 const KANON_ATTACK_MAX_CHARGE = 300;
+const KANON_STAGE_COMBO_WINDOW = 5;
 const KANON_ATTACK_DAMAGE = 50;
 const KANON_ATTACK_RANGE = 210;
 const KANON_ATTACK_DEPTH = 108;
@@ -786,6 +835,7 @@ const KANON_RECOVERY_HOP_HEIGHT = 255;
 const KANON_RECOVERY_HOP_START_HEIGHT = 118;
 const KANON_RECOVERY_HOP_MIN = 0.78;
 const KANON_RECOVERY_HOP_MAX = 1.16;
+const KANON_RECOVERY_HOP_MAX_DISTANCE = 560;
 const KANON_RUN_SPEED = 430;
 const KANON_RUN_START_DISTANCE = W * 0.27;
 const KANON_RUN_STOP_DISTANCE = 190;
@@ -954,7 +1004,7 @@ const attackData = {
   punch3: { kind: "punch", stage: 3, lock: 0.72, range: 220, depth: 78, damage: 24, gain: 18, activeFrames: [340, 342, 341], knockdown: true, launch: true, lunge: 118 },
   kick3: { kind: "kick", stage: 3, lock: 1.15, range: 250, depth: 88, damage: 28, gain: 20, activeFrames: [296], knockdown: true, groundBounce: true, launchLift: STAGE3_KICK_BOUNCE_LIFT, launchDrift: STAGE3_KICK_BOUNCE_DRIFT },
   dashPunch: { kind: "dashPunch", lock: 0.34, range: 260, depth: 72, damage: 8, gain: 16, activeFrames: [348, 349], knockdown: true, launch: true, launchLift: 500, launchDrift: 260, lunge: 150 },
-  dodgeAttack: { kind: "dodgeAttack", lock: DODGE_ATTACK_STARTUP_TIME + DODGE_ATTACK_ACTIVE_TIME, range: DODGE_ATTACK_RANGE, depth: DODGE_ATTACK_DEPTH, damage: 8, gain: 8, activeFrames: [366], dodgeAttack: true, launchLift: DODGE_ATTACK_LAUNCH_LIFT, launchDrift: DODGE_ATTACK_LAUNCH_DRIFT },
+  dodgeAttack: { kind: "dodgeAttack", lock: DODGE_ATTACK_STARTUP_TIME + DODGE_ATTACK_ACTIVE_TIME, range: DODGE_ATTACK_RANGE, depth: DODGE_ATTACK_DEPTH, damage: DODGE_ATTACK_DAMAGE, gain: 15, activeFrames: [366], dodgeAttack: true, launchLift: DODGE_ATTACK_LAUNCH_LIFT, launchDrift: DODGE_ATTACK_LAUNCH_DRIFT },
   special: { lock: 0.7, activeFrames: [] }
 };
 const enemyAttackData = {
@@ -1577,6 +1627,8 @@ const techniqueBonusPopups = [];
 const techniqueNotifications = [];
 let currentTechniqueEventId = 0;
 const currentTechniqueAwards = new Set();
+let witchTimeTimer = 0;
+let witchTimeFlashTimer = 0;
 const perfectFlourishes = [];
 const beatriceTutorial = {
   active: false,
@@ -1611,6 +1663,9 @@ const pendingMiracleCrystalFollowups = [];
 const upwardCrystalShards = [];
 const crystalTrails = [];
 const crystalShockwaves = [];
+const witchHuntingStakeGeysers = [];
+const witchHuntingStakeShards = [];
+const superChargeKonpeitoRings = [];
 const konpeitoShots = [];
 const konpeitoShockwaves = [];
 const konpeitoGeysers = [];
@@ -1804,6 +1859,9 @@ let lastScoreBlessingAt = 0;
 let scoreBlessingsEarned = 0;
 const scoreBlessingQueue = [];
 let scoreBlessingWaitingForPerfectFlourish = false;
+let scoreBlessingDeferredUntilWaveEnd = false;
+let debugResolveFlameDroppedThisWave = false;
+let beatriceResolvePickupMechanic = "";
 
 function resetRunStats() {
   runStats.wavesCompleted = 0;
@@ -1886,6 +1944,59 @@ function awardTechniqueBonus(id, label = "", amount = 0, options = {}) {
   return true;
 }
 
+function witchTimeActive() {
+  return witchTimeTimer > 0;
+}
+
+function enemyDt(dt) {
+  return witchTimeActive() ? dt * WITCH_TIME_ENEMY_TIME_SCALE : dt;
+}
+
+function isDodgeInvulnerabilityActive() {
+  return state === "playing"
+    && player.runState === "dodging"
+    && (player.invuln || 0) > 0
+    && (player.dashInvulnTimer || 0) > 0
+    && !player.airborne
+    && !player.knockedDown;
+}
+
+function tryTriggerWitchTime(source = "") {
+  if (!isDodgeInvulnerabilityActive()) return false;
+  const wasActive = witchTimeActive();
+  witchTimeTimer = WITCH_TIME_DURATION;
+  witchTimeFlashTimer = Math.max(witchTimeFlashTimer, 0.22);
+  if (!wasActive) {
+    beginTechniqueEvent();
+    awardTechniqueBonus("witchTime");
+  }
+  return true;
+}
+
+function reversalResolveBonusActive() {
+  return witchTimeActive()
+    && beatriceBoss.active
+    && beatriceBoss.vulnerable
+    && !beatriceBoss.barrierActive;
+}
+
+function gainResolve(amount, options = {}) {
+  if (!amount || amount <= 0) return 0;
+  const multiplier = options.reversalBonus === false || !reversalResolveBonusActive()
+    ? 1
+    : WITCH_TIME_REVERSAL_RESOLVE_MULTIPLIER;
+  const before = player.resolve;
+  player.resolve = clamp(player.resolve + amount * multiplier, 0, 100);
+  return player.resolve - before;
+}
+
+function updateWitchTime(dt) {
+  if (witchTimeFlashTimer > 0) witchTimeFlashTimer = Math.max(0, witchTimeFlashTimer - dt);
+  if (!witchTimeActive()) return;
+  witchTimeTimer = Math.max(0, witchTimeTimer - dt);
+  gainResolve(WITCH_TIME_RESOLVE_REGEN_PER_SECOND * dt, { reversalBonus: false });
+}
+
 function targetInHitChainState(target) {
   if (!target) return false;
   if (target.isBeatrice || target === beatriceBoss) {
@@ -1963,6 +2074,7 @@ function resetScoreProgression() {
   scoreBlessingsEarned = 0;
   scoreBlessingQueue.length = 0;
   scoreBlessingWaitingForPerfectFlourish = false;
+  scoreBlessingDeferredUntilWaveEnd = false;
   scoreCombo.lastBanked = 0;
   scoreCombo.lastMultiplier = 1;
   resetScoreCombo(true);
@@ -2134,7 +2246,7 @@ function scoreRewardItemChoice() {
       healthReward: true
     };
   }
-  const type = chooseItemDrop() || "crystalShard";
+  const type = chooseItemDrop({ includeTransient: false }) || "crystalShard";
   const tutorial = ITEM_TUTORIALS[type] || ITEM_TUTORIALS.crystalShard;
   return {
     id: `item:${type}`,
@@ -2155,6 +2267,7 @@ function isBlessingRollable(blessing) {
   if (blessing.id === "lambdaKonpeitoSpecial") return !player.blessings.lambdaKonpeitoSpecial;
   if (blessing.id === "miracleShardFollowup") return !player.blessings.miracleShardFollowup;
   if (blessing.id === "miracleCrystalShardPlus") return !player.blessings.miracleCrystalShardPlus;
+  if (blessing.id === "miracleWitchHuntingStake") return !player.blessings.miracleWitchHuntingStake;
   if (blessing.id === "miracleRisk") return !player.blessings.miracleRisk;
   if (blessing.id === "lambdaWitchTime") {
     return player.konpeitoActive
@@ -2187,7 +2300,7 @@ function scoreBlessingOptions() {
   ];
 }
 
-function queueScoreBlessingChoices({ waitForPerfectFlourish = false } = {}) {
+function queueScoreBlessingChoices({ releaseNow = false, waitForPerfectFlourish = false } = {}) {
   let queued = false;
   while (score >= nextScoreBlessingAt) {
     scoreBlessingQueue.push(true);
@@ -2196,7 +2309,12 @@ function queueScoreBlessingChoices({ waitForPerfectFlourish = false } = {}) {
     nextScoreBlessingAt += SCORE_BLESSING_STEP + SCORE_BLESSING_STEP_GROWTH * scoreBlessingsEarned;
     queued = true;
   }
-  if (waitForPerfectFlourish && queued) {
+  if (!releaseNow) {
+    if (queued || scoreBlessingQueue.length > 0) scoreBlessingDeferredUntilWaveEnd = true;
+    return;
+  }
+  scoreBlessingDeferredUntilWaveEnd = false;
+  if (waitForPerfectFlourish && scoreBlessingQueue.length > 0) {
     scoreBlessingWaitingForPerfectFlourish = true;
     return;
   }
@@ -2204,6 +2322,7 @@ function queueScoreBlessingChoices({ waitForPerfectFlourish = false } = {}) {
 }
 
 function maybeStartScoreBlessingChoice() {
+  if (scoreBlessingDeferredUntilWaveEnd) return false;
   if (scoreBlessingWaitingForPerfectFlourish && perfectFlourishes.length > 0) return false;
   scoreBlessingWaitingForPerfectFlourish = false;
   if (state !== "playing" || bossBlessingChoice.active || !scoreBlessingQueue.length) return false;
@@ -2236,7 +2355,12 @@ function bankScoreCombo({ waveEnd = false, allowRewards = true } = {}) {
   if (waveEnd) finalizeWaveStats(scoreAdded, scoreCombo.perfectEligible);
   if (scoreAdded > 0) animateScoreToCurrent(wasPerfectWave ? 1.18 : 0.72);
   resetScoreCombo(!waveEnd);
-  if (allowRewards) queueScoreBlessingChoices({ waitForPerfectFlourish: wasPerfectWave });
+  if (allowRewards) {
+    queueScoreBlessingChoices({
+      releaseNow: waveEnd,
+      waitForPerfectFlourish: wasPerfectWave
+    });
+  }
 }
 
 function breakPerfectAndBankCombo() {
@@ -2383,6 +2507,14 @@ function damageBeatriceBarrierWithSpecial(amount, direction = player.facing || 1
   return true;
 }
 
+function damageBeatriceBarrierWithSpecialRecoil(amount, direction = player.facing || 1, contact = null) {
+  const hit = damageBeatriceBarrierWithSpecial(amount, direction, contact);
+  if (hit && beatriceBoss.barrierActive) {
+    startBeatriceSuperChargeBarrierRecoil(direction);
+  }
+  return hit;
+}
+
 function kanonHitBeatriceInEllipse(originX, originY, facing, range, depth, source, damage, lift, drift) {
   if (!beatriceCanBeDamaged()) return false;
   const box = beatriceHurtbox();
@@ -2411,9 +2543,176 @@ function applyCrystalShardBeatriceHit(x, y, radius, damage, direction = player.f
     }
   }
   if (circleTouchesBeatriceBarrier(x, y, radius)) {
-    return damageBeatriceBarrierWithSpecial(CRYSTAL_SHARD_BEATRICE_BARRIER_DAMAGE, direction);
+    return true;
   }
   return false;
+}
+
+function circleTouchesRect(x, y, radius, rect, yScale = 1) {
+  const closestX = clamp(x, rect.x, rect.x + rect.w);
+  const closestY = clamp(y, rect.y, rect.y + rect.h);
+  return Math.hypot(closestX - x, (closestY - y) * yScale) <= radius;
+}
+
+function triggerWitchHuntingStake(kind, data) {
+  if (kind !== "punch3" || !data?.activeFrames || !player.blessings.miracleWitchHuntingStake || player.witchHuntingStakeFired) return false;
+  player.witchHuntingStakeFired = true;
+  const facing = player.facing || 1;
+  const source = "battler:punch3:witchHuntingStake";
+  const originX = clamp(player.x + facing * 92, 80, STAGE_W - 120);
+  const originY = player.y;
+  let hit = false;
+
+  witchHuntingStakeGeysers.push({
+    x: originX,
+    y: originY,
+    facing,
+    life: WITCH_HUNTING_STAKE_GEYSER_LIFE,
+    max: WITCH_HUNTING_STAKE_GEYSER_LIFE,
+    seed: Math.random() * 1000
+  });
+  screenShakeTimer = Math.max(screenShakeTimer, 0.16);
+
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0 || (!enemy.airborne && enemy.hurt > 0)) continue;
+    const forward = (enemy.x - player.x) * facing;
+    const dy = Math.abs((enemy.y - originY) * 0.72);
+    if (forward < -42 || forward > WITCH_HUNTING_STAKE_GEYSER_RANGE || dy > WITCH_HUNTING_STAKE_GEYSER_DEPTH) continue;
+    const uninterruptibleRushGoat = isUninterruptibleBeatriceRushGoat(enemy);
+    damageEnemy(enemy, WITCH_HUNTING_STAKE_GEYSER_DAMAGE, { source });
+    if (uninterruptibleRushGoat) {
+      enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.14);
+    } else {
+      launchEnemyByBattlerRules(enemy, facing, source, WITCH_HUNTING_STAKE_GEYSER_LIFT, WITCH_HUNTING_STAKE_GEYSER_DRIFT);
+    }
+    burst(enemy.x, enemy.y - (enemy.type === "goat" ? 180 : 88), "special");
+    if (enemy.hp <= 0) defeatEnemy(enemy);
+    hit = true;
+  }
+
+  if (beatriceCanBeDamaged()) {
+    const box = beatriceHurtbox();
+    const centerX = box.x + box.w * 0.5;
+    const centerY = box.y + box.h * 0.5;
+    const forward = (centerX - player.x) * facing;
+    const dy = Math.abs((centerY - originY) * 0.58);
+    if (forward >= -42 && forward <= WITCH_HUNTING_STAKE_GEYSER_RANGE + 44 && dy <= WITCH_HUNTING_STAKE_GEYSER_DEPTH + 64) {
+      const dealt = damageBeatrice(WITCH_HUNTING_STAKE_GEYSER_DAMAGE, facing, { source });
+      if (dealt > 0) {
+        launchBeatriceByBattlerRules(facing, source, WITCH_HUNTING_STAKE_GEYSER_LIFT, WITCH_HUNTING_STAKE_GEYSER_DRIFT);
+        if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
+        hit = true;
+      }
+    }
+  }
+
+  spawnWitchHuntingStakeShard(originX, originY - 72, facing, 15, "juggle");
+  spawnWitchHuntingStakeShard(originX, originY - 82, facing, 45, "barrier");
+  spawnWitchHuntingStakeShard(originX, originY - 74, facing, 75, "relaunch");
+  return hit;
+}
+
+function spawnWitchHuntingStakeShard(x, y, facing, angleDeg, kind) {
+  const angle = angleDeg * Math.PI / 180;
+  const speed = WITCH_HUNTING_STAKE_SHARD_SPEED * (kind === "barrier" ? 0.92 : 1);
+  witchHuntingStakeShards.push({
+    x,
+    y,
+    vx: Math.cos(angle) * speed * facing,
+    vy: -Math.sin(angle) * speed,
+    facing,
+    angleDeg,
+    kind,
+    life: WITCH_HUNTING_STAKE_SHARD_LIFE * (kind === "barrier" ? 1.15 : 1),
+    max: WITCH_HUNTING_STAKE_SHARD_LIFE * (kind === "barrier" ? 1.15 : 1),
+    touched: new Set(),
+    trail: [{ x, y }]
+  });
+}
+
+function updateWitchHuntingStakeEffects(dt) {
+  for (let i = witchHuntingStakeGeysers.length - 1; i >= 0; i--) {
+    const geyser = witchHuntingStakeGeysers[i];
+    geyser.life -= dt;
+    if (geyser.life <= 0) witchHuntingStakeGeysers.splice(i, 1);
+  }
+
+  for (let i = witchHuntingStakeShards.length - 1; i >= 0; i--) {
+    const shard = witchHuntingStakeShards[i];
+    if (shard.kind === "barrier" && beatriceBarrierCanBeDamagedBySpecial()) {
+      const barrier = beatriceBarrierBounds();
+      const dx = barrier.centerX - shard.x;
+      const dy = barrier.centerY - shard.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const speed = Math.hypot(shard.vx, shard.vy) || WITCH_HUNTING_STAKE_SHARD_SPEED;
+      const steer = clamp(dt * 5.8, 0, 0.22);
+      shard.vx = shard.vx * (1 - steer) + (dx / len) * speed * steer;
+      shard.vy = shard.vy * (1 - steer) + (dy / len) * speed * steer;
+    } else {
+      shard.vy += 110 * dt;
+    }
+    shard.x += shard.vx * dt;
+    shard.y += shard.vy * dt;
+    shard.life -= dt;
+    shard.trail.push({ x: shard.x, y: shard.y });
+    if (shard.trail.length > (shard.kind === "barrier" ? 9 : 6)) shard.trail.shift();
+
+    const radius = shard.kind === "barrier" ? WITCH_HUNTING_STAKE_BARRIER_SHARD_RADIUS : WITCH_HUNTING_STAKE_SHARD_RADIUS;
+    if (shard.kind === "barrier" && circleTouchesBeatriceBarrier(shard.x, shard.y, radius)) {
+      const direction = Math.sign(beatriceBoss.x - player.x) || shard.facing || 1;
+      const amount = (beatriceBoss.barrierMax || BEATRICE_BARRIER_MAX) * WITCH_HUNTING_STAKE_BARRIER_DAMAGE_FRACTION;
+      damageBeatriceBarrierWithSpecialRecoil(amount, direction, { x: shard.x, y: shard.y });
+      burst(shard.x, shard.y, "special");
+      witchHuntingStakeShards.splice(i, 1);
+      continue;
+    }
+
+    for (const enemy of enemies) {
+      if (enemy.dead || enemy.spawnGrace > 0 || shard.touched.has(enemy)) continue;
+      if (!circleTouchesRect(shard.x, shard.y, radius, enemyHurtbox(enemy), 0.76)) continue;
+      shard.touched.add(enemy);
+      const direction = Math.sign(enemy.x - player.x) || shard.facing || 1;
+      const uninterruptibleRushGoat = isUninterruptibleBeatriceRushGoat(enemy);
+      const source = `battler:punch3:witchHuntingStake:${shard.kind}`;
+      damageEnemy(enemy, WITCH_HUNTING_STAKE_SHARD_DAMAGE, { source });
+      if (uninterruptibleRushGoat) {
+        enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.14);
+      } else if (shard.kind === "juggle") {
+        if (enemy.airborne) {
+          extendEnemyLaunch(enemy, direction, source, 270, 92);
+        } else {
+          cancelEnemyAttackTelegraph(enemy, 0.18);
+          enemy.hurt = Math.max(enemy.hurt || 0, 0.22);
+        }
+      } else if (shard.kind === "relaunch") {
+        if (enemy.airborne || (enemy.z || 0) > 0) {
+          launchEnemyByBattlerRules(enemy, direction, source, 390, 130);
+        } else {
+          cancelEnemyAttackTelegraph(enemy, 0.18);
+          enemy.hurt = Math.max(enemy.hurt || 0, 0.2);
+        }
+      } else {
+        launchEnemyByBattlerRules(enemy, direction, source, 420, 145);
+      }
+      burst(enemy.x, enemy.y - (enemy.type === "goat" ? 180 : 86), "special");
+      if (enemy.hp <= 0) defeatEnemy(enemy);
+    }
+
+    if (shard.kind === "barrier" && beatriceCanBeDamaged() && circleTouchesRect(shard.x, shard.y, radius, beatriceHurtbox(), 0.76)) {
+      const direction = Math.sign(beatriceBoss.x - player.x) || shard.facing || 1;
+      const dealt = damageBeatrice(WITCH_HUNTING_STAKE_SHARD_DAMAGE, direction, { source: "battler:punch3:witchHuntingStake:barrier" });
+      if (dealt > 0) {
+        launchBeatriceByBattlerRules(direction, "battler:punch3:witchHuntingStake:barrier", 420, 145);
+        if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
+        witchHuntingStakeShards.splice(i, 1);
+        continue;
+      }
+    }
+
+    if (shard.life <= 0 || shard.x < cameraX - 220 || shard.x > cameraX + W + 220 || shard.y < -260 || shard.y > H + 160) {
+      witchHuntingStakeShards.splice(i, 1);
+    }
+  }
 }
 
 function damageBeatrice(amount, direction = 0, options = {}) {
@@ -2774,6 +3073,7 @@ function collectedBlessingRows() {
   if ((b.miracleRevival || 0) > 0) add("Bernkastel", "Revival", `${b.miracleRevival} stocked revival${b.miracleRevival === 1 ? "" : "s"}`, "purple");
   if (b.miracleShardFollowup) add("Bernkastel", "Crystal Follow-Up", "Stage 3 attacks call down a delayed crystal shard.", "purple");
   if (b.miracleCrystalShardPlus) add("Bernkastel", "Crystal Shard+", "Crystal shards erupt upward after impact.", "purple");
+  if (b.miracleWitchHuntingStake) add("Bernkastel", "Witch-hunting Stake", "Stage 3 punch erupts into a cyan geyser and angled crystal stakes.", "purple");
   if (b.miracleRisk) add("Bernkastel", "Cruel Equation", "+50% damage dealt and +50% damage taken.", "purple");
   if ((b.miracleMaxHealth || 0) > 0) add("Bernkastel", "Max Health Up", `+${Math.round((b.miracleMaxHealth || 0) * 10)}% max health`, "purple");
   if ((b.miracleReflex || 0) > 0) add("Bernkastel", "Reflex", `+${Math.round((b.miracleReflex || 0) * MIRACLE_REFLEX_PER_STACK * 100)}% parry timing grace`, "purple");
@@ -2901,12 +3201,23 @@ const kanonCompanion = {
   attackTargetY: FLOOR_Y,
   attackHitDone: false,
   attackSegmentsSpent: 0,
+  attackStage: 0,
+  comboStage: 0,
+  comboWindowTimer: 0,
+  pendingStageTrigger: false,
+  pendingStage: 0,
+  pendingStageTarget: null,
+  lastTriggerEventId: -1,
   uppercutHitDone: false,
   uppercutArcSpawned: false,
   finisherArcSpawned: false,
   airOffset: 0,
   recoveryHopTimer: 0,
   recoveryHopDuration: 0,
+  recoveryStartX: 0,
+  recoveryStartY: FLOOR_Y,
+  recoveryTargetX: 0,
+  recoveryTargetY: FLOOR_Y,
   savePending: null,
   saveResolved: false
 };
@@ -2937,9 +3248,11 @@ const player = {
   attackLock: 0,
   attackHasHit: false,
   crestAttackHasHit: false,
+  witchHuntingStakeFired: false,
   superChargeShockwaveDone: false,
   superChargeAttackActive: false,
   pendingSuperChargeAttack: false,
+  superChargeTravel: null,
   comboStep: 0,
   comboTimer: 0,
   comboQueuedKind: "",
@@ -3026,6 +3339,7 @@ const player = {
     miracleRevival: 0,
     miracleShardFollowup: false,
     miracleCrystalShardPlus: false,
+    miracleWitchHuntingStake: false,
     miracleRisk: false,
     miracleMaxHealth: 0,
     miracleReflex: 0,
@@ -3048,7 +3362,7 @@ function playerReflexBonus() {
 }
 
 function grantParryResolve() {
-  player.resolve = clamp(player.resolve + PARRY_RESOLVE_GAIN, 0, 100);
+  gainResolve(PARRY_RESOLVE_GAIN, { reversalBonus: false });
 }
 
 function reflexParryOuterBonus(radius, multiplier = 1) {
@@ -3976,8 +4290,13 @@ function eagleCrestLevelScale() {
   return EAGLE_CREST_MIN_RANGE_SCALE + (1 - EAGLE_CREST_MIN_RANGE_SCALE) * t;
 }
 
-function chooseItemDrop() {
-  const entries = Object.entries(ITEM_DROP_RATES).filter(([type, weight]) => weight > 0 && canAcquireCompanionItem(type));
+function chooseItemDrop(options = {}) {
+  const { includeTransient = true } = options;
+  const entries = Object.entries(ITEM_DROP_RATES).filter(([type, weight]) => {
+    if (weight <= 0) return false;
+    if (!includeTransient && TRANSIENT_ENEMY_DROP_TYPES.has(type)) return false;
+    return canAcquireCompanionItem(type);
+  });
   const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
   if (!total) return null;
   let roll = Math.random() * total;
@@ -3991,20 +4310,132 @@ function chooseItemDrop() {
 function maybeDropEnemyItem(enemy) {
   if (waveMode === "boss") return;
   if (enemy && enemy.bossMechanic === "mortalStampede") return;
+  if (debugFlag("forceFirstEnemyResolveDrop") && !debugResolveFlameDroppedThisWave) {
+    debugResolveFlameDroppedThisWave = true;
+    spawnResolveFlameDrop(enemy);
+    return;
+  }
   if (Math.random() > GLOBAL_ENEMY_DROP_RATE) return;
   const type = chooseItemDrop();
   if (!type) return;
+  if (type === "resolveFlame" || type === "resolveFlameLarge") {
+    spawnResolveFlameDrop(enemy, type);
+    return;
+  }
   spawnItemBottle(type, enemy.x, enemy.y);
 }
 
-function spawnPickup(type, x, y) {
+function spawnPickup(type, x, y, options = {}) {
   pickups.push({
+    ...options,
     type,
     x,
     y,
-    bob: Math.random() * Math.PI * 2,
-    life: 18
+    bob: options.bob ?? Math.random() * Math.PI * 2,
+    life: options.life ?? 18
   });
+}
+
+function spawnResolveFlameDrop(enemy, type = "resolveFlame") {
+  if (!enemy) return;
+  const x = clamp(enemy.x + (Math.random() - 0.5) * 34, 80, STAGE_W - 80);
+  const y = clamp(enemy.y + (Math.random() - 0.5) * 18, PLAY_AREA_TOP + 34, PLAY_AREA_BOTTOM + 4);
+  const originX = enemy.x;
+  const originY = enemy.y - Math.max(enemy.z || 0, 0) - (enemy.type === "goat" ? 104 : 76);
+  spawnResolveFlameConvergeParticles(originX, originY, x, y - 44, type === "resolveFlameLarge" ? 24 : 18);
+  spawnPickup(type, x, y);
+}
+
+function clearBeatriceResolvePickups() {
+  for (let i = pickups.length - 1; i >= 0; i--) {
+    if (pickups[i].bossResolve) pickups.splice(i, 1);
+  }
+  beatriceResolvePickupMechanic = "";
+}
+
+function beatriceBossResolveMechanicActive() {
+  if (state !== "playing" || waveMode !== "boss") return "";
+  if (!beatriceBoss.active || beatriceBoss.vulnerable || !beatriceBoss.barrierActive) return "";
+  const mechanic = beatriceBoss.mechanic || "";
+  return BEATRICE_BOSS_RESOLVE_MECHANICS.has(mechanic) ? mechanic : "";
+}
+
+function spawnBeatriceBossResolvePickups(mechanic) {
+  const left = clamp(cameraX + BEATRICE_BOSS_RESOLVE_PICKUP_EDGE_PAD, 90, STAGE_W - 90);
+  const right = clamp(cameraX + W - BEATRICE_BOSS_RESOLVE_PICKUP_EDGE_PAD, 90, STAGE_W - 90);
+  const minX = Math.min(left, right);
+  const maxX = Math.max(left, right);
+  const x = clamp(minX + Math.random() * Math.max(1, maxX - minX), minX, maxX);
+  const y = clampPlayY(PLAY_AREA_TOP + 44 + Math.random() * Math.max(1, PLAY_AREA_BOTTOM - PLAY_AREA_TOP - 58));
+  const originX = beatriceBoss.x || x;
+  const originY = (beatriceBoss.y || y) - (beatriceBoss.hoverOffset || 0) - 62;
+  spawnResolveFlameConvergeParticles(originX, originY, x, y - 50, 22);
+  spawnPickup("resolveFlameLarge", x, y, {
+    bossResolve: true,
+    beatriceMechanic: mechanic,
+    life: BEATRICE_BOSS_RESOLVE_PICKUP_LIFE
+  });
+}
+
+function updateBeatriceBossResolvePickups() {
+  const mechanic = beatriceBossResolveMechanicActive();
+  if (!mechanic) {
+    if (beatriceResolvePickupMechanic) clearBeatriceResolvePickups();
+    return;
+  }
+  if (beatriceResolvePickupMechanic === mechanic) return;
+  clearBeatriceResolvePickups();
+  beatriceResolvePickupMechanic = mechanic;
+  spawnBeatriceBossResolvePickups(mechanic);
+}
+
+function spawnResolveFlameConvergeParticles(originX, originY, targetX, targetY, count = 16) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 120 + Math.random() * 260;
+    const startSpread = 8 + Math.random() * 28;
+    particles.push({
+      x: originX + Math.cos(angle) * startSpread,
+      y: originY + Math.sin(angle) * startSpread * 0.65,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed * 0.55 - 60 - Math.random() * 110,
+      targetX: targetX + (Math.random() - 0.5) * 18,
+      targetY: targetY + (Math.random() - 0.5) * 14,
+      life: 0.62 + Math.random() * 0.26,
+      max: 0.82,
+      size: 4 + Math.random() * 5,
+      color: "rgba(92, 241, 255, 0.92)",
+      glow: true,
+      trail: true,
+      homeToTarget: true,
+      gravity: 0
+    });
+  }
+}
+
+function spawnResolveFlameAbsorbParticles(x, y) {
+  const targetX = player.x;
+  const targetY = player.y - 70;
+  for (let i = 0; i < 22; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 80 + Math.random() * 180;
+    particles.push({
+      x: x + Math.cos(angle) * (8 + Math.random() * 18),
+      y: y - 44 + Math.sin(angle) * (8 + Math.random() * 18),
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed * 0.45 - 30 - Math.random() * 80,
+      targetX: targetX + (Math.random() - 0.5) * 28,
+      targetY: targetY + (Math.random() - 0.5) * 44,
+      life: 0.5 + Math.random() * 0.22,
+      max: 0.7,
+      size: 3 + Math.random() * 5,
+      color: "rgba(117, 247, 255, 0.95)",
+      glow: true,
+      trail: true,
+      homeToTarget: true,
+      gravity: 0
+    });
+  }
 }
 
 function maybeAmuseBernkastel() {
@@ -4078,6 +4509,16 @@ function absorbEnemyIntoDuoSingularity(enemy) {
 }
 
 function activatePickup(pickup, options = {}) {
+  if (pickup.type === "resolveFlame" || pickup.type === "resolveFlameLarge") {
+    const gain = pickup.type === "resolveFlameLarge" ? RESOLVE_FLAME_LARGE_GAIN : RESOLVE_FLAME_GAIN;
+    runStats.itemsPickedUp += 1;
+    gainResolve(gain, { reversalBonus: false });
+    spawnResolveFlameAbsorbParticles(pickup.x, pickup.y);
+    message = `Resolve +${gain}%`;
+    messageTimer = 1.0;
+    if (!options.skipTutorial) showItemTutorial("resolveFlame");
+    return;
+  }
   if (!canAcquireCompanionItem(pickup.type)) {
     message = "Only two companions can answer at once";
     messageTimer = 1.25;
@@ -4132,7 +4573,6 @@ function activatePickup(pickup, options = {}) {
     if (firstSummon) summonKanon();
     else {
       addKanonAttackCharge(100);
-      startKanonDashAttack();
     }
     message = "Golden Brooch (Left)";
   } else if (pickup.type === "oneWingedEagle") {
@@ -4413,6 +4853,8 @@ function spendKanonCompanionAfterSave() {
   kanonCompanion.attackCharge = 0;
   kanonCompanion.attackTimer = KANON_ATTACK_MAX_CHARGE;
   kanonCompanion.attackSegmentsSpent = 0;
+  kanonCompanion.attackStage = 0;
+  resetKanonStageCombo();
   kanonCompanion.savePending = null;
   kanonCompanion.saveResolved = false;
 }
@@ -4503,6 +4945,8 @@ function startKanonParrySave(context) {
   const facing = player.facing || 1;
   kanonCompanion.attackCharge = Math.max(0, (kanonCompanion.attackCharge || 0) - 100);
   kanonCompanion.attackTimer = kanonChargeCooldown();
+  kanonCompanion.attackStage = 0;
+  resetKanonStageCombo();
   kanonCompanion.x = clamp(player.x + facing * 146, 90, STAGE_W - 130);
   kanonCompanion.y = clampPlayY(player.y + 8);
   kanonCompanion.facing = facing;
@@ -4667,16 +5111,27 @@ function applyKanonSummonSlashHit(options = {}) {
   );
 }
 
-function startKanonDashAttack() {
-  if (!player.goldenBroochLeftActive || !kanonCompanion.summoned || !kanonCompanion.active) return false;
-  const segments = kanonFullGaugeSegments();
-  if (segments < 1) return false;
-  if (kanonCompanion.state === "summonSlash" || kanonCompanion.state.startsWith("attack")) return false;
-  const target = nearestKanonAttackTarget(player.x, player.y);
-  if (!target) return false;
-  kanonCompanion.attackSegmentsSpent = segments;
-  kanonCompanion.attackCharge = Math.max(0, (kanonCompanion.attackCharge || 0) - segments * 100);
-  kanonCompanion.attackTimer = kanonChargeCooldown();
+function kanonIsAttacking() {
+  return kanonCompanion.state === "summonSlash"
+    || (kanonCompanion.state.startsWith("attack") && kanonCompanion.state !== "attackRecovery");
+}
+
+function resetKanonStageCombo() {
+  kanonCompanion.comboStage = 0;
+  kanonCompanion.comboWindowTimer = 0;
+  kanonCompanion.pendingStageTrigger = false;
+  kanonCompanion.pendingStage = 0;
+  kanonCompanion.pendingStageTarget = null;
+  kanonCompanion.lastTriggerEventId = -1;
+}
+
+function nextKanonStage() {
+  if ((kanonCompanion.comboWindowTimer || 0) <= 0) return 1;
+  return ((kanonCompanion.comboStage || 0) % 3) + 1;
+}
+
+function prepareKanonAttack(stage, target) {
+  kanonCompanion.attackStage = stage;
   kanonCompanion.attackTargetX = target.x;
   kanonCompanion.attackTargetY = target.y;
   kanonCompanion.attackHitDone = false;
@@ -4685,16 +5140,76 @@ function startKanonDashAttack() {
   kanonCompanion.finisherArcSpawned = false;
   kanonCompanion.finisherDash = false;
   kanonCompanion.airOffset = 0;
-  kanonCompanion.facing = player.facing || (target.x >= kanonCompanion.x ? 1 : -1);
-  kanonCompanion.summonAttackSlideTargetX = clamp(player.x + kanonCompanion.facing * KANON_SUMMON_ATTACK_END_OFFSET, 90, STAGE_W - 130);
-  kanonCompanion.summonAttackSlideTargetY = clampPlayY(player.y);
-  kanonCompanion.x = clamp(player.x + kanonCompanion.facing * KANON_SUMMON_ATTACK_START_OFFSET, 90, STAGE_W - 130);
-  kanonCompanion.y = kanonCompanion.summonAttackSlideTargetY;
-  kanonCompanion.state = "attackFinisher";
   kanonCompanion.anim = 0;
   kanonCompanion.attackPhaseTimer = 0;
   kanonCompanion.moveSettle = 0;
+}
+
+function executeKanonStageAttack(stage, target = null) {
+  if (!player.goldenBroochLeftActive || !kanonCompanion.summoned || !kanonCompanion.active) return false;
+  if ((kanonCompanion.attackCharge || 0) < 100) return false;
+  if (target?.dead) target = null;
+  target = target || nearestKanonAttackTarget(player.x, player.y);
+  if (!target) return false;
+  kanonCompanion.attackCharge = Math.max(0, (kanonCompanion.attackCharge || 0) - 100);
+  kanonCompanion.attackTimer = kanonChargeCooldown();
+  kanonCompanion.comboStage = stage;
+  kanonCompanion.comboWindowTimer = KANON_STAGE_COMBO_WINDOW;
+  kanonCompanion.pendingStageTrigger = false;
+  prepareKanonAttack(stage, target);
+  const targetFacing = target.x >= kanonCompanion.x ? 1 : -1;
+  kanonCompanion.facing = targetFacing || player.facing || 1;
+  if (stage === 1) {
+    kanonCompanion.summonAttackSlideTargetX = clamp(player.x + kanonCompanion.facing * KANON_SUMMON_ATTACK_END_OFFSET, 90, STAGE_W - 130);
+    kanonCompanion.summonAttackSlideTargetY = clampPlayY(player.y);
+    kanonCompanion.x = clamp(player.x + kanonCompanion.facing * KANON_SUMMON_ATTACK_START_OFFSET, 90, STAGE_W - 130);
+    kanonCompanion.y = kanonCompanion.summonAttackSlideTargetY;
+    kanonCompanion.state = "attackFinisher";
+  } else if (stage === 2) {
+    kanonCompanion.x = clamp(target.x - kanonCompanion.facing * 72, 90, STAGE_W - 130);
+    kanonCompanion.y = clampPlayY(target.y);
+    kanonCompanion.state = "attackUppercutStartup";
+  } else {
+    kanonCompanion.x = clamp(target.x - kanonCompanion.facing * 130, 90, STAGE_W - 130);
+    kanonCompanion.y = clampPlayY(target.y);
+    kanonCompanion.attackTargetX = clamp(kanonCompanion.x + kanonCompanion.facing * KANON_FINISHER_TRAVEL_OVERSHOOT, 90, STAGE_W - 130);
+    kanonCompanion.attackTargetY = kanonCompanion.y;
+    kanonCompanion.finisherDash = true;
+    kanonCompanion.state = "attackStartup";
+  }
   return true;
+}
+
+function startKanonDashAttack() {
+  if (kanonIsAttacking()) return false;
+  return executeKanonStageAttack(nextKanonStage());
+}
+
+function startQueuedKanonStageOrRecover() {
+  if (kanonCompanion.pendingStageTrigger) {
+    const stage = kanonCompanion.pendingStage || nextKanonStage();
+    const target = kanonCompanion.pendingStageTarget;
+    kanonCompanion.pendingStageTrigger = false;
+    kanonCompanion.pendingStage = 0;
+    kanonCompanion.pendingStageTarget = null;
+    if (executeKanonStageAttack(stage, target)) return true;
+  }
+  enterKanonAttackRecovery();
+  return false;
+}
+
+function triggerKanonFromBattlerLaunchOrBounce(target = null) {
+  if (!player.goldenBroochLeftActive || !kanonCompanion.summoned || !kanonCompanion.active) return false;
+  if (kanonCompanion.lastTriggerEventId === currentTechniqueEventId) return false;
+  kanonCompanion.lastTriggerEventId = currentTechniqueEventId;
+  if (kanonCompanion.state === "summonSlash") return false;
+  if (kanonIsAttacking()) {
+    kanonCompanion.pendingStageTrigger = true;
+    kanonCompanion.pendingStage = nextKanonStage();
+    kanonCompanion.pendingStageTarget = target;
+    return false;
+  }
+  return executeKanonStageAttack(nextKanonStage(), target);
 }
 
 function applyKanonDashAttackHit(options = {}) {
@@ -4730,6 +5245,7 @@ function applyKanonDashAttackHit(options = {}) {
     drift
   );
   if (finisher) {
+    triggerShannonWallFromKanonFinisher(facing);
     spawnKanonFinisherArc(originX + facing * 90, originY, facing);
     screenShakeTimer = Math.max(screenShakeTimer, 0.26);
   } else {
@@ -4894,6 +5410,8 @@ function summonKanon(options = {}) {
   kanonCompanion.attackPhaseTimer = 0;
   kanonCompanion.attackHitDone = false;
   kanonCompanion.attackSegmentsSpent = 0;
+  kanonCompanion.attackStage = 0;
+  resetKanonStageCombo();
   kanonCompanion.uppercutHitDone = false;
   kanonCompanion.uppercutArcSpawned = false;
   kanonCompanion.finisherArcSpawned = false;
@@ -5613,6 +6131,7 @@ function startBernParryCounterPunch(direction) {
   player.attackLock = 0;
   player.attackHasHit = false;
   player.crestAttackHasHit = false;
+  player.witchHuntingStakeFired = false;
   player.currentAttack = "punch3";
   player.attackLungeRemaining = data.lunge || 0;
   player.comboTimer = 0;
@@ -6449,6 +6968,12 @@ function isCompanionOwnedSource(source = "") {
     || source.startsWith("bern:");
 }
 
+function sourceCanTriggerKanonAssist(source = "") {
+  return isBattlerOwnedSource(source)
+    || source === "shannon:barrier"
+    || source === "shannon:purpleWall";
+}
+
 function isBattlerSpecialSource(source = "") {
   return source.startsWith("battler:special")
     || source.startsWith("battler:lambdaKonpeitoSpecial");
@@ -6536,7 +7061,12 @@ function launchEnemy(enemy, direction, lift = 470, drift = 170, source = "unknow
     enemy.juggleCount = 0;
   }
   enemy.launchSource = source;
-  if (isBattlerOwnedSource(source)) awardTechniqueBonus("launch");
+  if (isBattlerOwnedSource(source)) {
+    awardTechniqueBonus("launch");
+  }
+  if (sourceCanTriggerKanonAssist(source)) {
+    triggerKanonFromBattlerLaunchOrBounce(enemy);
+  }
   return true;
 }
 
@@ -6556,7 +7086,12 @@ function launchEnemyUnprorated(enemy, direction, source, lift = 360, drift = 100
   }
   enemy.juggleCount = 0;
   enemy.launchSource = source;
-  if (isBattlerOwnedSource(source)) awardTechniqueBonus("launch");
+  if (isBattlerOwnedSource(source)) {
+    awardTechniqueBonus("launch");
+  }
+  if (sourceCanTriggerKanonAssist(source)) {
+    triggerKanonFromBattlerLaunchOrBounce(enemy);
+  }
   return true;
 }
 
@@ -6573,6 +7108,14 @@ function triggerShannonWallFollowup() {
   shannonCompanion.wallCastFacing = player.facing || 1;
   shannonCompanion.wallCastSpawned = false;
   return true;
+}
+
+function triggerShannonWallFromKanonFinisher(facing = kanonCompanion.facing || player.facing || 1) {
+  const previousFacing = player.facing;
+  player.facing = facing || previousFacing || 1;
+  const triggered = triggerShannonWallFollowup();
+  player.facing = previousFacing;
+  return triggered;
 }
 
 function spawnShannonWallFromCast() {
@@ -6626,7 +7169,12 @@ function groundBounceEnemy(enemy, direction, source, lift = STAGE3_KICK_BOUNCE_L
   enemy.groundBounceSource = source;
   enemy.groundBounceLift = lift;
   enemy.groundBounceDrift = drift;
-  if (isBattlerOwnedSource(source)) awardTechniqueBonus("groundBounce");
+  if (isBattlerOwnedSource(source)) {
+    awardTechniqueBonus("groundBounce");
+  }
+  if (sourceCanTriggerKanonAssist(source)) {
+    triggerKanonFromBattlerLaunchOrBounce(enemy);
+  }
   return true;
 }
 
@@ -7631,6 +8179,8 @@ function applyBossBlessing(blessing) {
     player.blessings.miracleShardFollowup = true;
   } else if (blessing.id === "miracleCrystalShardPlus") {
     player.blessings.miracleCrystalShardPlus = true;
+  } else if (blessing.id === "miracleWitchHuntingStake") {
+    player.blessings.miracleWitchHuntingStake = true;
   } else if (blessing.id === "miracleRisk") {
     player.blessings.miracleRisk = true;
   } else if (blessing.id === "miracleMaxHealth") {
@@ -7758,6 +8308,7 @@ function activateBeatriceBoss() {
 
 function completeBeatriceMechanic() {
   if (!beatriceBoss.active) return;
+  clearBeatriceResolvePickups();
   beatriceBoss.mechanic = "stakeReward";
   beatriceBoss.wallsActive = false;
   beatriceBoss.trialGoat = null;
@@ -7881,6 +8432,9 @@ function applyLeviathanSlashHit(attack) {
   const inRing = Math.hypot(dx, dy) <= attack.radius;
   let launchedPlayer = false;
   let chainDirection = player.facing || 1;
+  if (inRing && player.airborne === false && !player.knockedDown && isPlayerInvulnerable()) {
+    tryTriggerWitchTime("beatrice:leviathan");
+  }
   if (inRing && !isPlayerInvulnerable() && !player.airborne && !player.knockedDown) {
     const direction = Math.sign(player.x - attack.x) || player.facing || 1;
     chainDirection = direction;
@@ -8200,11 +8754,16 @@ function beatriceTowerPointInSafeZone(x, y, zone) {
 
 function applyBeatriceTowerVolleyHit(point) {
   if (beatriceTowerVolley.hitWaves.includes(point.wave)) return;
-  if (state !== "playing" || isPlayerInvulnerable() || player.airborne || player.knockedDown) return;
+  if (state !== "playing" || player.airborne || player.knockedDown) return;
   const worldX = point.x;
   const dx = player.x - worldX;
   const dy = (player.y - point.y) / 0.45;
   if (Math.hypot(dx, dy) > BEATRICE_TOWER_VOLLEY_RADIUS) return;
+  if (isPlayerInvulnerable()) {
+    beatriceTowerVolley.hitWaves.push(point.wave);
+    tryTriggerWitchTime("beatrice:towerVolley");
+    return;
+  }
   beatriceTowerVolley.hitWaves.push(point.wave);
   const direction = Math.sign(player.x - (beatriceTowerVolley.side < 0 ? cameraX : cameraX + W)) || -beatriceTowerVolley.side || player.facing || 1;
   prepareShannonBarrierForLaunchingHit();
@@ -8373,6 +8932,7 @@ function cancelBeatriceMechanicEnemiesForBarrierBreak() {
 }
 
 function cancelActiveBeatriceAttackForBarrierBreak() {
+  clearBeatriceResolvePickups();
   for (const ring of beatriceBoss.rings || []) {
     spawnGoldenButterflies(ring.x ?? beatriceBoss.x, (ring.y ?? beatriceBoss.y) - 24, 8);
   }
@@ -8757,6 +9317,8 @@ function advanceBeatriceTeleportPrep() {
 
 function spawnWave() {
   clearWaveEffects();
+  clearBeatriceResolvePickups();
+  debugResolveFlameDroppedThisWave = false;
   for (let i = enemies.length - 1; i >= 0; i--) {
     if (!enemies[i].dead) enemies.splice(i, 1);
   }
@@ -8790,6 +9352,10 @@ function startGame() {
   resetAttackHolds();
   resetShadowPortalTimers();
   clearWaveEffects();
+  clearBeatriceResolvePickups();
+  witchTimeTimer = 0;
+  witchTimeFlashTimer = 0;
+  debugResolveFlameDroppedThisWave = false;
   latestRunRecord = null;
   latestRunRankInfo = null;
   resetRunStats();
@@ -8802,9 +9368,12 @@ function startGame() {
   player.anim = 0;
   player.attackLock = 0;
   player.attackHasHit = false;
+  player.crestAttackHasHit = false;
+  player.witchHuntingStakeFired = false;
   player.superChargeShockwaveDone = false;
   player.superChargeAttackActive = false;
   player.pendingSuperChargeAttack = false;
+  player.superChargeTravel = null;
   player.currentAttack = "";
   player.attackConsumesResolve = false;
   player.pendingResolveAttack = false;
@@ -8878,6 +9447,7 @@ function startGame() {
   player.blessings.miracleRevival = 0;
   player.blessings.miracleShardFollowup = false;
   player.blessings.miracleCrystalShardPlus = false;
+  player.blessings.miracleWitchHuntingStake = false;
   player.blessings.miracleRisk = false;
   player.blessings.miracleMaxHealth = 0;
   player.blessings.miracleReflex = 0;
@@ -8897,6 +9467,9 @@ function startGame() {
   }
   if (debugFlag("startWithCrystalShardPlus")) {
     player.blessings.miracleCrystalShardPlus = true;
+  }
+  if (debugFlag("startWithWitchHuntingStake")) {
+    player.blessings.miracleWitchHuntingStake = true;
   }
   player.poise = 0;
   player.bernHazardTimer = BERN_REVIVE_HAZARD_TEST_MODE ? 0 : bernHazardInterval();
@@ -9061,6 +9634,8 @@ function startGame() {
   kanonCompanion.attackTargetY = FLOOR_Y;
   kanonCompanion.attackHitDone = false;
   kanonCompanion.attackSegmentsSpent = 0;
+  kanonCompanion.attackStage = 0;
+  resetKanonStageCombo();
   kanonCompanion.uppercutHitDone = false;
   kanonCompanion.uppercutArcSpawned = false;
   kanonCompanion.finisherArcSpawned = false;
@@ -9074,6 +9649,9 @@ function startGame() {
   upwardCrystalShards.length = 0;
   crystalTrails.length = 0;
   crystalShockwaves.length = 0;
+  witchHuntingStakeGeysers.length = 0;
+  witchHuntingStakeShards.length = 0;
+  superChargeKonpeitoRings.length = 0;
   konpeitoShots.length = 0;
   konpeitoShockwaves.length = 0;
   konpeitoGeysers.length = 0;
@@ -9126,6 +9704,7 @@ function setAction(name, lock = 0) {
     player.anim = 0;
     player.attackHasHit = false;
     player.crestAttackHasHit = false;
+    player.witchHuntingStakeFired = false;
     if (!isPlayerComboAttack(name)) {
       player.currentAttack = "";
       player.attackConsumesResolve = false;
@@ -9337,12 +9916,9 @@ function triggerSuperChargeShockwave(kind, data, skippedEnemies = new Set(), ski
       || circleTouchesBeatriceBarrier(x, y, SUPER_CHARGE_SHOCKWAVE_RADIUS);
     if (inShockwave) {
       const barrierDamage = (beatriceBoss.barrierMax || BEATRICE_BARRIER_MAX) * SUPER_CHARGE_BEATRICE_BARRIER_FRACTION;
-      const barrierBroken = damageBeatriceBarrierWithSpecial(barrierDamage, direction);
+      const barrierHit = damageBeatriceBarrierWithSpecialRecoil(barrierDamage, direction);
       spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 92, 16);
-      if (!barrierBroken && beatriceBoss.barrierActive) {
-        startBeatriceSuperChargeBarrierRecoil(direction);
-      }
-      hit = true;
+      hit = barrierHit || hit;
     }
   }
 
@@ -9419,7 +9995,7 @@ function applyDodgeAttackHit(data) {
     }
   }
   if (hit && data.gain && canGainResolve) {
-    player.resolve = clamp(player.resolve + data.gain * RESOLVE_GAIN_MULTIPLIER, 0, 100);
+    gainResolve(data.gain * RESOLVE_GAIN_MULTIPLIER);
   }
   return hit;
 }
@@ -9541,7 +10117,7 @@ function applyAttackHit(kind, data) {
   if (hit && data.gain) {
     const canGainResolve = !player.attackConsumesResolve || defeatedTarget;
     if (canGainResolve) {
-      player.resolve = clamp(player.resolve + data.gain * RESOLVE_GAIN_MULTIPLIER, 0, 100);
+      gainResolve(data.gain * RESOLVE_GAIN_MULTIPLIER);
     }
   }
   if (hit && data.stage) {
@@ -9639,7 +10215,7 @@ function applyCrestEchoHit(kind, data) {
 
 function applyEnemyAttackHit(enemy) {
   const data = enemyAttackData[enemy.attackKind];
-  if (!data || enemy.spawnGrace > 0 || isPlayerInvulnerable() || player.airborne || player.knockedDown) return false;
+  if (!data || enemy.spawnGrace > 0 || player.airborne || player.knockedDown) return false;
   const hurtbox = { x: player.x - 34, y: player.y - 72, w: 68, h: 106 };
   const hitOriginX = enemy.x + enemy.facing * 38;
   let contactX = player.x;
@@ -9662,6 +10238,10 @@ function applyEnemyAttackHit(enemy) {
     contactX = (Math.max(hitbox.x, hurtbox.x) + Math.min(hitbox.x + hitbox.w, hurtbox.x + hurtbox.w)) * 0.5;
   }
   if (!hit) return false;
+  if (isPlayerInvulnerable()) {
+    tryTriggerWitchTime(`enemy:${enemy.attackKind || "attack"}`);
+    return true;
+  }
   const contactY = player.y - 148;
   const wasRunning = player.runState === "running";
 
@@ -10013,7 +10593,10 @@ function shouldGoatPunchSlide(enemy) {
 function applyGoatChargeHit(enemy) {
   if (enemy.spawnGrace > 0 || player.airborne || player.knockedDown || state !== "playing") return false;
   if (!pointInGoatChargePath(enemy, player.x, player.y, 96)) return false;
-  if (isPlayerInvulnerable()) return true;
+  if (isPlayerInvulnerable()) {
+    tryTriggerWitchTime("goat:charge");
+    return true;
+  }
   const wasRunning = player.runState === "running";
   prepareShannonBarrierForLaunchingHit();
   damagePlayer(nightfallEnemyDamage(GOAT_CHARGE_DAMAGE + Math.floor(wave / 3)));
@@ -10047,7 +10630,10 @@ function applyGoatChargeHit(enemy) {
 function applyGoatPunchHit(enemy) {
   if (enemy.spawnGrace > 0 || player.airborne || player.knockedDown || state !== "playing") return false;
   if (!pointInGoatPunch(enemy, player.x, player.y)) return false;
-  if (isPlayerInvulnerable()) return false;
+  if (isPlayerInvulnerable()) {
+    tryTriggerWitchTime("goat:punch");
+    return true;
+  }
   const wasRunning = player.runState === "running";
   prepareShannonBarrierForLaunchingHit();
   damagePlayer(nightfallEnemyDamage(GOAT_PUNCH_DAMAGE + Math.floor(wave / 4)));
@@ -10117,7 +10703,9 @@ function resetPlayerForGoatHit() {
 function startNeutralDodgeAttack() {
   if (player.runState !== "dodging") return false;
   if (player.attackLock > 0 || player.airborne || player.knockedDown) return false;
-  if (!consumeDashStock()) return false;
+  if (player.resolve < DODGE_ATTACK_RESOLVE_COST) return false;
+  player.resolve = Math.max(0, player.resolve - DODGE_ATTACK_RESOLVE_COST);
+  resolveSpendFlashTimer = 0.34;
   beginTechniqueEvent();
   player.comboTimer = 0;
   player.comboQueuedKind = "";
@@ -10174,7 +10762,10 @@ function applyGoatPoundHit(enemy) {
   });
   const inSlam = pointInGoatPoundSlam(enemy, player.x, player.y);
   if (!inSlam) return false;
-  if (isPlayerInvulnerable()) return false;
+  if (isPlayerInvulnerable()) {
+    tryTriggerWitchTime("goat:pound");
+    return false;
+  }
   const wasRunning = player.runState === "running";
   prepareShannonBarrierForLaunchingHit();
   damagePlayer(nightfallEnemyDamage(GOAT_POUND_DAMAGE + Math.floor(wave / 2)));
@@ -10247,7 +10838,10 @@ function applyGoatDelayedQuakeHit(quake, radius) {
   );
   if (!inOuter || inSlam) return false;
   quake.hit = true;
-  if (isPlayerInvulnerable()) return false;
+  if (isPlayerInvulnerable()) {
+    tryTriggerWitchTime("goat:quake");
+    return false;
+  }
   const direction = Math.sign(quake.dirX) || player.facing || 1;
   const wasRunning = player.runState === "running";
   prepareShannonBarrierForLaunchingHit();
@@ -10287,6 +10881,7 @@ function attack(kind) {
     player.attackConsumesResolve = true;
     player.pendingResolveAttack = false;
     player.crestAttackHasHit = false;
+    player.witchHuntingStakeFired = false;
     player.superChargeShockwaveDone = false;
     player.superChargeAttackActive = false;
     player.pendingSuperChargeAttack = false;
@@ -10303,7 +10898,6 @@ function attack(kind) {
     player.brakeDrift = 0;
     player.brakeBurstTimer = 0;
     setAction("special", attackData.special.lock);
-    startKanonDashAttack();
     return true;
   }
   if ((kind === "punch" || kind === "kick") && player.attackLock > 0 && player.comboTimer > 0 && player.comboStep > 0 && player.comboStep < 3) {
@@ -10347,6 +10941,7 @@ function attack(kind) {
   player.attackConsumesResolve = !!player.pendingResolveAttack || kind === "special";
   player.pendingResolveAttack = false;
   player.crestAttackHasHit = false;
+  player.witchHuntingStakeFired = false;
   player.superChargeShockwaveDone = false;
   player.superChargeAttackActive = !!player.pendingSuperChargeAttack;
   player.pendingSuperChargeAttack = false;
@@ -10370,7 +10965,6 @@ function attack(kind) {
   player.brakeDrift = 0;
   player.brakeBurstTimer = 0;
   setAction(action, data.lock);
-  startKanonDashAttack();
   if (!data.activeFrames) {
     applyAttackHit(action, data);
     applyCrestEchoHit(action, data);
@@ -10432,6 +11026,133 @@ function teleportForSuperCharge(target = nearestChargeTarget()) {
   return true;
 }
 
+function superChargeDestinationFor(target) {
+  const side = target.x >= player.x ? 1 : -1;
+  return {
+    x: clamp(target.x - side * SUPER_CHARGE_TARGET_STOP_OFFSET, cameraX + 38, cameraX + W - 38),
+    y: clampPlayY(target.y),
+    facing: side
+  };
+}
+
+function startSuperChargeTravel(action, cost, spentDashIndex, target) {
+  if (!target) return false;
+  const destination = superChargeDestinationFor(target);
+  player.superChargeTravel = {
+    action,
+    cost,
+    spentDashIndex,
+    startX: player.x,
+    startY: player.y,
+    targetX: destination.x,
+    targetY: destination.y,
+    facing: destination.facing,
+    timer: 0,
+    duration: SUPER_CHARGE_TRAVEL_DURATION,
+    reappeared: false
+  };
+  player.facing = destination.facing;
+  player.attackLock = Math.max(player.attackLock, SUPER_CHARGE_TRAVEL_DURATION + SUPER_CHARGE_REAPPEAR_DURATION);
+  player.currentAttack = "";
+  player.attackLungeRemaining = 0;
+  player.runState = "none";
+  player.runLocked = false;
+  player.runTimer = 0;
+  player.runCharge = 0;
+  player.brakeDrift = 0;
+  player.brakeBurstTimer = 0;
+  player.vx = 0;
+  player.vy = 0;
+  player.airVx = 0;
+  player.z = 0;
+  player.airborne = false;
+  setAction("superChargeTravel", player.attackLock);
+  player.pendingResolveAttack = true;
+  player.pendingSuperChargeAttack = true;
+  player.invuln = Math.max(player.invuln, SUPER_CHARGE_TRAVEL_DURATION + SUPER_CHARGE_REAPPEAR_DURATION);
+  burst(player.x, player.y - 90, "special");
+  return true;
+}
+
+function refundSuperChargeTravel(travel) {
+  player.pendingResolveAttack = false;
+  player.pendingSuperChargeAttack = false;
+  player.attackConsumesResolve = false;
+  player.resolve = Math.min(100, player.resolve + (travel?.cost || 0));
+  resolveSpendFlashTimer = 0;
+  if (travel && travel.spentDashIndex >= 0 && player.dashCooldowns[travel.spentDashIndex] !== undefined) {
+    player.dashCooldowns[travel.spentDashIndex] = 0;
+    player.heldDashCooldownIndex = -1;
+    updateDashCooldowns(0);
+  }
+}
+
+function updateSuperChargeTravel(dt) {
+  const travel = player.superChargeTravel;
+  if (!travel) return false;
+  travel.timer += dt;
+  const t = clamp(travel.timer / Math.max(0.01, travel.duration), 0, 1);
+  const flyStart = SUPER_CHARGE_SHRINK_DURATION / travel.duration;
+  const flyEnd = 1 - SUPER_CHARGE_REAPPEAR_DURATION / travel.duration;
+  let moveT = 0;
+  if (t > flyStart) {
+    moveT = clamp((t - flyStart) / Math.max(0.01, flyEnd - flyStart), 0, 1);
+  }
+  const ease = 1 - Math.pow(1 - moveT, 3);
+  player.x = travel.startX + (travel.targetX - travel.startX) * ease;
+  player.y = clampPlayY(travel.startY + (travel.targetY - travel.startY) * ease);
+  player.facing = travel.facing;
+  player.attackLock = Math.max(player.attackLock, travel.duration - travel.timer + 0.02);
+  player.vx = 0;
+  player.vy = 0;
+  player.z = 0;
+  player.airborne = false;
+  if (!travel.reappeared && t >= flyEnd) {
+    travel.reappeared = true;
+    player.x = travel.targetX;
+    player.y = travel.targetY;
+    screenFlashTimer = Math.max(screenFlashTimer, 0.12);
+    spawnSuperChargeKonpeitoRing(player.x, player.y);
+    burst(player.x, player.y - 90, "special");
+  }
+  if (travel.timer < travel.duration) {
+    cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+    return true;
+  }
+  player.x = travel.targetX;
+  player.y = travel.targetY;
+  player.superChargeTravel = null;
+  player.pendingSuperChargeAttack = true;
+  player.attackLock = 0;
+  const started = attack(travel.action);
+  if (started) {
+    player.heldDashCooldownIndex = -1;
+  } else {
+    refundSuperChargeTravel(travel);
+    setAction("idle");
+  }
+  cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
+  return true;
+}
+
+function spawnSuperChargeKonpeitoRing(x, y) {
+  superChargeKonpeitoRings.push({
+    x,
+    y,
+    life: SUPER_CHARGE_KONPEITO_RING_LIFE,
+    max: SUPER_CHARGE_KONPEITO_RING_LIFE,
+    seed: Math.random() * 1000
+  });
+}
+
+function updateSuperChargeKonpeitoRings(dt) {
+  for (let i = superChargeKonpeitoRings.length - 1; i >= 0; i--) {
+    const ring = superChargeKonpeitoRings[i];
+    ring.life -= dt;
+    if (ring.life <= 0) superChargeKonpeitoRings.splice(i, 1);
+  }
+}
+
 function startChargedAttack(kind) {
   if (kind !== "punch" && kind !== "kick") return false;
   const cost = chargedAttackResolveCost();
@@ -10451,7 +11172,9 @@ function startChargedAttack(kind) {
   resolveSpendFlashTimer = 0.34;
   player.pendingResolveAttack = true;
   player.pendingSuperChargeAttack = spentDashIndex >= 0;
-  teleportForSuperCharge(superChargeTarget);
+  if (superChargeTarget && spentDashIndex >= 0) {
+    return startSuperChargeTravel(action, cost, spentDashIndex, superChargeTarget);
+  }
   const started = attack(action);
   if (started && spentDashIndex >= 0) {
     player.heldDashCooldownIndex = -1;
@@ -10817,8 +11540,12 @@ function startPlayerWallSlam(direction) {
 }
 
 function applyBeatriceMeleeKickHit() {
-  if (state !== "playing" || player.airborne || player.knockedDown || isPlayerInvulnerable()) return false;
+  if (state !== "playing" || player.airborne || player.knockedDown) return false;
   if (!playerInBeatriceMeleeKickTelegraph()) return false;
+  if (isPlayerInvulnerable()) {
+    tryTriggerWitchTime("beatrice:meleeKick");
+    return false;
+  }
   const side = beatriceBoss.facing || Math.sign(player.x - beatriceBoss.x) || 1;
   damagePlayer(nightfallEnemyDamage(BEATRICE_MELEE_KICK_DAMAGE));
   player.attackLock = 0;
@@ -10870,7 +11597,12 @@ function launchBeatrice(direction, lift = BEATRICE_LAUNCH_LIFT, drift = BEATRICE
   beatriceBoss.downTime = 0;
   beatriceBoss.stunIdleTimer = BEATRICE_STUN_IDLE_TIMEOUT;
   if (beatriceBoss.stunDamageTimer <= 0) beatriceBoss.stunDamageTimer = BEATRICE_STUN_DAMAGE_TIMEOUT;
-  if (isBattlerOwnedSource(source)) awardTechniqueBonus("launch");
+  if (isBattlerOwnedSource(source)) {
+    awardTechniqueBonus("launch");
+  }
+  if (sourceCanTriggerKanonAssist(source)) {
+    triggerKanonFromBattlerLaunchOrBounce(beatriceBoss);
+  }
   return true;
 }
 
@@ -10932,7 +11664,12 @@ function groundBounceBeatrice(direction, source, lift = STAGE3_KICK_BOUNCE_LIFT,
   beatriceBoss.groundBounceDrift = drift;
   beatriceBoss.stunIdleTimer = BEATRICE_STUN_IDLE_TIMEOUT;
   if (beatriceBoss.stunDamageTimer <= 0) beatriceBoss.stunDamageTimer = BEATRICE_STUN_DAMAGE_TIMEOUT;
-  if (isBattlerOwnedSource(source)) awardTechniqueBonus("groundBounce");
+  if (isBattlerOwnedSource(source)) {
+    awardTechniqueBonus("groundBounce");
+  }
+  if (sourceCanTriggerKanonAssist(source)) {
+    triggerKanonFromBattlerLaunchOrBounce(beatriceBoss);
+  }
   return true;
 }
 
@@ -11072,6 +11809,7 @@ function startBeatriceSuperChargeBarrierRecoil(direction = 1) {
   beatriceBoss.flavor = "superChargeRecoil";
   beatriceBoss.anim = 0;
   beatriceBoss.breakVx = direction * BEATRICE_BARRIER_BREAK_DRIFT * 0.82;
+  beatriceBoss.superChargeRecoilDirection = Math.sign(direction) || 1;
   beatriceBoss.breakFade = 1;
   beatriceBoss.materializeTimer = 0;
   beatriceBoss.meleeKickHit = false;
@@ -11095,8 +11833,8 @@ function finishBeatriceSuperChargeBarrierRecoil() {
   const oldY = beatriceBoss.y;
   spawnGoldenButterflies(oldX, oldY - beatriceBoss.hoverOffset - 62, 44);
   spawnAsmodeusGoldenWisps(oldX, oldY - beatriceBoss.hoverOffset - 58, 14);
-  const playerScreenX = player.x - cameraX;
-  const desiredScreenX = playerScreenX < W * 0.5 ? W * 0.78 : W * 0.22;
+  const recoilDirection = Math.sign(beatriceBoss.superChargeRecoilDirection) || Math.sign(oldX - player.x) || 1;
+  const desiredScreenX = recoilDirection > 0 ? W * 0.22 : W * 0.78;
   const targetX = clamp(cameraX + desiredScreenX, 90, STAGE_W - 90);
   const targetY = clamp(player.y - 54, FLOOR_Y - 132, FLOOR_Y - 16);
   const frame = beatriceFrames.barrierBreak[Math.min(beatriceFrames.barrierBreak.length - 1, Math.floor(beatriceBoss.anim))] || beatriceFrames.idle[0];
@@ -11106,6 +11844,7 @@ function finishBeatriceSuperChargeBarrierRecoil() {
   beatriceBoss.z = 0;
   beatriceBoss.hoverOffset = 76;
   beatriceBoss.breakVx = 0;
+  beatriceBoss.superChargeRecoilDirection = 0;
   beatriceBoss.breakFade = 0;
   beatriceBoss.materializeTimer = 0.32;
   beatriceBoss.flavor = "idle";
@@ -11146,6 +11885,7 @@ function finishBeatriceBarrierBreak() {
 }
 
 function clearBeatriceBossMechanics() {
+  clearBeatriceResolvePickups();
   beatriceBoss.mechanic = "defeated";
   beatriceBoss.wallsActive = false;
   beatriceBoss.wallTop = FLOOR_Y - 72;
@@ -11837,6 +12577,9 @@ function updatePlayer(dt) {
     cameraX = clamp(player.x - W * 0.38, 0, STAGE_W - W);
     return;
   }
+  if (updateSuperChargeTravel(dt)) {
+    return;
+  }
   if (player.gaapTeleport) {
     player.vx = 0;
     player.vy = 0;
@@ -12412,6 +13155,9 @@ function updatePlayer(dt) {
   player.anim += dt * animRate;
   const data = attackData[player.action];
   const frame = currentPlayerActionFrame();
+  if (data?.activeFrames?.includes(frame)) {
+    triggerWitchHuntingStake(player.action, data);
+  }
   if (data?.activeFrames?.includes(frame) && !player.attackHasHit) {
     player.attackHasHit = applyAttackHit(player.action, data);
   }
@@ -12695,7 +13441,7 @@ function updateEnemies(dt) {
     wave += 1;
     runStats.wavesCompleted = Math.max(runStats.wavesCompleted, wave - 1);
     healPlayer(16);
-    player.resolve = clamp(player.resolve + 34 * RESOLVE_GAIN_MULTIPLIER, 0, 100);
+    gainResolve(34 * RESOLVE_GAIN_MULTIPLIER);
     spawnWave();
   }
 }
@@ -12703,7 +13449,15 @@ function updateEnemies(dt) {
 function updateParticles(dt) {
   for (let i = particles.length - 1; i >= 0; i--) {
     const p = particles[i];
+    p.prevX = p.x;
+    p.prevY = p.y;
     p.life -= dt;
+    if (p.homeToTarget) {
+      const ageT = 1 - clamp(p.life / Math.max(0.001, p.max || 1), 0, 1);
+      const pull = Math.min(1, dt * (4.4 + ageT * 12));
+      p.vx = (p.vx || 0) * 0.84 + ((p.targetX || p.x) - p.x) * pull;
+      p.vy = (p.vy || 0) * 0.84 + ((p.targetY || p.y) - p.y) * pull;
+    }
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.vy += (p.gravity ?? 420) * dt;
@@ -12717,9 +13471,12 @@ function updateGoatPoundQuakes(dt) {
     const quake = goatPoundQuakes[i];
     quake.timer += dt;
     if (quake.timer >= GOAT_POUND_QUAKE_DELAY) {
-      const expandT = clamp((quake.timer - GOAT_POUND_QUAKE_DELAY) / GOAT_POUND_QUAKE_DURATION, 0, 1);
-      const radius = GOAT_POUND_RANGE + (GOAT_POUND_QUAKE_RANGE - GOAT_POUND_RANGE) * expandT;
-      applyGoatDelayedQuakeHit(quake, radius);
+      const quakeElapsed = quake.timer - GOAT_POUND_QUAKE_DELAY;
+      if (quakeElapsed <= GOAT_POUND_QUAKE_HIT_DURATION) {
+        const hitT = clamp(quakeElapsed / GOAT_POUND_QUAKE_HIT_DURATION, 0, 1);
+        const radius = GOAT_POUND_RANGE + (GOAT_POUND_QUAKE_RANGE - GOAT_POUND_RANGE) * hitT;
+        applyGoatDelayedQuakeHit(quake, radius);
+      }
     }
     if (quake.timer >= GOAT_POUND_QUAKE_DELAY + GOAT_POUND_QUAKE_DURATION + 0.18) {
       goatPoundQuakes.splice(i, 1);
@@ -13573,7 +14330,7 @@ function playerInBeatriceStakeReticle(stake) {
 }
 
 function beatriceStakeGroundShockwaveHitsPlayer(stake) {
-  if (!stake.playerGroundedAtThrow || player.airborne || player.knockedDown || isPlayerInvulnerable()) return false;
+  if (!stake.playerGroundedAtThrow || player.airborne || player.knockedDown) return false;
   const dx = player.x - stake.targetX;
   const dy = (player.y - stake.targetY) / 0.34;
   return Math.hypot(dx, dy) <= BEATRICE_STAKE_RETICLE_RADIUS;
@@ -13585,8 +14342,8 @@ function beatriceStakeParryReady(stake) {
     && beatriceStakeDistanceToImpact(stake) <= beatriceStakeParryDistanceWithReflex();
 }
 
-function updateBeatriceStakes(dt) {
-  updateBeatriceDefeatWisps(dt);
+function updateBeatriceStakes(dt, visualDt = dt) {
+  updateBeatriceDefeatWisps(visualDt);
   for (let i = beatriceStakes.length - 1; i >= 0; i--) {
     const stake = beatriceStakes[i];
     const prevX = stake.x;
@@ -13636,7 +14393,13 @@ function updateBeatriceStakes(dt) {
         const threatenedPlayer = playerInBeatriceStakeReticle(stake) || beatriceStakeGroundShockwaveHitsPlayer(stake);
         beatriceStakeShockwaves.push({ x: stake.targetX, y: stake.targetY, life: BEATRICE_STAKE_SHOCKWAVE_TIME, max: BEATRICE_STAKE_SHOCKWAVE_TIME });
         spawnGoldenSparkles(stake.targetX, stake.targetY - 42, 22);
-        if (threatenedPlayer) triggerAsmodeusStakeHit(stake);
+        if (threatenedPlayer) {
+          if (isPlayerInvulnerable()) {
+            tryTriggerWitchTime("beatrice:stake");
+          } else {
+            triggerAsmodeusStakeHit(stake);
+          }
+        }
         screenShakeTimer = Math.max(screenShakeTimer, 0.16);
         beatriceStakes.splice(i, 1);
         continue;
@@ -13672,32 +14435,32 @@ function updateBeatriceStakes(dt) {
 
   for (let i = beatriceStakeTrails.length - 1; i >= 0; i--) {
     const trail = beatriceStakeTrails[i];
-    trail.life -= dt;
+    trail.life -= visualDt;
     if (trail.life <= 0) beatriceStakeTrails.splice(i, 1);
   }
   for (let i = beatriceStakeShockwaves.length - 1; i >= 0; i--) {
     const wave = beatriceStakeShockwaves[i];
-    wave.life -= dt;
+    wave.life -= visualDt;
     if (wave.life <= 0) beatriceStakeShockwaves.splice(i, 1);
   }
   for (let i = beatriceStakeSparkles.length - 1; i >= 0; i--) {
     const sparkle = beatriceStakeSparkles[i];
-    sparkle.life -= dt;
+    sparkle.life -= visualDt;
     if (sparkle.homeToTarget) {
       const targetT = 1 - clamp(sparkle.life / sparkle.max, 0, 1);
-      const pull = Math.min(1, dt * (3.4 + targetT * 8));
+      const pull = Math.min(1, visualDt * (3.4 + targetT * 8));
       sparkle.vx = (sparkle.vx || 0) * 0.88 + (sparkle.targetX - sparkle.x) * pull;
       sparkle.vy = (sparkle.vy || 0) * 0.88 + (sparkle.targetY - sparkle.y) * pull;
     }
-    sparkle.x += sparkle.vx * dt;
-    sparkle.y += sparkle.vy * dt;
-    sparkle.angle = (sparkle.angle || 0) + (sparkle.spin || 0) * dt;
-    if (!sparkle.homeToTarget) sparkle.vy += 420 * dt;
+    sparkle.x += sparkle.vx * visualDt;
+    sparkle.y += sparkle.vy * visualDt;
+    sparkle.angle = (sparkle.angle || 0) + (sparkle.spin || 0) * visualDt;
+    if (!sparkle.homeToTarget) sparkle.vy += 420 * visualDt;
     if (sparkle.life <= 0) beatriceStakeSparkles.splice(i, 1);
   }
   for (let i = beatriceAfterimages.length - 1; i >= 0; i--) {
     const image = beatriceAfterimages[i];
-    image.life -= dt;
+    image.life -= visualDt;
     const t = 1 - clamp(image.life / image.max, 0, 1);
     image.x = image.fromX + (image.targetX - image.fromX) * t;
     image.y = image.fromY + (image.targetY - image.fromY) * t;
@@ -14349,21 +15112,33 @@ function updateBernReviveHazard(dt) {
 
 function enterKanonAttackRecovery() {
   const follow = companionFollowTarget("kanon");
-  const dist = Math.hypot(follow.x - kanonCompanion.x, follow.y - kanonCompanion.y);
+  const dx = follow.x - kanonCompanion.x;
+  const dy = follow.y - kanonCompanion.y;
+  const dist = Math.hypot(dx, dy);
+  const leapDist = Math.min(dist, KANON_RECOVERY_HOP_MAX_DISTANCE);
+  const travelT = dist > 0.001 ? leapDist / dist : 0;
   kanonCompanion.state = "attackRecovery";
   kanonCompanion.anim = 0;
   kanonCompanion.attackPhaseTimer = 0;
   kanonCompanion.recoveryHopTimer = 0;
   kanonCompanion.recoveryHopDuration = clamp(
-    dist / KANON_RECOVERY_HOP_SPEED,
+    leapDist / KANON_RECOVERY_HOP_SPEED,
     KANON_RECOVERY_HOP_MIN,
     KANON_RECOVERY_HOP_MAX
   );
+  kanonCompanion.recoveryStartX = kanonCompanion.x;
+  kanonCompanion.recoveryStartY = kanonCompanion.y;
+  kanonCompanion.recoveryTargetX = clamp(kanonCompanion.x + dx * travelT, 90, STAGE_W - 130);
+  kanonCompanion.recoveryTargetY = clampPlayY(kanonCompanion.y + dy * travelT);
   kanonCompanion.airOffset = 0;
 }
 
 function updateKanon(dt) {
   if (!kanonCompanion.active) return;
+  if (state === "playing" && (kanonCompanion.comboWindowTimer || 0) > 0) {
+    kanonCompanion.comboWindowTimer = Math.max(0, kanonCompanion.comboWindowTimer - dt);
+    if (kanonCompanion.comboWindowTimer <= 0) kanonCompanion.comboStage = 0;
+  }
   if (kanonCompanion.state === "summonSlash") {
     kanonCompanion.anim += dt * 10;
     if (kanonCompanion.anim >= kanonFrames.summonSlash.length) {
@@ -14417,13 +15192,9 @@ function updateKanon(dt) {
     if (kanonCompanion.anim >= kanonFrames.attackActive.length) {
       if (kanonCompanion.finisherDash) {
         kanonCompanion.finisherDash = false;
-        enterKanonAttackRecovery();
-      } else if (kanonCompanion.attackSegmentsSpent >= 2) {
-        kanonCompanion.state = "attackUppercutStartup";
-        kanonCompanion.anim = 0;
-        kanonCompanion.attackPhaseTimer = 0;
+        startQueuedKanonStageOrRecover();
       } else {
-        enterKanonAttackRecovery();
+        startQueuedKanonStageOrRecover();
       }
       kanonCompanion.uppercutHitDone = false;
       kanonCompanion.uppercutArcSpawned = false;
@@ -14479,17 +15250,7 @@ function updateKanon(dt) {
     kanonCompanion.anim += dt * 11;
     kanonCompanion.airOffset = 0;
     if (kanonCompanion.anim >= kanonFrames.attackUppercutLand.length) {
-      if (kanonCompanion.attackSegmentsSpent >= 3) {
-        kanonCompanion.state = "attackStartup";
-        kanonCompanion.anim = 0;
-        kanonCompanion.attackPhaseTimer = 0;
-        kanonCompanion.finisherDash = true;
-        kanonCompanion.attackHitDone = false;
-        kanonCompanion.attackTargetX = clamp(kanonCompanion.x + (kanonCompanion.facing || 1) * KANON_FINISHER_TRAVEL_OVERSHOOT, 90, STAGE_W - 130);
-        kanonCompanion.attackTargetY = kanonCompanion.y;
-      } else {
-        enterKanonAttackRecovery();
-      }
+      startQueuedKanonStageOrRecover();
       kanonCompanion.finisherArcSpawned = false;
     }
     return;
@@ -14521,30 +15282,22 @@ function updateKanon(dt) {
       spawnKanonSlashArc(originX + facing * 12, originY, facing, { wide: true, groundedHitstun: true });
     }
     if (kanonCompanion.anim >= kanonFrames.attackFinisher.length) {
-      if (kanonCompanion.attackSegmentsSpent >= 2) {
-        kanonCompanion.state = "attackUppercutStartup";
-        kanonCompanion.anim = 0;
-        kanonCompanion.attackPhaseTimer = 0;
-        kanonCompanion.uppercutHitDone = false;
-        kanonCompanion.uppercutArcSpawned = false;
-      } else {
-        enterKanonAttackRecovery();
-      }
+      startQueuedKanonStageOrRecover();
     }
     return;
   }
   if (kanonCompanion.state === "attackRecovery") {
     kanonCompanion.recoveryHopTimer += dt;
-    const follow = companionFollowTarget("kanon");
-    const dx = follow.x - kanonCompanion.x;
-    const dy = follow.y - kanonCompanion.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist > 6) {
-      const step = Math.min(dist, KANON_RECOVERY_HOP_SPEED * dt);
-      kanonCompanion.x += (dx / dist) * step;
-      kanonCompanion.y += (dy / dist) * step;
-    }
     const hopT = clamp(kanonCompanion.recoveryHopTimer / Math.max(0.01, kanonCompanion.recoveryHopDuration || KANON_RECOVERY_HOP_MIN), 0, 1);
+    const easeT = hopT < 0.5
+      ? 2 * hopT * hopT
+      : 1 - Math.pow(-2 * hopT + 2, 2) * 0.5;
+    const startX = kanonCompanion.recoveryStartX ?? kanonCompanion.x;
+    const startY = kanonCompanion.recoveryStartY ?? kanonCompanion.y;
+    const targetX = kanonCompanion.recoveryTargetX ?? kanonCompanion.x;
+    const targetY = kanonCompanion.recoveryTargetY ?? kanonCompanion.y;
+    kanonCompanion.x = startX + (targetX - startX) * easeT;
+    kanonCompanion.y = startY + (targetY - startY) * easeT;
     if (hopT < 0.42) {
       kanonCompanion.anim = Math.min(2, Math.floor((hopT / 0.42) * 3));
     } else if (hopT < 0.82) {
@@ -14557,7 +15310,7 @@ function updateKanon(dt) {
     const baseHop = 4 * hopT * (1 - hopT) * KANON_RECOVERY_HOP_HEIGHT;
     const preJumpHeight = KANON_RECOVERY_HOP_START_HEIGHT * Math.pow(1 - hopT, 1.55);
     kanonCompanion.airOffset = baseHop + preJumpHeight;
-    if (dist <= 18 && hopT >= 0.99) {
+    if (hopT >= 0.99) {
       kanonCompanion.state = "idle";
       kanonCompanion.anim = 0;
       kanonCompanion.moveSettle = 0;
@@ -14857,6 +15610,7 @@ function update(dt) {
     drawCrystalShockwaves();
     drawGoatPoundQuakes();
     drawCrystalShards();
+    drawWitchHuntingStakeEffects();
     drawKonpeitoShockwaves();
     drawKonpeitoDomeBursts(true);
     drawLambdaSpecialKonpeitos();
@@ -14868,6 +15622,7 @@ function update(dt) {
     drawKanonFinisherArcs();
     drawBeatriceStakeShockwaves();
     drawKonpeitoShots();
+    drawSuperChargeKonpeitoRings();
     drawBeatriceTowerVolleyMissiles();
     drawBeatriceStakeSparkles();
     drawBeatriceDefeatWisps();
@@ -14935,19 +15690,23 @@ function update(dt) {
     if (beatriceStakeParryFreezeTimer <= 0) resolveBeatriceStakeParryPendingHit();
     return;
   }
-  updateWaveEffects(dt);
+  updateWitchTime(dt);
+  const hostileDt = enemyDt(dt);
+  updateWaveEffects(hostileDt);
   updatePlayer(dt);
-  enemyFreezeTimer = Math.max(0, enemyFreezeTimer - dt);
+  enemyFreezeTimer = Math.max(0, enemyFreezeTimer - hostileDt);
   updateAbsorbingPickups(dt);
   updateMessageBottles(dt);
-  updateEnemies(dt);
-  updateShadowPortals(dt);
+  updateEnemies(hostileDt);
+  updateShadowPortals(hostileDt);
   updatePickups(dt);
   updateCrystalShards(dt);
+  updateWitchHuntingStakeEffects(dt);
   updateCrystalTrails(dt);
   updateCrystalShockwaves(dt);
-  updateGoatPoundQuakes(dt);
+  updateGoatPoundQuakes(hostileDt);
   updateKonpeito(dt);
+  updateSuperChargeKonpeitoRings(dt);
   updateLambdaSpecialKonpeitos(dt);
   updateLambdaSpecialFinalBursts(dt);
   updateLambdaSpecialShrapnel(dt);
@@ -14956,7 +15715,8 @@ function update(dt) {
   updateKanonUppercutArcs(dt);
   updateKanonFinisherArcs(dt);
   updateShannonBarrierBursts(dt);
-  updateBeatrice(dt);
+  updateBeatrice(hostileDt);
+  updateBeatriceBossResolvePickups();
   if (startBeatriceBarrierTutorial()) {
     healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
@@ -14965,8 +15725,8 @@ function update(dt) {
     updateResolveDuoOutline();
     return;
   }
-  updateBeatriceStakes(dt);
-  updateBeatriceStakeParryLine(dt);
+  updateBeatriceStakes(hostileDt, dt);
+  updateBeatriceStakeParryLine(hostileDt);
   if (maybeStartBeatriceStakeTutorial() || maybeStartBeatriceStakeParryPrompt()) {
     healthBar.style.width = `${playerHealthPercent()}%`;
     updateResolveHud(dt);
@@ -15026,6 +15786,11 @@ function drawParallaxLayer(name, options = {}) {
 
 function drawBackground() {
   const nightfall = waveEffectActive("nightfall");
+  const witchTime = witchTimeActive();
+  ctx.save();
+  if (witchTime) {
+    ctx.filter = "grayscale(1) saturate(0.14) brightness(0.72) contrast(1.08)";
+  }
   const sky = ctx.createLinearGradient(0, 0, 0, H);
   if (nightfall) {
     sky.addColorStop(0, "#070b24");
@@ -15057,6 +15822,7 @@ function drawBackground() {
   ctx.fillStyle = floorShade;
   ctx.fillRect(0, FLOOR_Y - 30, W, H - FLOOR_Y + 30);
   drawNightfallOverlay();
+  ctx.restore();
 }
 
 function drawSprite(actor, frameId, scale, enemy = false, action = "") {
@@ -16123,6 +16889,10 @@ function drawBeatriceTowerVolleys() {
 }
 
 function drawPlayer() {
+  if (player.superChargeTravel) {
+    drawSuperChargeTravelPlayer();
+    return;
+  }
   drawActorShadow(player, 78);
   const frame = player.airborne ? launchFrame(player) : currentPlayerActionFrame();
   drawDodgeAttackShockwave();
@@ -16170,6 +16940,72 @@ function drawPlayer() {
     ctx.restore();
   }
   drawSprite(player, frame, PLAYER_SCALE, false, player.airborne ? "down" : player.action);
+}
+
+function drawSuperChargeTravelPlayer() {
+  const travel = player.superChargeTravel;
+  if (!travel) return;
+  const t = clamp(travel.timer / Math.max(0.01, travel.duration), 0, 1);
+  const shrinkT = clamp(t / Math.max(0.01, SUPER_CHARGE_SHRINK_DURATION / travel.duration), 0, 1);
+  const flyStart = SUPER_CHARGE_SHRINK_DURATION / travel.duration;
+  const flyEnd = 1 - SUPER_CHARGE_REAPPEAR_DURATION / travel.duration;
+  const flyT = clamp((t - flyStart) / Math.max(0.01, flyEnd - flyStart), 0, 1);
+  const appearT = clamp((t - flyEnd) / Math.max(0.01, SUPER_CHARGE_REAPPEAR_DURATION / travel.duration), 0, 1);
+  const ease = 1 - Math.pow(1 - flyT, 3);
+  const candyX = travel.startX + (travel.targetX - travel.startX) * ease;
+  const candyY = travel.startY + (travel.targetY - travel.startY) * ease - 86 - Math.sin(flyT * Math.PI) * 20;
+  const frame = frames.idle[Math.floor(player.anim) % frames.idle.length];
+
+  if (t < flyStart) {
+    drawActorShadow(player, 78 * (1 - shrinkT * 0.45));
+    ctx.save();
+    ctx.globalAlpha = 1 - shrinkT * 0.78;
+    ctx.translate(player.x - cameraX, player.y);
+    ctx.scale(1 - shrinkT * 0.72, 1 - shrinkT * 0.72);
+    ctx.translate(-(player.x - cameraX), -player.y);
+    drawSprite(player, frame, PLAYER_SCALE, false, "idle");
+    ctx.restore();
+    drawKonpeitoCandy(player.x - cameraX, player.y - 96, 24 + shrinkT * 18, Math.floor(performance.now() / 80), shrinkT * Math.PI * 2, shrinkT);
+    return;
+  }
+
+  if (t < flyEnd) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const startX = travel.startX - cameraX;
+    const startY = travel.startY - 96;
+    const x = candyX - cameraX;
+    const y = candyY;
+    const grad = ctx.createLinearGradient(startX, startY, x, y);
+    grad.addColorStop(0, "rgba(255, 88, 214, 0)");
+    grad.addColorStop(0.45, "rgba(255, 120, 234, 0.28)");
+    grad.addColorStop(1, "rgba(255, 245, 255, 0.74)");
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 14;
+    ctx.beginPath();
+    ctx.moveTo(startX, startY);
+    ctx.quadraticCurveTo((startX + x) * 0.5, Math.min(startY, y) - 34, x, y);
+    ctx.stroke();
+    ctx.restore();
+    drawKonpeitoCandy(x, y, 36 + Math.sin(flyT * Math.PI) * 8, Math.floor(performance.now() / 58), performance.now() / 180, 0.98);
+    return;
+  }
+
+  drawActorShadow(player, 78);
+  if (appearT < 1) {
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.42 * (1 - appearT);
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.arc(player.x - cameraX, player.y - 92, 72 + appearT * 80, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.save();
+  ctx.globalAlpha = clamp(appearT * 1.3, 0, 1);
+  drawSprite(player, frame, PLAYER_SCALE * (1.08 - appearT * 0.08), false, "idle");
+  ctx.restore();
 }
 
 function drawLambda() {
@@ -17556,6 +18392,56 @@ function drawGoldenBroochIcon(type, x, y, size = 28, alpha = 1) {
   ctx.restore();
 }
 
+function drawResolveFlameIcon(x, y, size = 28, alpha = 1, bob = 0, large = false) {
+  const pulse = pulseValue(6);
+  const lick = Math.sin(bob * 2.2 + performance.now() / 130) * 0.16;
+  const scale = large ? 1.28 : 1;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.globalAlpha = alpha;
+  ctx.globalCompositeOperation = "source-over";
+  const aura = ctx.createRadialGradient(0, 4, 2, 0, 4, size * scale * 1.75);
+  aura.addColorStop(0, "rgba(35, 122, 255, 0.34)");
+  aura.addColorStop(0.45, "rgba(14, 52, 162, 0.22)");
+  aura.addColorStop(1, "rgba(3, 14, 56, 0)");
+  ctx.fillStyle = aura;
+  ctx.beginPath();
+  ctx.arc(0, 4, size * scale * (1.22 + pulse * 0.18), 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.globalAlpha = alpha * (0.34 + pulse * 0.12);
+  ctx.fillStyle = "rgba(7, 42, 132, 0.78)";
+  for (let i = 0; i < 3; i++) {
+    const offset = (i + 1) * 5 * scale;
+    ctx.beginPath();
+    ctx.moveTo(-offset * 0.18, -size * scale * (1.05 + lick));
+    ctx.bezierCurveTo(size * scale * 0.76 - offset, -size * scale * 0.46, size * scale * 0.56 - offset, size * scale * 0.26, size * scale * 0.12 - offset, size * scale * 0.72);
+    ctx.bezierCurveTo(-size * scale * 0.44 - offset, size * scale * 0.48, -size * scale * 0.72 - offset, -size * scale * 0.16, -size * scale * 0.22 - offset, -size * scale * 0.5);
+    ctx.bezierCurveTo(-size * scale * 0.04 - offset, -size * scale * 0.66, -size * scale * 0.1 - offset, -size * scale * 0.86, -offset * 0.18, -size * scale * (1.05 + lick));
+    ctx.fill();
+  }
+
+  ctx.globalAlpha = alpha;
+  ctx.shadowColor = "rgba(8, 34, 132, 0.86)";
+  ctx.shadowBlur = 10 + pulse * 5;
+  ctx.fillStyle = `rgba(6, 64, 184, ${0.9 + pulse * 0.08})`;
+  ctx.beginPath();
+  ctx.moveTo(0, -size * scale * (1.16 + lick));
+  ctx.bezierCurveTo(size * scale * 0.68, -size * scale * 0.52, size * scale * 0.52, size * scale * 0.22, size * scale * 0.12, size * scale * 0.66);
+  ctx.bezierCurveTo(-size * scale * 0.42, size * scale * 0.44, -size * scale * 0.66, -size * scale * 0.14, -size * scale * 0.2, -size * scale * 0.5);
+  ctx.bezierCurveTo(-size * scale * 0.04, -size * scale * 0.66, -size * scale * 0.1, -size * scale * 0.9, 0, -size * scale * (1.16 + lick));
+  ctx.fill();
+
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = "rgba(28, 155, 255, 0.72)";
+  ctx.beginPath();
+  ctx.moveTo(0, -size * scale * 0.64);
+  ctx.bezierCurveTo(size * scale * 0.3, -size * scale * 0.24, size * scale * 0.2, size * scale * 0.24, 0, size * scale * 0.42);
+  ctx.bezierCurveTo(-size * scale * 0.24, size * scale * 0.18, -size * scale * 0.2, -size * scale * 0.22, 0, -size * scale * 0.64);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawOneWingedEagleCrest(x, y, height = EAGLE_CREST_PICKUP_SIZE, alpha = 1, mirror = false, active = false, width = null) {
   const img = effectImages.oneWingedEagle;
   const glowImg = effectImages.oneWingedEagleGlow;
@@ -17603,6 +18489,10 @@ function drawOneWingedEagleCrest(x, y, height = EAGLE_CREST_PICKUP_SIZE, alpha =
 function drawPickupIcon(type, x, y, bob, pulse, alpha = 1, scale = 1) {
   if (type === "konpeito") {
     drawKonpeitoCandy(x, y - 42 * scale, (26 + pulse * 4) * scale, Math.floor(bob * 3) % KONPEITO_FRAME_COUNT, bob * 0.28, alpha);
+  } else if (type === "resolveFlame") {
+    drawResolveFlameIcon(x, y - 42 * scale, (18 + pulse * 3) * scale, alpha * (0.94 + pulse * 0.06), bob, false);
+  } else if (type === "resolveFlameLarge") {
+    drawResolveFlameIcon(x, y - 48 * scale, (22 + pulse * 4) * scale, alpha * (0.95 + pulse * 0.05), bob, true);
   } else if (type === "plumTea") {
     drawPlumTeaIcon(x, y - 42 * scale, (28 + pulse * 4) * scale, alpha * 0.92);
   } else if (type === "goldenBroochRight") {
@@ -17850,6 +18740,83 @@ function drawCrystalShards() {
   }
 }
 
+function drawWitchHuntingStakeEffects() {
+  for (const geyser of witchHuntingStakeGeysers) {
+    const t = 1 - geyser.life / geyser.max;
+    const alpha = clamp(1 - t, 0, 1);
+    const x = geyser.x - cameraX;
+    const y = geyser.y + 4;
+    const rise = 0.45 + Math.sin(t * Math.PI) * 0.9;
+    const height = 92 + 170 * rise;
+    const width = 46 + 92 * Math.sin(t * Math.PI);
+    const pieces = 7;
+
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    const dome = ctx.createRadialGradient(x, y - 6, 8, x, y - 20, 174);
+    dome.addColorStop(0, `rgba(238, 255, 255, ${0.36 * alpha})`);
+    dome.addColorStop(0.35, `rgba(78, 228, 255, ${0.24 * alpha})`);
+    dome.addColorStop(1, "rgba(26, 96, 255, 0)");
+    ctx.fillStyle = dome;
+    ctx.beginPath();
+    ctx.ellipse(x, y - 8, 178 * (0.35 + t * 0.76), 54 * (0.45 + t * 0.62), 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    for (let i = 0; i < pieces; i++) {
+      const p = (i / (pieces - 1) - 0.5);
+      const sway = Math.sin((geyser.seed + i * 1.7 + t * 4.5)) * 13;
+      const baseX = x + p * width * 1.1;
+      const tipX = x + p * width * 0.36 + sway;
+      const tipY = y - height * (0.58 + (i % 3) * 0.16) * (0.78 + Math.sin(t * Math.PI) * 0.34);
+      const baseHalf = 14 + (1 - Math.abs(p)) * 14;
+      const grad = ctx.createLinearGradient(baseX, y, tipX, tipY);
+      grad.addColorStop(0, `rgba(0, 98, 255, ${0.12 * alpha})`);
+      grad.addColorStop(0.42, `rgba(23, 210, 255, ${0.58 * alpha})`);
+      grad.addColorStop(1, `rgba(242, 255, 255, ${0.82 * alpha})`);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(baseX - baseHalf, y + 8);
+      ctx.lineTo(tipX, tipY);
+      ctx.lineTo(baseX + baseHalf, y + 8);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = `rgba(214, 255, 255, ${0.74 * alpha})`;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(x - width * 0.52, y - 2);
+    ctx.lineTo(x - width * 0.14, y - height * 0.74);
+    ctx.lineTo(x + width * 0.1, y - height * 0.42);
+    ctx.lineTo(x + width * 0.52, y - height * 0.92);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  for (const shard of witchHuntingStakeShards) {
+    const alpha = clamp(shard.life / shard.max, 0, 1);
+    const bright = shard.kind === "barrier";
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    for (let i = 1; i < shard.trail.length; i++) {
+      const a = (i / shard.trail.length) * alpha;
+      const p0 = shard.trail[i - 1];
+      const p1 = shard.trail[i];
+      ctx.strokeStyle = bright
+        ? `rgba(168, 252, 255, ${0.74 * a})`
+        : `rgba(75, 224, 255, ${0.42 * a})`;
+      ctx.lineWidth = bright ? 9 * a + 2 : 5 * a + 1;
+      ctx.beginPath();
+      ctx.moveTo(p0.x - cameraX, p0.y);
+      ctx.lineTo(p1.x - cameraX, p1.y);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    const angle = Math.atan2(shard.vy, shard.vx) + Math.PI / 2;
+    drawCrystalShape(shard.x - cameraX, shard.y, bright ? 34 : 24, bright ? 1 : 0.9, angle);
+  }
+}
+
 function drawCrystalShockwaves() {
   for (const wave of crystalShockwaves) {
     const t = 1 - wave.life / wave.max;
@@ -17992,6 +18959,31 @@ function drawKonpeitoShots() {
     ctx.restore();
 
     drawKonpeitoCandy(x, y, size, shot.frame, angle, 0.96);
+  }
+}
+
+function drawSuperChargeKonpeitoRings() {
+  for (const ring of superChargeKonpeitoRings) {
+    const t = 1 - ring.life / ring.max;
+    const alpha = clamp(ring.life / ring.max, 0, 1);
+    const x = ring.x - cameraX;
+    const y = ring.y - 82;
+    const radiusX = 38 + t * 96;
+    const radiusY = 18 + t * 38;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.strokeStyle = `rgba(255, 212, 250, ${0.46 * alpha})`;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radiusX, radiusY, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * Math.PI * 2 + ring.seed + t * 1.8;
+      const cx = x + Math.cos(angle) * radiusX;
+      const cy = y + Math.sin(angle) * radiusY;
+      drawKonpeitoCandy(cx, cy, Math.max(1, (13 + t * 5) * alpha), i + Math.floor(t * 8), angle, 0.75 * alpha);
+    }
   }
 }
 
@@ -18532,12 +19524,26 @@ function drawKonpeitoGeysers(frontLayer = false) {
 }
 
 function drawScreenFlash() {
-  if (screenFlashTimer <= 0) return;
-  ctx.save();
-  ctx.globalAlpha = 0.82 * clamp(screenFlashTimer / LAMBDA_SUMMON_FLASH_DURATION, 0, 1);
-  ctx.fillStyle = "#ffffff";
-  ctx.fillRect(0, 0, W, H);
-  ctx.restore();
+  if (screenFlashTimer <= 0 && witchTimeFlashTimer <= 0) return;
+  if (screenFlashTimer > 0) {
+    ctx.save();
+    ctx.globalAlpha = 0.82 * clamp(screenFlashTimer / LAMBDA_SUMMON_FLASH_DURATION, 0, 1);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+  }
+  if (witchTimeFlashTimer > 0) {
+    const t = clamp(witchTimeFlashTimer / 0.22, 0, 1);
+    ctx.save();
+    ctx.globalAlpha = 0.24 * t;
+    ctx.fillStyle = "#f7fbff";
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 0.18 * t;
+    ctx.strokeStyle = "rgba(220, 236, 255, 0.92)";
+    ctx.lineWidth = 5;
+    ctx.strokeRect(8, 8, W - 16, H - 16);
+    ctx.restore();
+  }
 }
 
 function drawBernParryOverlay() {
@@ -18719,6 +19725,20 @@ function drawShannonBarrierItemIcon(x, y) {
 
 function itemHudDrawers() {
   return {
+    resolveFlame: {
+      label: ITEM_TUTORIALS.resolveFlame.label,
+      active: false,
+      cooldown: 0,
+      cooldownMax: 1,
+      icon: (x, y) => drawResolveFlameIcon(x, y + 4, 18, 1, performance.now() / 520, false)
+    },
+    resolveFlameLarge: {
+      label: ITEM_TUTORIALS.resolveFlame.label,
+      active: false,
+      cooldown: 0,
+      cooldownMax: 1,
+      icon: (x, y) => drawResolveFlameIcon(x, y + 4, 18, 1, performance.now() / 520, true)
+    },
     crystalShard: {
       label: ITEM_TUTORIALS.crystalShard.label,
       active: player.crystalShardStacks.length > 0,
@@ -19428,6 +20448,29 @@ function drawParticles() {
     ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
     ctx.fillStyle = p.color;
     const size = p.size || 5;
+    if (p.trail && Number.isFinite(p.prevX) && Number.isFinite(p.prevY)) {
+      const x1 = p.prevX - cameraX;
+      const y1 = p.prevY;
+      const x2 = p.x - cameraX;
+      const y2 = p.y;
+      ctx.save();
+      ctx.globalCompositeOperation = "lighter";
+      const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+      grad.addColorStop(0, "rgba(56, 225, 255, 0)");
+      grad.addColorStop(0.45, "rgba(56, 225, 255, 0.34)");
+      grad.addColorStop(1, p.color || "rgba(120, 248, 255, 0.9)");
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = Math.max(1.5, size * 0.55);
+      ctx.shadowColor = "rgba(77, 239, 255, 0.72)";
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.restore();
+      ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
+      ctx.fillStyle = p.color;
+    }
     if (p.glow) {
       const x = p.x - cameraX;
       const y = p.y;
@@ -20328,6 +21371,7 @@ function draw() {
     drawCrystalShockwaves();
     drawGoatPoundQuakes();
     drawCrystalShards();
+    drawWitchHuntingStakeEffects();
     drawKonpeitoShockwaves();
     drawKonpeitoDomeBursts(true);
     drawLambdaSpecialKonpeitos();
@@ -20343,6 +21387,7 @@ function draw() {
     drawBeatriceStakeTrails();
     drawBeatriceTowerVolleyMissiles();
     drawKonpeitoShots();
+    drawSuperChargeKonpeitoRings();
     drawBeatriceStakes();
     drawBeatriceStakeSparkles();
     drawBeatriceDefeatWisps();
@@ -20383,6 +21428,7 @@ function draw() {
     drawCrystalShockwaves();
     drawGoatPoundQuakes();
     drawCrystalShards();
+    drawWitchHuntingStakeEffects();
     drawKonpeitoShockwaves();
     drawKonpeitoDomeBursts(true);
     drawLambdaSpecialKonpeitos();
@@ -20398,6 +21444,7 @@ function draw() {
     drawBeatriceStakeTrails();
     drawBeatriceTowerVolleyMissiles();
     drawKonpeitoShots();
+    drawSuperChargeKonpeitoRings();
     drawBeatriceStakes();
     drawBeatriceStakeSparkles();
     drawBeatriceDefeatWisps();
@@ -20437,6 +21484,7 @@ function draw() {
     drawCrystalShockwaves();
     drawGoatPoundQuakes();
     drawCrystalShards();
+    drawWitchHuntingStakeEffects();
     drawKonpeitoShockwaves();
     drawKonpeitoDomeBursts(true);
     drawLambdaSpecialKonpeitos();
@@ -20452,6 +21500,7 @@ function draw() {
     drawBeatriceStakeTrails();
     drawBeatriceTowerVolleyMissiles();
     drawKonpeitoShots();
+    drawSuperChargeKonpeitoRings();
     drawBeatriceStakes();
     drawBeatriceStakeSparkles();
     drawBeatriceDefeatWisps();
