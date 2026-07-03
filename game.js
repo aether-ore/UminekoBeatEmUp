@@ -656,7 +656,7 @@ const DASH_ATTACK_MARKER_RADIUS = 62;
 const DASH_ATTACK_MARKER_START_RADIUS = 118;
 const DASH_CANCEL_DURATION = 0.3;
 const DASH_CANCEL_DISTANCE = 176;
-const RUN_STUMBLE_STUN_TIME = 1.5;
+const RUN_STUMBLE_STUN_TIME = 0.75;
 const RUN_STUMBLE_KNOCKBACK = 58;
 const RUN_STUMBLE_LAUNCH_LIFT = 260;
 const RUN_STUMBLE_LAUNCH_DRIFT = 96;
@@ -2330,6 +2330,22 @@ function circleTouchesBeatriceBarrier(x, y, radius) {
 function damageBeatriceBarrierWithSpecial(amount, direction = player.facing || 1, contact = null) {
   if (!beatriceBarrierCanBeDamagedBySpecial() || amount <= 0) return false;
   damageBeatriceBarrier(amount, direction, contact);
+  return true;
+}
+
+function kanonHitBeatriceInEllipse(originX, originY, facing, range, depth, source, damage, lift, drift) {
+  if (!beatriceCanBeDamaged()) return false;
+  const box = beatriceHurtbox();
+  const centerX = box.x + box.w * 0.5;
+  const centerY = box.y + box.h * 0.5;
+  const dx = (centerX - originX) * facing;
+  const dy = Math.abs(centerY - originY) * 0.72;
+  if (dx < -58 || dx > range || dy > depth + 64) return false;
+  const dealt = damageBeatrice(damage, facing, { source });
+  if (dealt <= 0) return false;
+  launchBeatriceByBattlerRules(facing, source, lift, drift);
+  burst(beatriceBoss.x, beatriceBoss.y - Math.max(68, beatriceBoss.z || 0), "heavy");
+  if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
   return true;
 }
 
@@ -4204,6 +4220,31 @@ function beatriceCrystalShardTarget() {
   };
 }
 
+function beatriceCompanionTarget() {
+  if (!beatriceCanBeDamaged()) return null;
+  if (beatriceBoss.flavor === "launched" || (beatriceBoss.z || 0) > 8) return null;
+  return {
+    isBeatrice: true,
+    x: beatriceBoss.x,
+    y: clampPlayY(beatriceBoss.y),
+    hp: beatriceBoss.hp
+  };
+}
+
+function nearestKanonAttackTarget(x, y) {
+  let target = nearestEnemyTo(x, y);
+  let targetDist = target ? Math.hypot(target.x - x, target.y - y) : Infinity;
+  const beatriceTarget = beatriceCompanionTarget();
+  if (beatriceTarget) {
+    const beatriceDist = Math.hypot(beatriceTarget.x - x, beatriceTarget.y - y);
+    if (!target || beatriceDist < targetDist) {
+      target = beatriceTarget;
+      targetDist = beatriceDist;
+    }
+  }
+  return target;
+}
+
 function crystalShardTargets() {
   const targets = livingEnemies().filter((enemy) => enemy.spawnGrace <= 0);
   const beatriceTarget = beatriceCrystalShardTarget();
@@ -4530,7 +4571,7 @@ function startKanonDashAttack() {
   const segments = kanonFullGaugeSegments();
   if (segments < 1) return false;
   if (kanonCompanion.state === "summonSlash" || kanonCompanion.state.startsWith("attack")) return false;
-  const target = nearestEnemyTo(player.x, player.y);
+  const target = nearestKanonAttackTarget(player.x, player.y);
   if (!target) return false;
   kanonCompanion.attackSegmentsSpent = segments;
   kanonCompanion.attackCharge = Math.max(0, (kanonCompanion.attackCharge || 0) - segments * 100);
@@ -4554,16 +4595,28 @@ function applyKanonDashAttackHit() {
   const facing = kanonCompanion.facing || 1;
   const originX = kanonCompanion.x + facing * 70;
   const originY = kanonCompanion.y;
+  const source = "kanon:dashSlash";
   for (const enemy of enemies) {
     if (enemy.dead || enemy.spawnGrace > 0) continue;
     const dx = (enemy.x - originX) * facing;
     const dy = Math.abs(enemy.y - originY);
     if (dx < -44 || dx > KANON_ATTACK_RANGE || dy > KANON_ATTACK_DEPTH) continue;
-    damageEnemy(enemy, KANON_ATTACK_DAMAGE, { playerDamage: false });
-    launchEnemyUnprorated(enemy, facing, "kanon:dashSlash", KANON_ATTACK_LAUNCH_LIFT, KANON_ATTACK_LAUNCH_DRIFT);
+    damageEnemy(enemy, KANON_ATTACK_DAMAGE, { playerDamage: false, source });
+    launchEnemyUnprorated(enemy, facing, source, KANON_ATTACK_LAUNCH_LIFT, KANON_ATTACK_LAUNCH_DRIFT);
     burst(enemy.x, enemy.y - 86, "enemy");
     if (enemy.hp <= 0) defeatEnemy(enemy);
   }
+  kanonHitBeatriceInEllipse(
+    originX,
+    originY,
+    facing,
+    KANON_ATTACK_RANGE,
+    KANON_ATTACK_DEPTH,
+    source,
+    KANON_ATTACK_DAMAGE,
+    KANON_ATTACK_LAUNCH_LIFT,
+    KANON_ATTACK_LAUNCH_DRIFT
+  );
   spawnKanonSlashArc(originX, originY, facing);
   screenShakeTimer = Math.max(screenShakeTimer, 0.16);
 }
@@ -4583,16 +4636,28 @@ function applyKanonUppercutHit() {
   const facing = kanonCompanion.facing || 1;
   const originX = kanonCompanion.x + facing * 46;
   const originY = kanonCompanion.y;
+  const source = "kanon:uppercut";
   for (const enemy of enemies) {
     if (enemy.dead || enemy.spawnGrace > 0) continue;
     const dx = (enemy.x - originX) * facing;
     const dy = Math.abs(enemy.y - originY);
     if (dx < -58 || dx > KANON_UPPERCUT_RANGE || dy > KANON_UPPERCUT_DEPTH) continue;
-    damageEnemy(enemy, KANON_UPPERCUT_DAMAGE, { playerDamage: false });
-    launchEnemyUnprorated(enemy, facing, "kanon:uppercut", KANON_UPPERCUT_LAUNCH_LIFT, KANON_UPPERCUT_LAUNCH_DRIFT);
+    damageEnemy(enemy, KANON_UPPERCUT_DAMAGE, { playerDamage: false, source });
+    launchEnemyUnprorated(enemy, facing, source, KANON_UPPERCUT_LAUNCH_LIFT, KANON_UPPERCUT_LAUNCH_DRIFT);
     burst(enemy.x, enemy.y - 96, "heavy");
     if (enemy.hp <= 0) defeatEnemy(enemy);
   }
+  kanonHitBeatriceInEllipse(
+    originX,
+    originY,
+    facing,
+    KANON_UPPERCUT_RANGE,
+    KANON_UPPERCUT_DEPTH,
+    source,
+    KANON_UPPERCUT_DAMAGE,
+    KANON_UPPERCUT_LAUNCH_LIFT,
+    KANON_UPPERCUT_LAUNCH_DRIFT
+  );
   screenShakeTimer = Math.max(screenShakeTimer, 0.14);
 }
 
@@ -9140,8 +9205,11 @@ function triggerSuperChargeShockwave(kind, data, skippedEnemies = new Set(), ski
       || circleTouchesBeatriceBarrier(x, y, SUPER_CHARGE_SHOCKWAVE_RADIUS);
     if (inShockwave) {
       const barrierDamage = (beatriceBoss.barrierMax || BEATRICE_BARRIER_MAX) * SUPER_CHARGE_BEATRICE_BARRIER_FRACTION;
-      damageBeatriceBarrierWithSpecial(barrierDamage, direction);
+      const barrierBroken = damageBeatriceBarrierWithSpecial(barrierDamage, direction);
       spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 92, 16);
+      if (!barrierBroken && beatriceBoss.barrierActive) {
+        startBeatriceSuperChargeBarrierRecoil(direction);
+      }
       hit = true;
     }
   }
@@ -9915,7 +9983,7 @@ function resetPlayerForGoatHit() {
 }
 
 function startNeutralDodgeAttack() {
-  if (player.runState !== "dodging" || !player.neutralDodge) return false;
+  if (player.runState !== "dodging") return false;
   if (player.attackLock > 0 || player.airborne || player.knockedDown) return false;
   beginTechniqueEvent();
   player.comboTimer = 0;
@@ -10198,19 +10266,22 @@ function chargedAttackResolveCost() {
 }
 
 function nearestChargeTarget() {
+  const beatriceChargeTarget = beatriceBoss.active && beatriceBoss.hp > 0 && (beatriceCanBeDamaged() || beatriceBarrierCanBeDamagedBySpecial())
+    ? {
+      x: beatriceBoss.x,
+      y: beatriceCanBeDamaged() ? clampPlayY(beatriceBoss.y) : beatriceBoss.y,
+      dist: Math.hypot(beatriceBoss.x - player.x, beatriceBoss.y - player.y),
+      isBeatrice: true,
+      beatriceBarrier: beatriceBarrierCanBeDamagedBySpecial()
+    }
+    : null;
+  if (beatriceBoss.active && beatriceBoss.hp > 0 && (beatriceCanBeDamaged() || beatriceBarrierCanBeDamagedBySpecial())) {
+    if (waveMode === "boss") return beatriceChargeTarget;
+  }
   const candidates = enemies
     .filter((enemy) => !enemy.dead && enemy.spawnGrace <= 0)
     .map((enemy) => ({ x: enemy.x, y: enemy.y, dist: Math.hypot(enemy.x - player.x, enemy.y - player.y) }));
-  if (beatriceCanBeDamaged()) {
-    candidates.push({ x: beatriceBoss.x, y: beatriceBoss.y, dist: Math.hypot(beatriceBoss.x - player.x, beatriceBoss.y - player.y) });
-  } else if (beatriceBarrierCanBeDamagedBySpecial()) {
-    candidates.push({
-      x: beatriceBoss.x,
-      y: beatriceBoss.y,
-      dist: Math.hypot(beatriceBoss.x - player.x, beatriceBoss.y - player.y),
-      beatriceBarrier: true
-    });
-  }
+  if (beatriceChargeTarget) candidates.push(beatriceChargeTarget);
   if (!candidates.length) return null;
   candidates.sort((a, b) => a.dist - b.dist);
   return candidates[0];
@@ -10859,6 +10930,62 @@ function startBeatriceBarrierBreak(direction = 1) {
   message = "Barrier Broken";
   messageTimer = 1.1;
   return true;
+}
+
+function startBeatriceSuperChargeBarrierRecoil(direction = 1) {
+  if (!beatriceBoss.active || !beatriceBoss.barrierActive || beatriceBoss.flavor === "barrierBreak" || beatriceBoss.flavor === "defeated") return false;
+  cancelActiveBeatriceAttackForBarrierBreak();
+  beatriceBoss.vulnerable = false;
+  beatriceBoss.flavor = "superChargeRecoil";
+  beatriceBoss.anim = 0;
+  beatriceBoss.breakVx = direction * BEATRICE_BARRIER_BREAK_DRIFT * 0.82;
+  beatriceBoss.breakFade = 1;
+  beatriceBoss.materializeTimer = 0;
+  beatriceBoss.meleeKickHit = false;
+  beatriceBoss.meleeKickParried = false;
+  beatriceBoss.meleeKickParryFailed = false;
+  beatriceBoss.meleeKickParryFailFade = 0;
+  beatriceBoss.asmoDropKickPending = false;
+  beatriceBoss.asmoDropKickTimer = 0;
+  beatriceBoss.asmoDropKickHit = false;
+  beatriceBoss.wallsActive = false;
+  beatriceBoss.rewardStakePending = false;
+  beatriceBoss.mechanic = "superChargeRecoil";
+  spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 64, 34);
+  spawnAsmodeusGoldenWisps(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 12);
+  screenShakeTimer = Math.max(screenShakeTimer, 0.24);
+  return true;
+}
+
+function finishBeatriceSuperChargeBarrierRecoil() {
+  const oldX = beatriceBoss.x;
+  const oldY = beatriceBoss.y;
+  spawnGoldenButterflies(oldX, oldY - beatriceBoss.hoverOffset - 62, 44);
+  spawnAsmodeusGoldenWisps(oldX, oldY - beatriceBoss.hoverOffset - 58, 14);
+  const playerScreenX = player.x - cameraX;
+  const desiredScreenX = playerScreenX < W * 0.5 ? W * 0.78 : W * 0.22;
+  const targetX = clamp(cameraX + desiredScreenX, 90, STAGE_W - 90);
+  const targetY = clamp(player.y - 54, FLOOR_Y - 132, FLOOR_Y - 16);
+  const frame = beatriceFrames.barrierBreak[Math.min(beatriceFrames.barrierBreak.length - 1, Math.floor(beatriceBoss.anim))] || beatriceFrames.idle[0];
+  spawnBeatriceAfterimage(targetX, targetY, 0.58, frame);
+  beatriceBoss.x = targetX;
+  beatriceBoss.y = targetY;
+  beatriceBoss.z = 0;
+  beatriceBoss.hoverOffset = 76;
+  beatriceBoss.breakVx = 0;
+  beatriceBoss.breakFade = 0;
+  beatriceBoss.materializeTimer = 0.32;
+  beatriceBoss.flavor = "idle";
+  beatriceBoss.anim = 0;
+  beatriceBoss.mechanic = beatriceBoss.waveEffect === "purgatorio" ? "purgatorio" : "idle";
+  beatriceBoss.facing = player.x >= beatriceBoss.x ? 1 : -1;
+  spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 62, 44);
+  spawnAsmodeusGoldenWisps(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 58, 14);
+  if (beatriceBoss.waveEffect === "purgatorio") {
+    waveEffects.purgatorioTimer = Math.max(waveEffects.purgatorioTimer || 0, 1.2);
+  } else {
+    startRandomBeatriceMechanic();
+  }
 }
 
 function finishBeatriceBarrierBreak() {
@@ -12825,6 +12952,19 @@ function updateKanonSlashArcs(dt) {
       burst(enemy.x, enemy.y - 84, "enemy");
       if (enemy.hp <= 0) defeatEnemy(enemy);
     }
+    if (!arc.touchedBeatrice) {
+      arc.touchedBeatrice = kanonHitBeatriceInEllipse(
+        arc.x,
+        arc.y,
+        arc.facing,
+        range,
+        depth,
+        "kanon:lingeringArc",
+        KANON_SLASH_ARC_DAMAGE,
+        KANON_SLASH_ARC_LAUNCH_LIFT,
+        KANON_SLASH_ARC_LAUNCH_DRIFT
+      );
+    }
     arc.life -= dt;
     if (arc.life <= 0) kanonSlashArcs.splice(i, 1);
   }
@@ -12849,6 +12989,19 @@ function updateKanonUppercutArcs(dt) {
       burst(enemy.x, enemy.y - 112, "heavy");
       if (enemy.hp <= 0) defeatEnemy(enemy);
     }
+    if (!arc.touchedBeatrice) {
+      arc.touchedBeatrice = kanonHitBeatriceInEllipse(
+        arc.x,
+        arc.y,
+        arc.facing,
+        range,
+        depth,
+        "kanon:uppercutArc",
+        KANON_UPPERCUT_ARC_DAMAGE,
+        KANON_UPPERCUT_ARC_LAUNCH_LIFT,
+        KANON_UPPERCUT_ARC_LAUNCH_DRIFT
+      );
+    }
     arc.life -= dt;
     if (arc.life <= 0 || arc.x < -120 || arc.x > STAGE_W + 120) kanonUppercutArcs.splice(i, 1);
   }
@@ -12871,6 +13024,19 @@ function updateKanonFinisherArcs(dt) {
       launchEnemyUnprorated(enemy, arc.facing, "kanon:finisherArc", KANON_FINISHER_ARC_LAUNCH_LIFT, KANON_FINISHER_ARC_LAUNCH_DRIFT);
       burst(enemy.x, enemy.y - 104, "heavy");
       if (enemy.hp <= 0) defeatEnemy(enemy);
+    }
+    if (!arc.touchedBeatrice) {
+      arc.touchedBeatrice = kanonHitBeatriceInEllipse(
+        arc.x,
+        arc.y,
+        arc.facing,
+        range,
+        depth,
+        "kanon:finisherArc",
+        KANON_FINISHER_ARC_DAMAGE,
+        KANON_FINISHER_ARC_LAUNCH_LIFT,
+        KANON_FINISHER_ARC_LAUNCH_DRIFT
+      );
     }
     arc.life -= dt;
     if (arc.life <= 0) kanonFinisherArcs.splice(i, 1);
@@ -12950,6 +13116,7 @@ function updateBeatrice(dt) {
     && beatriceBoss.flavor !== "meleeParryReturn"
     && beatriceBoss.flavor !== "asmoDropKick"
     && beatriceBoss.flavor !== "barrierBreak"
+    && beatriceBoss.flavor !== "superChargeRecoil"
     && beatriceBoss.flavor !== "dizzy"
     && beatriceBoss.flavor !== "hurt"
     && beatriceBoss.flavor !== "launched"
@@ -13080,6 +13247,15 @@ function updateBeatrice(dt) {
     beatriceBoss.breakFade = 1 - fadeT;
     if (beatriceBoss.anim >= beatriceFrames.barrierBreak.length) {
       finishBeatriceBarrierBreak();
+    }
+  } else if (beatriceBoss.flavor === "superChargeRecoil") {
+    beatriceBoss.anim += dt * 10.5;
+    beatriceBoss.x = clamp(beatriceBoss.x + beatriceBoss.breakVx * dt, 90, STAGE_W - 90);
+    const fadeEnd = beatriceFrames.barrierBreak.length * 0.82;
+    const fadeT = clamp((beatriceBoss.anim - 1.2) / Math.max(0.1, fadeEnd - 1.2), 0, 1);
+    beatriceBoss.breakFade = 1 - fadeT;
+    if (beatriceBoss.anim >= beatriceFrames.barrierBreak.length * 0.88 || beatriceBoss.breakFade <= 0.02) {
+      finishBeatriceSuperChargeBarrierRecoil();
     }
   } else if (beatriceBoss.flavor === "dizzy") {
     beatriceBoss.anim += dt * 5.8;
@@ -16159,7 +16335,7 @@ function beatriceFrameListForFlavor(flavor) {
   if (flavor === "meleeParryHurt") return beatriceFrames.hurt;
   if (flavor === "meleeParryReturn") return beatriceFrames.idle;
   if (flavor === "asmoDropKick") return beatriceFrames.asmoDropKick;
-  if (flavor === "barrierBreak") return beatriceFrames.barrierBreak;
+  if (flavor === "barrierBreak" || flavor === "superChargeRecoil") return beatriceFrames.barrierBreak;
   if (flavor === "dizzy") return beatriceFrames.dizzy;
   if (flavor === "hurt") return beatriceFrames.hurt;
   if (flavor === "launched") return beatriceBoss.vz > 0 ? beatriceFrames.launchedUp : beatriceFrames.launchedFall;
@@ -16231,7 +16407,7 @@ function drawBeatriceAfterimages() {
 }
 
 function drawBeatriceBarrierAura(x, y) {
-  if (!beatriceBoss.barrierActive || beatriceBoss.vulnerable || beatriceBoss.flavor === "barrierBreak" || beatriceBoss.flavor === "defeated") return;
+  if (!beatriceBoss.barrierActive || beatriceBoss.vulnerable || beatriceBoss.flavor === "barrierBreak" || beatriceBoss.flavor === "superChargeRecoil" || beatriceBoss.flavor === "defeated") return;
   const barrierT = clamp((beatriceBoss.barrierHp ?? beatriceBoss.barrierMax ?? BEATRICE_BARRIER_MAX) / Math.max(1, beatriceBoss.barrierMax || BEATRICE_BARRIER_MAX), 0, 1);
   const pulse = pulseValue(6);
   const cx = x;
@@ -16282,7 +16458,7 @@ function drawBeatrice() {
   const defeatedAlpha = beatriceBoss.flavor === "defeated" && beatriceBoss.defeatPhase === "fade"
     ? clamp(beatriceBoss.defeatTimer / BEATRICE_DEFEAT_DISSIPATE_TIME, 0, 1)
     : 1;
-  const baseAlpha = beatriceBoss.flavor === "barrierBreak"
+  const baseAlpha = beatriceBoss.flavor === "barrierBreak" || beatriceBoss.flavor === "superChargeRecoil"
     ? clamp(beatriceBoss.breakFade, 0, 1)
     : recoveryAlpha * defeatedAlpha;
   drawBeatriceFrame(frame, x, y, beatriceBoss.facing, baseAlpha);
@@ -16290,7 +16466,7 @@ function drawBeatrice() {
     const maxAppear = beatriceBoss.flavor === "asmoDropKick" ? BEATRICE_ASMO_DROP_KICK_APPEAR_TIME : beatriceBoss.flavor === "meleeParryReturn" ? 0.38 : 0.32;
     const alpha = clamp(beatriceBoss.materializeTimer / maxAppear, 0, 1);
     drawBeatriceFrame(frame, x, y, beatriceBoss.facing, alpha, true);
-  } else if (beatriceBoss.flavor === "barrierBreak") {
+  } else if (beatriceBoss.flavor === "barrierBreak" || beatriceBoss.flavor === "superChargeRecoil") {
     const fadeT = 1 - clamp(beatriceBoss.breakFade, 0, 1);
     const goldAlpha = Math.sin(fadeT * Math.PI) * 0.78;
     if (goldAlpha > 0) drawBeatriceFrame(frame, x, y, beatriceBoss.facing, goldAlpha, true);
