@@ -135,6 +135,7 @@ const TECHNIQUE_BONUSES = {
   dashCancel: { label: "Dash Cancel", amount: 500 },
   launch: { label: "Launch", amount: 300 },
   groundBounce: { label: "Ground Bounce", amount: 1000 },
+  assistCombo: { label: "Assist Combo", amount: 500 },
   combo4: { label: "4 Hit Combo", amount: 500 },
   combo10: { label: "10 Hit Combo", amount: 1500 },
   parry: { label: "Parry", amount: 2000 },
@@ -637,7 +638,7 @@ const BERN_CAT_SHEET_COLS = 6;
 const BERN_CAT_WALK_FRAMES = Array.from({ length: 24 }, (_, i) => i).filter((i) => i !== 23);
 const DASH_START_INVULN = 0.5;
 const DASH_COOLDOWN = 1.5;
-const DASH_STOCK_MAX = 1;
+const DASH_STOCK_MAX = 2;
 const DASH_START_DURATION = 0.24;
 const DASH_RUN_ACCEL_TIME = 0.78;
 const DASH_TAP_DODGE_BRAKE_DURATION = 0.32;
@@ -745,6 +746,8 @@ const KANON_SUMMON_RANGE = 520;
 const KANON_SUMMON_DEPTH = 118;
 const KANON_SUMMON_LAUNCH_LIFT = 470;
 const KANON_SUMMON_LAUNCH_DRIFT = 280;
+const KANON_SUMMON_ATTACK_START_OFFSET = 42;
+const KANON_SUMMON_ATTACK_END_OFFSET = 126;
 const KANON_ATTACK_INTERVAL = 4;
 const KANON_ATTACK_MAX_CHARGE = 300;
 const KANON_ATTACK_DAMAGE = 50;
@@ -753,6 +756,7 @@ const KANON_ATTACK_DEPTH = 108;
 const KANON_ATTACK_LAUNCH_LIFT = 420;
 const KANON_ATTACK_LAUNCH_DRIFT = 250;
 const KANON_ATTACK_TRAVEL_SPEED = 820;
+const KANON_FINISHER_TRAVEL_OVERSHOOT = 220;
 const KANON_SLASH_ARC_DURATION = 1;
 const KANON_SLASH_ARC_DAMAGE = 20;
 const KANON_SLASH_ARC_RANGE = 260;
@@ -765,16 +769,16 @@ const KANON_UPPERCUT_DEPTH = 92;
 const KANON_UPPERCUT_LAUNCH_LIFT = 500;
 const KANON_UPPERCUT_LAUNCH_DRIFT = 110;
 const KANON_UPPERCUT_ARC_DAMAGE = 27;
-const KANON_UPPERCUT_ARC_SPEED = 285;
-const KANON_UPPERCUT_ARC_DURATION = 1.15;
+const KANON_UPPERCUT_ARC_SPEED = 190;
+const KANON_UPPERCUT_ARC_DURATION = 0.82;
 const KANON_UPPERCUT_ARC_RANGE = 190;
-const KANON_UPPERCUT_ARC_DEPTH = 118;
+const KANON_UPPERCUT_ARC_DEPTH = 166;
 const KANON_UPPERCUT_ARC_LAUNCH_LIFT = 460;
 const KANON_UPPERCUT_ARC_LAUNCH_DRIFT = 130;
 const KANON_FINISHER_ARC_DURATION = 1.55;
 const KANON_FINISHER_ARC_DAMAGE = 84;
-const KANON_FINISHER_ARC_RANGE = 520;
-const KANON_FINISHER_ARC_DEPTH = 154;
+const KANON_FINISHER_ARC_RANGE = 620;
+const KANON_FINISHER_ARC_DEPTH = 184;
 const KANON_FINISHER_ARC_LAUNCH_LIFT = 520;
 const KANON_FINISHER_ARC_LAUNCH_DRIFT = 300;
 const KANON_RECOVERY_HOP_SPEED = 640;
@@ -1557,8 +1561,7 @@ const scoreCombo = {
   defeats: 0,
   lastBanked: 0,
   lastMultiplier: 1,
-  perfectEligible: true,
-  milestoneBonuses: new Set()
+  perfectEligible: true
 };
 const waveStats = {
   active: null,
@@ -1766,6 +1769,8 @@ const beatriceBoss = {
   battlerLaunchSpent: false,
   battlerGroundBounceSpent: false,
   battlerExtraLaunchExtensionsUsed: 0,
+  targetChainHits: 0,
+  targetChainBonuses: new Set(),
   groundBouncePending: false,
   groundBounceTimer: 0,
   groundBounceDirection: 0,
@@ -1824,7 +1829,6 @@ function resetScoreCombo(perfectEligible = true) {
   scoreCombo.bank = 0;
   scoreCombo.defeats = 0;
   scoreCombo.perfectEligible = perfectEligible;
-  scoreCombo.milestoneBonuses = new Set();
 }
 
 function beginTechniqueEvent() {
@@ -1882,15 +1886,58 @@ function awardTechniqueBonus(id, label = "", amount = 0, options = {}) {
   return true;
 }
 
-function awardComboMilestoneBonuses() {
-  if (scoreCombo.hits >= 4 && !scoreCombo.milestoneBonuses.has("combo4")) {
-    scoreCombo.milestoneBonuses.add("combo4");
+function targetInHitChainState(target) {
+  if (!target) return false;
+  if (target.isBeatrice || target === beatriceBoss) {
+    return !!(beatriceCanBeDamaged() && ["dizzy", "hurt", "launched", "downed"].includes(beatriceBoss.flavor));
+  }
+  return !!(
+    target.airborne
+    || target.knockedDown
+    || target.downTime > 0
+    || target.hurt > 0
+    || target.groundBouncePending
+    || target.groundBounceTimer > 0
+  );
+}
+
+function resetTargetHitChain(target) {
+  if (!target) return;
+  target.targetChainHits = 0;
+  target.targetChainBonuses = new Set();
+}
+
+function updateTargetHitChain(target) {
+  if (!target) return;
+  if (!targetInHitChainState(target) && (target.targetChainHits || 0) > 0) {
+    resetTargetHitChain(target);
+  }
+}
+
+function noteTargetHitChain(target) {
+  if (!target) return;
+  if (!targetInHitChainState(target) && (target.targetChainHits || 0) > 0) {
+    resetTargetHitChain(target);
+  }
+  target.targetChainHits = (target.targetChainHits || 0) + 1;
+  if (!(target.targetChainBonuses instanceof Set)) target.targetChainBonuses = new Set();
+  if (target.targetChainHits >= 4 && !target.targetChainBonuses.has("combo4")) {
+    target.targetChainBonuses.add("combo4");
     awardTechniqueBonus("combo4");
   }
-  if (scoreCombo.hits >= 10 && !scoreCombo.milestoneBonuses.has("combo10")) {
-    scoreCombo.milestoneBonuses.add("combo10");
+  if (target.targetChainHits >= 10 && !target.targetChainBonuses.has("combo10")) {
+    target.targetChainBonuses.add("combo10");
     awardTechniqueBonus("combo10");
   }
+}
+
+function noteAssistCombo(target, source = "") {
+  if (!target || !isBattlerOwnedSource(source) || !isCompanionOwnedSource(target.launchSource || "")) return;
+  if (!targetInHitChainState(target)) return;
+  if (!(target.targetChainBonuses instanceof Set)) target.targetChainBonuses = new Set();
+  if (target.targetChainBonuses.has("assistCombo")) return;
+  target.targetChainBonuses.add("assistCombo");
+  awardTechniqueBonus("assistCombo");
 }
 
 function updateTechniqueBonusAnimations(dt) {
@@ -1975,7 +2022,6 @@ function addScoreComboDamage(actualDamage) {
   scoreCombo.hits += 1;
   scoreCombo.bank += Math.max(1, Math.round(actualDamage * COMBO_DAMAGE_SCORE_MULTIPLIER));
   updateWaveComboPeak();
-  awardComboMilestoneBonuses();
 }
 
 function addScoreComboDefeat() {
@@ -2214,6 +2260,10 @@ function damageEnemy(enemy, amount, options = {}) {
   if (actual > 0 && options.source) enemy.lastDamageSource = options.source;
   runStats.damageDealt += actual;
   addScoreComboDamage(actual);
+  if (actual > 0) {
+    noteTargetHitChain(enemy);
+    noteAssistCombo(enemy, options.source || "");
+  }
   if (actual > 0 && options.playerDamage !== false) notePlayerEnemyDamage();
   return actual;
 }
@@ -2380,6 +2430,10 @@ function damageBeatrice(amount, direction = 0, options = {}) {
   beatriceBoss.stunDamageTaken = (beatriceBoss.stunDamageTaken || 0) + actual;
   runStats.damageDealt += actual;
   addScoreComboDamage(actual);
+  if (actual > 0) {
+    noteTargetHitChain(beatriceBoss);
+    noteAssistCombo(beatriceBoss, options.source || "");
+  }
   beatriceBoss.stunIdleTimer = BEATRICE_STUN_IDLE_TIMEOUT;
   if (beatriceBoss.stunDamageTimer <= 0) beatriceBoss.stunDamageTimer = BEATRICE_STUN_DAMAGE_TIMEOUT;
   if (beatriceBoss.flavor === "dizzy" || beatriceBoss.flavor === "hurt") {
@@ -3242,6 +3296,8 @@ function loadImages() {
     ["oneWingedEagleGlow", "assets/effects/OneWingedEagle - Glow.png"],
     ["beatriceStake", "assets/effects/BeatriceStake.png"],
     ["beatriceTowers", "assets/effects/BeatriceTowers.png"],
+    ["kanonSlash100", "assets/effects/KanonSlash100.png"],
+    ["kanonSlash200", "assets/effects/KanonSlash200.png"],
     ["asmo1", "assets/effects/Asmo1.png"],
     ["asmo2", "assets/effects/Asmo2.png"],
     ["asmo3", "assets/effects/Asmo3.png"],
@@ -3511,6 +3567,24 @@ function rectsTouch(a, b) {
 
 function isPlayerInvulnerable() {
   return player.invuln > 0 || player.konpeitoGlowPending || player.konpeitoGlowTimer > 0 || player.action === "duoCharge" || duoAttack.active;
+}
+
+function groundPlayerForParry() {
+  player.z = 0;
+  player.vz = 0;
+  player.airborne = false;
+  player.runState = "none";
+  player.runLocked = false;
+  player.runTimer = 0;
+  player.runCharge = 0;
+  player.brakeDrift = 0;
+  player.brakeBurstTimer = 0;
+  player.neutralDodge = false;
+  player.dodgeAttackTimer = 0;
+  player.dodgeAttackVz = 0;
+  player.stage3KickAir = false;
+  player.stage3KickTimer = 0;
+  player.stage3KickVz = 0;
 }
 
 function bernHazardInterval() {
@@ -4550,20 +4624,47 @@ function triggerKanonSummonSlash() {
   screenShakeTimer = Math.max(screenShakeTimer, 0.22);
 }
 
-function applyKanonSummonSlashHit() {
-  const facing = kanonSummonSlash.facing || player.facing || 1;
-  const originX = player.x + facing * 76;
-  const originY = player.y;
+function applyKanonGroundedArcHitstun(enemy, facing, source) {
+  if (!enemy || isUninterruptibleBeatriceRushGoat(enemy)) return;
+  cancelEnemyAttackTelegraph(enemy, 0.25);
+  enemy.hurt = enemy.type === "goat" ? GOAT_HIT_STUN_DURATION : 0.24;
+  enemy.attack = 0;
+  enemy.anim = 0;
+  enemy.facing = -facing;
+  enemy.x = clamp(enemy.x + facing * 18, 80, STAGE_W - 120);
+}
+
+function applyKanonSummonSlashHit(options = {}) {
+  const facing = options.facing || kanonSummonSlash.facing || player.facing || 1;
+  const originX = options.originX ?? player.x + facing * 76;
+  const originY = options.originY ?? player.y;
+  const source = options.source || "kanon:summonSlash";
+  const relaunchAirborneOnly = Boolean(options.relaunchAirborneOnly);
   for (const enemy of enemies) {
     if (enemy.dead || enemy.spawnGrace > 0) continue;
     const dx = (enemy.x - originX) * facing;
     const dy = Math.abs(enemy.y - originY);
     if (dx < -40 || dx > KANON_SUMMON_RANGE || dy > KANON_SUMMON_DEPTH) continue;
-    damageEnemy(enemy, KANON_SUMMON_DAMAGE);
-    launchEnemyUnprorated(enemy, facing, "kanon:summonSlash", KANON_SUMMON_LAUNCH_LIFT, KANON_SUMMON_LAUNCH_DRIFT);
+    damageEnemy(enemy, KANON_SUMMON_DAMAGE, { playerDamage: false, source });
+    if (relaunchAirborneOnly && !enemyIsKanonArcRelaunchable(enemy)) {
+      applyKanonGroundedArcHitstun(enemy, facing, source);
+    } else {
+      launchEnemyUnprorated(enemy, facing, source, KANON_SUMMON_LAUNCH_LIFT, KANON_SUMMON_LAUNCH_DRIFT);
+    }
     burst(enemy.x, enemy.y - 86, "heavy");
     if (enemy.hp <= 0) defeatEnemy(enemy);
   }
+  kanonHitBeatriceInEllipse(
+    originX,
+    originY,
+    facing,
+    KANON_SUMMON_RANGE,
+    KANON_SUMMON_DEPTH,
+    source,
+    KANON_SUMMON_DAMAGE,
+    KANON_SUMMON_LAUNCH_LIFT,
+    KANON_SUMMON_LAUNCH_DRIFT
+  );
 }
 
 function startKanonDashAttack() {
@@ -4582,27 +4683,38 @@ function startKanonDashAttack() {
   kanonCompanion.uppercutHitDone = false;
   kanonCompanion.uppercutArcSpawned = false;
   kanonCompanion.finisherArcSpawned = false;
+  kanonCompanion.finisherDash = false;
   kanonCompanion.airOffset = 0;
-  kanonCompanion.facing = target.x >= kanonCompanion.x ? 1 : -1;
-  kanonCompanion.state = "attackStartup";
+  kanonCompanion.facing = player.facing || (target.x >= kanonCompanion.x ? 1 : -1);
+  kanonCompanion.summonAttackSlideTargetX = clamp(player.x + kanonCompanion.facing * KANON_SUMMON_ATTACK_END_OFFSET, 90, STAGE_W - 130);
+  kanonCompanion.summonAttackSlideTargetY = clampPlayY(player.y);
+  kanonCompanion.x = clamp(player.x + kanonCompanion.facing * KANON_SUMMON_ATTACK_START_OFFSET, 90, STAGE_W - 130);
+  kanonCompanion.y = kanonCompanion.summonAttackSlideTargetY;
+  kanonCompanion.state = "attackFinisher";
   kanonCompanion.anim = 0;
   kanonCompanion.attackPhaseTimer = 0;
   kanonCompanion.moveSettle = 0;
   return true;
 }
 
-function applyKanonDashAttackHit() {
+function applyKanonDashAttackHit(options = {}) {
   const facing = kanonCompanion.facing || 1;
   const originX = kanonCompanion.x + facing * 70;
   const originY = kanonCompanion.y;
-  const source = "kanon:dashSlash";
+  const finisher = Boolean(options.finisher);
+  const source = finisher ? "kanon:finisherDashSlash" : "kanon:dashSlash";
+  const range = finisher ? KANON_FINISHER_ARC_RANGE : KANON_ATTACK_RANGE;
+  const depth = finisher ? KANON_FINISHER_ARC_DEPTH : KANON_ATTACK_DEPTH;
+  const damage = finisher ? KANON_FINISHER_ARC_DAMAGE : KANON_ATTACK_DAMAGE;
+  const lift = finisher ? KANON_FINISHER_ARC_LAUNCH_LIFT : KANON_ATTACK_LAUNCH_LIFT;
+  const drift = finisher ? KANON_FINISHER_ARC_LAUNCH_DRIFT : KANON_ATTACK_LAUNCH_DRIFT;
   for (const enemy of enemies) {
     if (enemy.dead || enemy.spawnGrace > 0) continue;
     const dx = (enemy.x - originX) * facing;
     const dy = Math.abs(enemy.y - originY);
-    if (dx < -44 || dx > KANON_ATTACK_RANGE || dy > KANON_ATTACK_DEPTH) continue;
-    damageEnemy(enemy, KANON_ATTACK_DAMAGE, { playerDamage: false, source });
-    launchEnemyUnprorated(enemy, facing, source, KANON_ATTACK_LAUNCH_LIFT, KANON_ATTACK_LAUNCH_DRIFT);
+    if (dx < -44 || dx > range || dy > depth) continue;
+    damageEnemy(enemy, damage, { playerDamage: false, source });
+    launchEnemyUnprorated(enemy, facing, source, lift, drift);
     burst(enemy.x, enemy.y - 86, "enemy");
     if (enemy.hp <= 0) defeatEnemy(enemy);
   }
@@ -4610,25 +4722,33 @@ function applyKanonDashAttackHit() {
     originX,
     originY,
     facing,
-    KANON_ATTACK_RANGE,
-    KANON_ATTACK_DEPTH,
+    range,
+    depth,
     source,
-    KANON_ATTACK_DAMAGE,
-    KANON_ATTACK_LAUNCH_LIFT,
-    KANON_ATTACK_LAUNCH_DRIFT
+    damage,
+    lift,
+    drift
   );
-  spawnKanonSlashArc(originX, originY, facing);
-  screenShakeTimer = Math.max(screenShakeTimer, 0.16);
+  if (finisher) {
+    spawnKanonFinisherArc(originX + facing * 90, originY, facing);
+    screenShakeTimer = Math.max(screenShakeTimer, 0.26);
+  } else {
+    spawnKanonSlashArc(originX, originY, facing);
+    screenShakeTimer = Math.max(screenShakeTimer, 0.16);
+  }
 }
 
-function spawnKanonSlashArc(x, y, facing) {
+function spawnKanonSlashArc(x, y, facing, options = {}) {
   kanonSlashArcs.push({
     x,
     y,
     facing: facing || 1,
     life: KANON_SLASH_ARC_DURATION,
     max: KANON_SLASH_ARC_DURATION,
-    touched: new Set()
+    touched: new Set(),
+    groundedHitstun: Boolean(options.groundedHitstun),
+    thin: Boolean(options.thin),
+    wide: Boolean(options.wide)
   });
 }
 
@@ -4673,11 +4793,10 @@ function spawnKanonUppercutArc() {
   });
 }
 
-function spawnKanonFinisherArc() {
-  const facing = kanonCompanion.facing || 1;
+function spawnKanonFinisherArc(x = null, y = null, facing = kanonCompanion.facing || 1) {
   kanonFinisherArcs.push({
-    x: kanonCompanion.x + facing * 40,
-    y: kanonCompanion.y,
+    x: x ?? kanonCompanion.x + facing * 40,
+    y: y ?? kanonCompanion.y,
     facing,
     life: KANON_FINISHER_ARC_DURATION,
     max: KANON_FINISHER_ARC_DURATION,
@@ -5489,6 +5608,7 @@ function beatriceMeleeKickParryIndicatorActive() {
 
 function startBernParryCounterPunch(direction) {
   const data = attackData.punch3;
+  groundPlayerForParry();
   player.facing = direction;
   player.attackLock = 0;
   player.attackHasHit = false;
@@ -5548,6 +5668,7 @@ function tryBernHazardParry() {
 
 function resolveBeatriceMeleeKickParry() {
   const recoilDirection = player.x >= beatriceBoss.x ? 1 : -1;
+  groundPlayerForParry();
   beatriceBoss.meleeKickParried = true;
   beatriceBoss.meleeKickHit = true;
   beatriceBoss.meleeKickParryFailed = false;
@@ -5717,6 +5838,7 @@ function goatPunchParryReady(enemy) {
 function startGoatParryCounter(kind, direction) {
   const action = kind === "kick" ? "kick3" : "punch3";
   const data = attackData[action];
+  groundPlayerForParry();
   player.facing = direction;
   player.attackLock = 0;
   player.attackHasHit = false;
@@ -6320,6 +6442,13 @@ function isBattlerOwnedSource(source = "") {
   return source.startsWith("battler");
 }
 
+function isCompanionOwnedSource(source = "") {
+  return source.startsWith("kanon:")
+    || source.startsWith("shannon:")
+    || source.startsWith("lambda:")
+    || source.startsWith("bern:");
+}
+
 function isBattlerSpecialSource(source = "") {
   return source.startsWith("battler:special")
     || source.startsWith("battler:lambdaKonpeitoSpecial");
@@ -6669,6 +6798,8 @@ function makeEnemy(x, y, index = 0, typeOverride = "") {
     battlerLaunchSpent: false,
     battlerGroundBounceSpent: false,
     battlerExtraLaunchExtensionsUsed: 0,
+    targetChainHits: 0,
+    targetChainBonuses: new Set(),
     groundBouncePending: false,
     groundBounceTimer: 0,
     groundBounceDirection: 0,
@@ -6748,6 +6879,7 @@ function resetEnemyAfterShadowPortalTeleport(enemy) {
   enemy.groundBouncePending = false;
   enemy.groundBounceTimer = 0;
   enemy.hurt = 0;
+  resetTargetHitChain(enemy);
   enemy.attack = 0;
   enemy.attackHasHit = false;
   enemy.attackTelegraph = 0;
@@ -9985,6 +10117,7 @@ function resetPlayerForGoatHit() {
 function startNeutralDodgeAttack() {
   if (player.runState !== "dodging") return false;
   if (player.attackLock > 0 || player.airborne || player.knockedDown) return false;
+  if (!consumeDashStock()) return false;
   beginTechniqueEvent();
   player.comboTimer = 0;
   player.comboQueuedKind = "";
@@ -10016,8 +10149,8 @@ function startNeutralDodgeAttack() {
   player.dodgeDuration = DASH_TAP_DODGE_HOP_DURATION;
   player.brakeDrift = 0;
   player.brakeBurstTimer = 0;
-  player.invuln = Math.max(player.invuln, 0.08);
-  player.dashInvulnTimer = Math.max(player.dashInvulnTimer || 0, 0.08);
+  player.invuln = Math.max(player.invuln, DODGE_ATTACK_STARTUP_TIME);
+  player.dashInvulnTimer = Math.max(player.dashInvulnTimer || 0, DODGE_ATTACK_STARTUP_TIME);
   player.z = Math.max(player.z || 0, DODGE_ATTACK_HOVER_HEIGHT * 0.62);
   setAction("dodgeAttack", attackData.dodgeAttack.lock);
   return true;
@@ -11960,6 +12093,13 @@ function updatePlayer(dt) {
     player.vy = 0;
     if (player.dodgeAttackTimer < DODGE_ATTACK_STARTUP_TIME) {
       const t = clamp(player.dodgeAttackTimer / DODGE_ATTACK_STARTUP_TIME, 0, 1);
+      const startupRemaining = Math.max(0, DODGE_ATTACK_STARTUP_TIME - player.dodgeAttackTimer);
+      const startupFacingInput = inputAxisX();
+      if (Math.abs(startupFacingInput) > TOUCH_STICK_DEADZONE) {
+        player.facing = Math.sign(startupFacingInput) || player.facing || 1;
+      }
+      player.invuln = Math.max(player.invuln, startupRemaining);
+      player.dashInvulnTimer = Math.max(player.dashInvulnTimer || 0, startupRemaining);
       const hover = Math.sin(t * Math.PI) * 10;
       player.z = Math.max(player.z || 0, DODGE_ATTACK_HOVER_HEIGHT + hover);
       player.x = clamp(player.x + player.facing * DODGE_ATTACK_STARTUP_SPEED * dt, 80, STAGE_W - 120);
@@ -12314,6 +12454,7 @@ function updateEnemies(dt) {
       if (enemy.fall <= 0) enemies.splice(i, 1);
       continue;
     }
+    updateTargetHitChain(enemy);
     if (enemyCountsForWaveCompletion(enemy)) living += 1;
     if (enemy.gaapTeleport) {
       enemy.anim += dt * (enemy.type === "goat" ? 3.6 : 10);
@@ -12937,18 +13078,30 @@ function updateKanonSlashArcs(dt) {
   for (let i = kanonSlashArcs.length - 1; i >= 0; i--) {
     const arc = kanonSlashArcs[i];
     const age = clamp(1 - arc.life / arc.max, 0, 1);
-    const range = KANON_SLASH_ARC_RANGE + age * 92;
-    const depth = KANON_SLASH_ARC_DEPTH + age * 34;
+    if (arc.wide) {
+      arc.x += arc.facing * 96 * dt;
+    }
+    const range = arc.wide
+      ? KANON_SLASH_ARC_RANGE * 1.02 + age * 48
+      : (arc.thin ? KANON_SLASH_ARC_RANGE * 0.82 : KANON_SLASH_ARC_RANGE) + age * (arc.thin ? 58 : 92);
+    const depth = arc.wide
+      ? KANON_SLASH_ARC_DEPTH * 1.18 + age * 22
+      : (arc.thin ? KANON_SLASH_ARC_DEPTH * 0.62 : KANON_SLASH_ARC_DEPTH) + age * (arc.thin ? 20 : 34);
     for (const enemy of enemies) {
       if (arc.touched.has(enemy)) continue;
       if (enemy.dead || enemy.spawnGrace > 0) continue;
-      if (!enemyIsKanonArcRelaunchable(enemy)) continue;
+      const relaunchable = enemyIsKanonArcRelaunchable(enemy);
+      if (!relaunchable && !arc.groundedHitstun) continue;
       const dx = (enemy.x - arc.x) * arc.facing;
       const dy = Math.abs(enemy.y - arc.y);
       if (dx < -78 || dx > range || dy > depth) continue;
       arc.touched.add(enemy);
       damageEnemy(enemy, KANON_SLASH_ARC_DAMAGE, { playerDamage: false });
-      launchEnemyUnprorated(enemy, arc.facing, "kanon:lingeringArc", KANON_SLASH_ARC_LAUNCH_LIFT, KANON_SLASH_ARC_LAUNCH_DRIFT);
+      if (relaunchable) {
+        launchEnemyUnprorated(enemy, arc.facing, "kanon:lingeringArc", KANON_SLASH_ARC_LAUNCH_LIFT, KANON_SLASH_ARC_LAUNCH_DRIFT);
+      } else {
+        applyKanonGroundedArcHitstun(enemy, arc.facing, "kanon:lingeringArc");
+      }
       burst(enemy.x, enemy.y - 84, "enemy");
       if (enemy.hp <= 0) defeatEnemy(enemy);
     }
@@ -13011,8 +13164,8 @@ function updateKanonFinisherArcs(dt) {
   for (let i = kanonFinisherArcs.length - 1; i >= 0; i--) {
     const arc = kanonFinisherArcs[i];
     const age = clamp(1 - arc.life / arc.max, 0, 1);
-    const range = KANON_FINISHER_ARC_RANGE + age * 180;
-    const depth = KANON_FINISHER_ARC_DEPTH + age * 70;
+    const range = KANON_FINISHER_ARC_RANGE + age * 260;
+    const depth = KANON_FINISHER_ARC_DEPTH + age * 90;
     for (const enemy of enemies) {
       if (arc.touched.has(enemy)) continue;
       if (enemy.dead || enemy.spawnGrace > 0) continue;
@@ -13300,6 +13453,7 @@ function updateBeatrice(dt) {
       startBeatriceStunRecovery();
     }
   }
+  updateTargetHitChain(beatriceBoss);
   if (state !== "playing") return;
   updateBeatriceRingAttack(dt);
   updateBeatriceGoatRush(dt);
@@ -13660,6 +13814,7 @@ function launchReturnedStakeFromBattler(stake = null, options = {}) {
   const shake = options.shake ?? 0.56;
   const targetX = beatriceBoss.x;
   const targetY = beatriceBoss.y - beatriceBoss.hoverOffset - 70;
+  groundPlayerForParry();
   player.action = "stakeParryPose";
   player.anim = 0;
   player.attackLock = Math.max(player.attackLock, BEATRICE_STAKE_RETURN_FREEZE + 0.08);
@@ -14238,12 +14393,14 @@ function updateKanon(dt) {
     const dist = Math.hypot(dx, dy);
     kanonCompanion.facing = dx >= 0 ? 1 : -1;
     if (dist > 18) {
-      const step = Math.min(dist, KANON_ATTACK_TRAVEL_SPEED * dt);
+      const travelSpeed = KANON_ATTACK_TRAVEL_SPEED * (kanonCompanion.finisherDash ? 1.35 : 1);
+      const step = Math.min(dist, travelSpeed * dt);
       kanonCompanion.x += (dx / dist) * step;
       kanonCompanion.y += (dy / dist) * step;
     }
     kanonCompanion.anim += dt * 14;
-    if (dist <= 24 || kanonCompanion.anim >= kanonFrames.attackTravel.length) {
+    const travelFrameLimit = kanonFrames.attackTravel.length + (kanonCompanion.finisherDash ? 1.4 : 0);
+    if (dist <= 24 || kanonCompanion.anim >= travelFrameLimit) {
       kanonCompanion.state = "attackActive";
       kanonCompanion.anim = 0;
       kanonCompanion.attackPhaseTimer = 0;
@@ -14255,10 +14412,13 @@ function updateKanon(dt) {
     kanonCompanion.anim += dt * 15;
     if (!kanonCompanion.attackHitDone && kanonCompanion.anim >= 1.2) {
       kanonCompanion.attackHitDone = true;
-      applyKanonDashAttackHit();
+      applyKanonDashAttackHit({ finisher: Boolean(kanonCompanion.finisherDash) });
     }
     if (kanonCompanion.anim >= kanonFrames.attackActive.length) {
-      if (kanonCompanion.attackSegmentsSpent >= 2) {
+      if (kanonCompanion.finisherDash) {
+        kanonCompanion.finisherDash = false;
+        enterKanonAttackRecovery();
+      } else if (kanonCompanion.attackSegmentsSpent >= 2) {
         kanonCompanion.state = "attackUppercutStartup";
         kanonCompanion.anim = 0;
         kanonCompanion.attackPhaseTimer = 0;
@@ -14320,9 +14480,13 @@ function updateKanon(dt) {
     kanonCompanion.airOffset = 0;
     if (kanonCompanion.anim >= kanonFrames.attackUppercutLand.length) {
       if (kanonCompanion.attackSegmentsSpent >= 3) {
-        kanonCompanion.state = "attackFinisher";
+        kanonCompanion.state = "attackStartup";
         kanonCompanion.anim = 0;
         kanonCompanion.attackPhaseTimer = 0;
+        kanonCompanion.finisherDash = true;
+        kanonCompanion.attackHitDone = false;
+        kanonCompanion.attackTargetX = clamp(kanonCompanion.x + (kanonCompanion.facing || 1) * KANON_FINISHER_TRAVEL_OVERSHOOT, 90, STAGE_W - 130);
+        kanonCompanion.attackTargetY = kanonCompanion.y;
       } else {
         enterKanonAttackRecovery();
       }
@@ -14332,12 +14496,40 @@ function updateKanon(dt) {
   }
   if (kanonCompanion.state === "attackFinisher") {
     kanonCompanion.anim += dt * 10;
+    const slideTargetX = kanonCompanion.summonAttackSlideTargetX ?? clamp(player.x + (kanonCompanion.facing || 1) * KANON_SUMMON_ATTACK_END_OFFSET, 90, STAGE_W - 130);
+    const slideTargetY = kanonCompanion.summonAttackSlideTargetY ?? player.y;
+    const slideDx = slideTargetX - kanonCompanion.x;
+    const slideDy = slideTargetY - kanonCompanion.y;
+    const slideDist = Math.hypot(slideDx, slideDy);
+    if (slideDist > 1) {
+      const step = Math.min(slideDist, 720 * dt);
+      kanonCompanion.x += (slideDx / slideDist) * step;
+      kanonCompanion.y += (slideDy / slideDist) * step;
+    }
     if (!kanonCompanion.finisherArcSpawned && kanonCompanion.anim >= 1.6) {
       kanonCompanion.finisherArcSpawned = true;
-      spawnKanonFinisherArc();
+      const facing = kanonCompanion.facing || 1;
+      const originX = kanonCompanion.x + facing * 76;
+      const originY = kanonCompanion.y;
+      applyKanonSummonSlashHit({
+        facing,
+        originX,
+        originY,
+        source: "kanon:hundredGaugeSlash",
+        relaunchAirborneOnly: true
+      });
+      spawnKanonSlashArc(originX + facing * 12, originY, facing, { wide: true, groundedHitstun: true });
     }
     if (kanonCompanion.anim >= kanonFrames.attackFinisher.length) {
-      enterKanonAttackRecovery();
+      if (kanonCompanion.attackSegmentsSpent >= 2) {
+        kanonCompanion.state = "attackUppercutStartup";
+        kanonCompanion.anim = 0;
+        kanonCompanion.attackPhaseTimer = 0;
+        kanonCompanion.uppercutHitDone = false;
+        kanonCompanion.uppercutArcSpawned = false;
+      } else {
+        enterKanonAttackRecovery();
+      }
     }
     return;
   }
@@ -14656,6 +14848,7 @@ function update(dt) {
     drawBeatriceTowerVolleyTelegraphs();
     drawBeatriceTowerVolleys();
     drawShannonBarrier("back");
+    drawKanonSlashArcs("back");
     drawActors({ skipPlayer: true, skipBeatrice: true });
     drawKonpeitoGeysers(true);
     drawDuoAttackEffects();
@@ -17937,37 +18130,68 @@ function drawShannonWalls() {
   }
 }
 
-function drawKanonSlashArcs() {
+function drawKanonWideSlashArc(arc) {
+  const t = clamp(1 - arc.life / arc.max, 0, 1);
+  const alpha = clamp(arc.life / arc.max, 0, 1);
+  const x = arc.x - cameraX;
+  const y = arc.y - 126;
+  const img = effectImages.kanonSlash100;
+  if (!img) return;
+  const scale = 0.66 + t * 0.12;
+  const drawW = img.width * scale;
+  const drawH = img.height * scale;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(arc.facing, 1);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.shadowColor = "rgba(255, 20, 68, 0.92)";
+  ctx.shadowBlur = 18 + t * 8;
+  ctx.globalAlpha = alpha * 0.95;
+  ctx.rotate(-0.08);
+  ctx.drawImage(img, -drawW * 0.28, -drawH * 0.48, drawW, drawH);
+  ctx.globalAlpha = alpha * 0.35;
+  ctx.shadowBlur = 28 + t * 10;
+  ctx.drawImage(img, -drawW * 0.28 - 2, -drawH * 0.48, drawW + 4, drawH);
+  ctx.restore();
+}
+
+function drawKanonSlashArcs(part = "all") {
   for (const arc of kanonSlashArcs) {
+    if (arc.wide) {
+      if (part !== "back") drawKanonWideSlashArc(arc);
+      continue;
+    }
+    if (part === "back") continue;
     const t = clamp(1 - arc.life / arc.max, 0, 1);
     const alpha = clamp(arc.life / arc.max, 0, 1);
     const pulse = 0.5 + Math.sin(performance.now() / 55 + t * 8) * 0.5;
     const x = arc.x - cameraX;
     const y = arc.y - 112;
+    const thinScale = arc.thin ? 0.62 : 1;
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     ctx.translate(x, y);
     ctx.scale(-arc.facing, 1);
-    const glow = ctx.createRadialGradient(-96, 0, 18, -118, 4, 238 + t * 86);
+    const glow = ctx.createRadialGradient(-96, 0, 18, -118, 4, (238 + t * 86) * thinScale);
     glow.addColorStop(0, `rgba(255, 238, 246, ${0.12 * alpha})`);
     glow.addColorStop(0.35, `rgba(255, 30, 86, ${0.14 * alpha})`);
     glow.addColorStop(1, "rgba(255, 30, 86, 0)");
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.ellipse(-110 - t * 22, 0, 250 + t * 110, 134 + t * 42, -0.18, Math.PI * 1.03, Math.PI * 1.94);
+    ctx.ellipse(-110 - t * 22, 0, (250 + t * 110) * thinScale, (134 + t * 42) * thinScale, -0.18, Math.PI * 1.03, Math.PI * 1.94);
     ctx.lineTo(-42, -12);
     ctx.closePath();
     ctx.fill();
 
     ctx.strokeStyle = `rgba(255, ${44 + pulse * 76}, 92, ${0.9 * alpha})`;
-    ctx.lineWidth = 13 * alpha + 2;
+    ctx.lineWidth = (arc.thin ? 6 : 13) * alpha + 2;
     ctx.beginPath();
-    ctx.ellipse(-98 - t * 28, 0, 208 + t * 96, 98 + t * 35, -0.18, Math.PI * 1.08, Math.PI * 1.92);
+    ctx.ellipse(-98 - t * 28, 0, (208 + t * 96) * thinScale, (98 + t * 35) * thinScale, -0.18, Math.PI * 1.08, Math.PI * 1.92);
     ctx.stroke();
     ctx.strokeStyle = `rgba(255, 206, 220, ${0.72 * alpha})`;
-    ctx.lineWidth = 4 * alpha + 1;
+    ctx.lineWidth = (arc.thin ? 2.5 : 4) * alpha + 1;
     ctx.beginPath();
-    ctx.ellipse(-98 - t * 20, 0, 162 + t * 82, 73 + t * 30, -0.18, Math.PI * 1.14, Math.PI * 1.86);
+    ctx.ellipse(-98 - t * 20, 0, (162 + t * 82) * thinScale, (73 + t * 30) * thinScale, -0.18, Math.PI * 1.14, Math.PI * 1.86);
     ctx.stroke();
     ctx.restore();
   }
@@ -17977,35 +18201,25 @@ function drawKanonUppercutArcs() {
   for (const arc of kanonUppercutArcs) {
     const t = clamp(1 - arc.life / arc.max, 0, 1);
     const alpha = clamp(arc.life / arc.max, 0, 1);
-    const pulse = 0.5 + Math.sin(performance.now() / 62 + t * 10) * 0.5;
     const x = arc.x - cameraX;
-    const y = arc.y - 118;
+    const y = arc.y - 214;
+    const img = effectImages.kanonSlash200;
+    if (!img) continue;
+    const scale = 0.86 + t * 0.18;
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     ctx.translate(x, y);
     ctx.scale(arc.facing, 1);
-
-    const glow = ctx.createRadialGradient(64, 0, 18, 78, 0, 210 + t * 72);
-    glow.addColorStop(0, `rgba(255, 235, 246, ${0.14 * alpha})`);
-    glow.addColorStop(0.42, `rgba(255, 26, 82, ${0.18 * alpha})`);
-    glow.addColorStop(1, "rgba(255, 26, 82, 0)");
-    ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.ellipse(66 + t * 22, 0, 194 + t * 82, 92 + t * 30, -0.04, -Math.PI * 0.58, Math.PI * 0.58);
-    ctx.lineTo(34, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = `rgba(255, ${42 + pulse * 78}, 96, ${0.92 * alpha})`;
-    ctx.lineWidth = 12 * alpha + 2;
-    ctx.beginPath();
-    ctx.ellipse(72 + t * 26, 0, 166 + t * 70, 76 + t * 24, -0.04, -Math.PI * 0.58, Math.PI * 0.58);
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(255, 218, 230, ${0.76 * alpha})`;
-    ctx.lineWidth = 4 * alpha + 1;
-    ctx.beginPath();
-    ctx.ellipse(70 + t * 20, 0, 126 + t * 56, 54 + t * 18, -0.04, -Math.PI * 0.54, Math.PI * 0.54);
-    ctx.stroke();
+    ctx.shadowColor = "rgba(255, 24, 70, 0.95)";
+    ctx.shadowBlur = 22 + t * 12;
+    ctx.globalAlpha = alpha * 0.95;
+    ctx.rotate(0.75);
+    ctx.drawImage(img, -drawW * 0.22, -drawH * 0.38, drawW, drawH);
+    ctx.globalAlpha = alpha * 0.34;
+    ctx.shadowBlur = 34 + t * 14;
+    ctx.drawImage(img, -drawW * 0.22 - 3, -drawH * 0.38, drawW + 6, drawH);
     ctx.restore();
   }
 }
@@ -18017,8 +18231,9 @@ function drawKanonFinisherArcs() {
     const pulse = 0.5 + Math.sin(performance.now() / 48 + t * 12) * 0.5;
     const x = arc.x - cameraX;
     const y = arc.y - 104;
-    const radiusX = 210 + t * 270;
-    const radiusY = 150 + t * 118;
+    const centerX = 116 + t * 92;
+    const radiusX = 260 + t * 360;
+    const radiusY = 172 + t * 150;
     ctx.save();
     ctx.translate(x, y);
     ctx.scale(arc.facing, 1);
@@ -18026,26 +18241,26 @@ function drawKanonFinisherArcs() {
     ctx.shadowColor = "rgba(255, 24, 70, 0.95)";
     ctx.shadowBlur = 32 + t * 26;
 
-    const glow = ctx.createRadialGradient(34, 0, 18, 48, 0, radiusX * 1.12);
+    const glow = ctx.createRadialGradient(centerX, 0, 18, centerX + 40, 0, radiusX * 1.12);
     glow.addColorStop(0, `rgba(255, 236, 246, ${0.12 * alpha})`);
     glow.addColorStop(0.35, `rgba(255, 26, 82, ${0.18 * alpha})`);
     glow.addColorStop(1, "rgba(255, 26, 82, 0)");
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.ellipse(0, 0, radiusX * 1.06, radiusY * 1.08, -0.16, -Math.PI * 0.04, -Math.PI * 0.62, true);
-    ctx.ellipse(0, 0, radiusX * 0.62, radiusY * 0.64, -0.16, -Math.PI * 0.62, -Math.PI * 0.04, false);
+    ctx.ellipse(centerX, 0, radiusX * 1.04, radiusY * 1.08, -0.12, -Math.PI * 0.78, Math.PI * 0.78);
+    ctx.ellipse(centerX - 44, 0, radiusX * 0.58, radiusY * 0.62, -0.12, Math.PI * 0.78, -Math.PI * 0.78, true);
     ctx.closePath();
     ctx.fill();
 
     ctx.strokeStyle = `rgba(255, ${36 + pulse * 86}, 92, ${0.9 * alpha})`;
     ctx.lineWidth = 20 * alpha + 4;
     ctx.beginPath();
-    ctx.ellipse(0, 0, radiusX, radiusY, -0.16, -Math.PI * 0.04, -Math.PI * 0.62, true);
+    ctx.ellipse(centerX, 0, radiusX, radiusY, -0.12, -Math.PI * 0.72, Math.PI * 0.72);
     ctx.stroke();
     ctx.strokeStyle = `rgba(255, 222, 232, ${0.72 * alpha})`;
     ctx.lineWidth = 5 * alpha + 1.5;
     ctx.beginPath();
-    ctx.ellipse(0, 0, radiusX * 0.86, radiusY * 0.9, -0.16, -Math.PI * 0.06, -Math.PI * 0.58, true);
+    ctx.ellipse(centerX - 18, 0, radiusX * 0.78, radiusY * 0.84, -0.12, -Math.PI * 0.66, Math.PI * 0.66);
     ctx.stroke();
     ctx.restore();
   }
@@ -20105,6 +20320,7 @@ function draw() {
     drawBeatriceTowerVolleyTelegraphs();
     drawBeatriceTowerVolleys();
     drawShannonBarrier("back");
+    drawKanonSlashArcs("back");
     drawActors({ skipCompanions: true });
     drawKonpeitoGeysers(true);
     drawSpecialBeam();
@@ -20160,6 +20376,7 @@ function draw() {
     drawBeatriceTowerVolleyTelegraphs();
     drawBeatriceTowerVolleys();
     drawShannonBarrier("back");
+    drawKanonSlashArcs("back");
     drawActors({ skipCompanions: true });
     drawKonpeitoGeysers(true);
     drawSpecialBeam();
@@ -20208,9 +20425,10 @@ function draw() {
   drawBeatriceMeleeKickTelegraph();
   drawBeatriceGoatRushTelegraphs();
   drawMortalStampedeTelegraphs();
-  drawBeatriceTowerVolleyTelegraphs();
+    drawBeatriceTowerVolleyTelegraphs();
     drawBeatriceTowerVolleys();
     drawShannonBarrier("back");
+    drawKanonSlashArcs("back");
     drawActors();
     drawKonpeitoGeysers(true);
     drawDuoAttackEffects();
