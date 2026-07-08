@@ -80,6 +80,36 @@ const DUO_LAUNCH_LIFT = 650;
 const DUO_LAUNCH_DRIFT = 340;
 const DUO_ABSORB_DURATION = 0.9;
 const LAMBDA_DUO_SPLASH_DURATION = 0.95;
+const HUMAN_DUO_PROJECTILE_SPEED = 780;
+const HUMAN_DUO_PROJECTILE_LIFE = 0.46;
+const HUMAN_DUO_PROJECTILE_RADIUS = 30;
+const HUMAN_DUO_MUZZLE_LIFE = 0.28;
+const HUMAN_DUO_MUZZLE_MELEE_DAMAGE = 8;
+const HUMAN_DUO_MUZZLE_MELEE_RADIUS = 118;
+const HUMAN_DUO_SHANNON_STAGE1_RATE = 13;
+const HUMAN_DUO_SHANNON_STAGE1_DAMAGE = 12;
+const HUMAN_DUO_SHANNON_STAGE1_RANGE = 126;
+const HUMAN_DUO_SHANNON_STAGE1_DEPTH = 92;
+const HUMAN_DUO_SHANNON_STAGE1_PUSH = 190;
+const HUMAN_DUO_SHANNON_STAGE3_RATE = 10;
+const HUMAN_DUO_SHANNON_STAGE3_RADIUS = 238;
+const HUMAN_DUO_SHANNON_STAGE3_AIR_RADIUS = 340;
+const HUMAN_DUO_SHANNON_STAGE3_PULL = 620;
+const HUMAN_DUO_SHANNON_STAGE3_AIR_PULL = 860;
+const HUMAN_DUO_POINT_LOCK = 0.26;
+const HUMAN_DUO_FINALE_DURATION = 0.9;
+const HUMAN_DUO_FINALE_HIT_TIME = 0.22;
+const HUMAN_DUO_FINALE_DAMAGE = 130;
+const HUMAN_DUO_FINALE_LIFT = 520;
+const HUMAN_DUO_FINALE_DRIFT = 330;
+const HUMAN_DUO_KANON_STAGE_DISTANCE = 184;
+const HUMAN_DUO_KANON_STAGE_Y_LEASH = 42;
+const HUMAN_DUO_SHANNON_VORTEX_RADIUS = 150;
+const HUMAN_DUO_STAGE3_KANON_VORTEX_OFFSET = 500;
+const HUMAN_DUO_STAGE3_KANON_DASH_DISTANCE = 170;
+const HUMAN_DUO_STAGE3_VORTEX_FORWARD_OFFSET = 122;
+const HUMAN_DUO_STAGE3_VORTEX_HEIGHT = 94;
+const HUMAN_DUO_STAGE3_KANON_VORTEX_Y_OFFSET = 18;
 const ENEMY_DEFEAT_FADE_DURATION = 1.25;
 const ENEMY_SUMMON_GRACE = 1;
 const SHADOW_PORTAL_WAVE_INTERVAL = 10;
@@ -546,6 +576,7 @@ const BEATRICE_TOWER_LEVIATHAN_PARRY_START_RADIUS = 148;
 const BEATRICE_TOWER_LEVIATHAN_PARRY_WINDOW = 18;
 const BEATRICE_MECHANIC_CHOICES = ["goatTrial", "teleportAttack", "goatRush", "towerVolley"];
 const DEBUG_START_BEATRICE_BOSS_WAVE = false;
+const DEBUG_START_LUCIFER_BOSS_WAVE = false;
 const DEBUG_BEATRICE_TELEPORT_PREP_TEST = false;
 const BEATRICE_TELEPORT_PREP_JUMPS = 7;
 const BEATRICE_TELEPORT_PREP_JUMP_TIME = 0.14;
@@ -619,6 +650,45 @@ const BEATRICE_TUTORIAL_DIALOGUE = [
   { speaker: "Battler", portrait: "BattlerPensive", thought: true, parryHint: true }
 ];
 const BEATRICE_STAKE_TUTORIAL_SKIP_DELAY = 0.5;
+const LUCIFER_SPRITE_SCALE = 1.34;
+const LUCIFER_BOSS_HP_MULTIPLIER = 2.35;
+const LUCIFER_BOSS_HEALTH_GROWTH = 0.22;
+const LUCIFER_IDLE_CHIP_FRACTION = 0.12;
+const LUCIFER_IDLE_CHIP_MIN = 1;
+const LUCIFER_HURT_FLASH_TIME = 0.18;
+const LUCIFER_BLOCK_DURATION = 0.34;
+const LUCIFER_DEFEAT_DISSIPATE_TIME = 1.1;
+const LUCIFER_SLASH_ANIM_RATE = 10;
+const LUCIFER_SLASH_CHAIN_SIZE = 3;
+const LUCIFER_SLASH_CHAIN_GAP = 0.14;
+const LUCIFER_SLASH_COOLDOWN = 1.05;
+const LUCIFER_SLASH_INITIAL_DELAY = 0.65;
+const LUCIFER_SLASH_ACTIVE_START_INDEX = 2;
+const LUCIFER_SLASH_ACTIVE_END_INDEX = 5;
+const LUCIFER_SLASH_RECOVERY_START_INDEX = 6;
+const LUCIFER_SLASH_RANGE = 168;
+const LUCIFER_SLASH_DEPTH = 82;
+const LUCIFER_SLASH_DAMAGE = 17;
+const LUCIFER_SLASH_LIFT = 360;
+const LUCIFER_SLASH_DRIFT = 180;
+const LUCIFER_STAKE_ANIM_RATE = 9.5;
+const LUCIFER_STAKE_ACTIVE_ANIM_RATE = 14;
+const LUCIFER_STAKE_WINDUP_END_INDEX = 6;
+const LUCIFER_STAKE_ACTIVE_START_INDEX = 7;
+const LUCIFER_STAKE_SPEED = 2150;
+const LUCIFER_STAKE_MAX_TIME = 1.45;
+const LUCIFER_STAKE_MAX_BOUNCES = 5;
+const LUCIFER_STAKE_DAMAGE = 22;
+const LUCIFER_STAKE_HIT_RADIUS = 34;
+const LUCIFER_STAKE_LIFT = 310;
+const LUCIFER_STAKE_DRIFT = 220;
+const LUCIFER_STAKE_DRAW_SCALE = 0.56;
+const LUCIFER_STAKE_CHEST_OFFSET = 112;
+const LUCIFER_STAKE_AIR_LAUNCH_OFFSET = 118;
+const LUCIFER_STAKE_ARENA_TOP = 118;
+const LUCIFER_STAKE_ARENA_BOTTOM_OFFSET = 86;
+const LUCIFER_STAKE_FLIP_BACK_DISTANCE = 130;
+const LUCIFER_STAKE_FLIP_RISE = 82;
 const BEATRICE_STAKE_TUTORIAL_DIALOGUE = {
   hint: {
     speaker: "Battler",
@@ -724,6 +794,7 @@ const EXPERIMENTAL_JUGGLE_LAMBDA_KONPEITO = true;
 const DEBUG_JUGGLED_KONPEITO_TARGETS_LAMBDA = false;
 const DEBUG_FLAG_DEFS = [
   { key: "startBeatriceBossWave", label: "Start With Beatrice Boss", defaultValue: DEBUG_START_BEATRICE_BOSS_WAVE },
+  { key: "startLuciferBossWave", label: "Start With Lucifer Boss", defaultValue: DEBUG_START_LUCIFER_BOSS_WAVE },
   { key: "beatriceTeleportPrepTest", label: "Beatrice Teleport Prep Test", defaultValue: DEBUG_BEATRICE_TELEPORT_PREP_TEST },
   { key: "forceBernCatForm", label: "Force Bern Cat Form", defaultValue: DEBUG_FORCE_BERN_CAT_FORM },
   { key: "startWithPlumTea", label: "Start With Plum Tea", defaultValue: DEBUG_START_WITH_PLUM_TEA },
@@ -977,7 +1048,9 @@ const shannonFrames = {
   run: [125, 126, 127, 128, 129, 130, 131, 132, 133, 134],
   runBrake: [136, 137, 138, 139],
   wallCast: [625, 626, 627, 628, 629, 630, 631, 632, 633, 634],
-  barrierCast: [625, 626, 627, 628, 629, 630, 631, 632, 633, 634]
+  barrierCast: [625, 626, 627, 628, 629, 630, 631, 632, 633, 634],
+  duoStage1: [255, 256, 257, 258, 259, 260, 261, 262],
+  duoStage3: [489, 490, 491, 492, 493, 494, 495, 496]
 };
 const kanonFrames = {
   summonSlash: [769, 770, 771, 772, 773, 774, 775],
@@ -1049,6 +1122,12 @@ const beatriceFrames = {
   victoryIntro: [844, 845],
   victoryLoop: [851, 852, 853, 854]
 };
+const luciferFrames = {
+  idle: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  block: [109, 110, 110, 109],
+  slash: [219, 220, 221, 222, 223, 224, 225, 226, 227, 228],
+  stakeFlip: [347, 348, 349, 350, 351, 352, 353, 354, 355, 356]
+};
 const beelzebubFrames = [503, 504, 505, 506, 507, 508, 509, 510, 511, 512];
 const leviathanFrames = [513, 514, 515, 516, 517, 518, 519, 520, 521, 522];
 const satanFrames = [483, 484, 485, 486, 487, 488, 489, 490, 491, 492];
@@ -1065,6 +1144,9 @@ const goatIdleFrameAnchors = {};
 let goatIdleAnchor = null;
 const beatriceImages = {};
 const beatriceFrameBounds = {};
+const luciferImages = {};
+const luciferFrameBounds = {};
+const luciferFrameAnchors = {};
 const lambdaImages = {};
 const lambdaPortraits = {};
 const dialoguePortraits = {};
@@ -1743,6 +1825,19 @@ const duoAttack = {
   stageComplete: false,
   crystalShots: []
 };
+const humanDuo = {
+  active: false,
+  ending: false,
+  comboStage: 0,
+  queuedStage: 0,
+  finaleTimer: 0,
+  finaleHitDone: false,
+  saveContext: null,
+  lastProjectileTarget: null
+};
+const humanDuoProjectiles = [];
+const humanDuoMuzzleBursts = [];
+const humanDuoFinaleSlashes = [];
 const lambdaGameOverDialogue = {
   active: false,
   index: 0,
@@ -1837,6 +1932,53 @@ const beatriceBoss = {
   stunDamageTimer: 0,
   recoveryTimer: 0,
   waveEffect: ""
+};
+const luciferBoss = {
+  active: false,
+  x: 0,
+  y: FLOOR_Y - 12,
+  facing: -1,
+  anim: 0,
+  hp: 1,
+  maxHp: 1,
+  flavor: "idle",
+  vulnerable: false,
+  recovery: false,
+  blockTimer: 0,
+  hurtFlash: 0,
+  defeatTimer: 0,
+  defeatPhase: "",
+  defeated: false,
+  lastDamageSource: "",
+  z: 0,
+  vz: 0,
+  airVx: 0,
+  launchSource: "",
+  juggleCount: 0,
+  battlerLaunchSpent: false,
+  battlerGroundBounceSpent: false,
+  battlerExtraLaunchExtensionsUsed: 0,
+  targetChainHits: 0,
+  targetChainBonuses: new Set(),
+  groundBouncePending: false,
+  groundBounceTimer: 0,
+  groundBounceDirection: 0,
+  groundBounceSource: "",
+  groundBounceLift: 0,
+  groundBounceDrift: 0,
+  downTime: 0,
+  recoveryTimer: 0,
+  attackQueue: [],
+  attackCooldown: 0,
+  chainDelay: 0,
+  attackHitDone: false,
+  stakeVx: 0,
+  stakeVy: 0,
+  stakeTimer: 0,
+  stakeBounces: 0,
+  stakeLaunched: false,
+  groundX: 0,
+  groundY: FLOOR_Y - 12
 };
 const runStats = {
   wavesCompleted: 0,
@@ -2001,6 +2143,9 @@ function targetInHitChainState(target) {
   if (!target) return false;
   if (target.isBeatrice || target === beatriceBoss) {
     return !!(beatriceCanBeDamaged() && ["dizzy", "hurt", "launched", "downed"].includes(beatriceBoss.flavor));
+  }
+  if (target.isLucifer || target === luciferBoss) {
+    return !!(luciferCanBeDamaged() && (luciferBoss.hurtFlash > 0 || luciferTakesFullDamage()));
   }
   return !!(
     target.airborne
@@ -2376,6 +2521,11 @@ function notePlayerEnemyDamage() {
   shadowPortalInactivityTimer = SHADOW_PORTAL_DAMAGE_GRACE;
 }
 
+function noteBattlerAttackTarget(target, source = "") {
+  if (!target || !isBattlerOwnedSource(source)) return;
+  player.lastBattlerAttackTarget = target;
+}
+
 function damageEnemy(enemy, amount, options = {}) {
   if (!enemy || amount <= 0) return 0;
   const scaledAmount = amount * playerOutgoingDamageMultiplier();
@@ -2385,6 +2535,7 @@ function damageEnemy(enemy, amount, options = {}) {
   runStats.damageDealt += actual;
   addScoreComboDamage(actual);
   if (actual > 0) {
+    noteBattlerAttackTarget(enemy, options.source || "");
     noteTargetHitChain(enemy);
     noteAssistCombo(enemy, options.source || "");
   }
@@ -2471,6 +2622,56 @@ function beatriceHurtbox() {
     w: 172,
     h: 132
   };
+}
+
+function luciferCanBeDamaged() {
+  return luciferBoss.active && luciferBoss.hp > 0 && luciferBoss.flavor !== "defeated";
+}
+
+function luciferTakesFullDamage() {
+  const slashRecovery = luciferBoss.flavor === "slash"
+    && Math.floor(luciferBoss.anim) >= LUCIFER_SLASH_RECOVERY_START_INDEX;
+  const stakeWindup = luciferBoss.flavor === "stakeFlip"
+    && Math.floor(luciferBoss.anim) <= LUCIFER_STAKE_WINDUP_END_INDEX;
+  return luciferBoss.vulnerable || luciferBoss.recovery || slashRecovery || stakeWindup || luciferBoss.flavor === "recovery";
+}
+
+function luciferHurtbox() {
+  return {
+    x: luciferBoss.x - 58,
+    y: luciferBoss.y - (luciferBoss.z || 0) - 154,
+    w: 116,
+    h: 154
+  };
+}
+
+function damageLucifer(amount, direction = 0, options = {}) {
+  if (!luciferCanBeDamaged() || amount <= 0) return 0;
+  const incomingAmount = amount * playerOutgoingDamageMultiplier();
+  const fullDamage = luciferTakesFullDamage();
+  const scaledAmount = fullDamage
+    ? incomingAmount
+    : Math.max(LUCIFER_IDLE_CHIP_MIN, incomingAmount * LUCIFER_IDLE_CHIP_FRACTION);
+  const dealt = Math.max(0, Math.min(luciferBoss.hp, scaledAmount));
+  luciferBoss.hp -= dealt;
+  luciferBoss.lastDamageSource = options.source || "";
+  luciferBoss.hurtFlash = LUCIFER_HURT_FLASH_TIME;
+  if (!fullDamage && (luciferBoss.flavor === "idle" || luciferBoss.flavor === "block")) {
+    luciferBoss.flavor = "block";
+    luciferBoss.blockTimer = LUCIFER_BLOCK_DURATION;
+    luciferBoss.anim = 0;
+  }
+  if (direction) luciferBoss.x = clamp(luciferBoss.x + Math.sign(direction) * (fullDamage ? 16 : 5), 90, STAGE_W - 90);
+  runStats.damageDealt += dealt;
+  addScoreComboDamage(dealt);
+  if (dealt > 0) {
+    noteTargetHitChain(luciferBoss);
+    noteAssistCombo(luciferBoss, options.source || "");
+    if (isBattlerOwnedSource(options.source || "")) noteBattlerAttackTarget(luciferBoss, options.source || "");
+    spawnAsmodeusGoldenWisps(luciferBoss.x, luciferBoss.y - 92, fullDamage ? 8 : 4);
+  }
+  if (luciferBoss.hp <= 0) defeatLuciferBoss();
+  return dealt;
 }
 
 function beatriceBarrierCanBeDamagedBySpecial() {
@@ -2730,6 +2931,7 @@ function damageBeatrice(amount, direction = 0, options = {}) {
   runStats.damageDealt += actual;
   addScoreComboDamage(actual);
   if (actual > 0) {
+    noteBattlerAttackTarget(beatriceBoss, options.source || "");
     noteTargetHitChain(beatriceBoss);
     noteAssistCombo(beatriceBoss, options.source || "");
   }
@@ -3180,7 +3382,18 @@ const shannonCompanion = {
   wallTimer: 0,
   wallCastFacing: 1,
   wallCastSpawned: false,
-  barrierBestowed: false
+  wallCastMode: "",
+  wallCastOriginX: 0,
+  wallCastOriginY: FLOOR_Y,
+  barrierBestowed: false,
+  duoAttackHitDone: false,
+  duoStage3KanonRequested: false,
+  duoStage3Recovering: false,
+  duoStage3Target: null,
+  duoStage3LoopTimer: 0,
+  duoAttackTargetX: 0,
+  duoAttackTargetY: FLOOR_Y,
+  duoAttackFacing: 1
 };
 
 const shannonBarrierBursts = [];
@@ -3207,6 +3420,9 @@ const kanonCompanion = {
   pendingStageTrigger: false,
   pendingStage: 0,
   pendingStageTarget: null,
+  pendingStageFree: false,
+  pendingStageHumanDuoFixed: false,
+  pendingStageOptions: null,
   lastTriggerEventId: -1,
   uppercutHitDone: false,
   uppercutArcSpawned: false,
@@ -3221,6 +3437,14 @@ const kanonCompanion = {
   savePending: null,
   saveResolved: false
 };
+
+function resetShannonDuoState() {
+  shannonCompanion.duoAttackHitDone = false;
+  shannonCompanion.duoStage3KanonRequested = false;
+  shannonCompanion.duoStage3Recovering = false;
+  shannonCompanion.duoStage3Target = null;
+  shannonCompanion.duoStage3LoopTimer = 0;
+}
 
 const kanonSummonSlash = {
   active: false,
@@ -3253,6 +3477,7 @@ const player = {
   superChargeAttackActive: false,
   pendingSuperChargeAttack: false,
   superChargeTravel: null,
+  lastBattlerAttackTarget: null,
   comboStep: 0,
   comboTimer: 0,
   comboQueuedKind: "",
@@ -3429,6 +3654,10 @@ function beatriceFileName(id) {
   return `assets/beatrice/${String(id).padStart(8, "0")}.png`;
 }
 
+function luciferFileName(id) {
+  return `assets/lucifer/${String(id).padStart(8, "0")}.png`;
+}
+
 function imageOpaqueBounds(img) {
   const c = document.createElement("canvas");
   c.width = img.width;
@@ -3542,9 +3771,14 @@ function loadImages() {
         shannonFrames.moveBack.includes(id) ||
         shannonFrames.runStart.includes(id) ||
         shannonFrames.run.includes(id) ||
-        shannonFrames.runBrake.includes(id)
+        shannonFrames.runBrake.includes(id) ||
+        shannonFrames.duoStage1.includes(id) ||
+        shannonFrames.duoStage3.includes(id)
       ) {
         shannonFrameAnchors[id] = { x: img.width * 0.5, y: shannonFrameAnchors[id].y };
+      }
+      if (shannonFrames.duoStage3.includes(id)) {
+        shannonFrameAnchors[id] = { x: img.width * 0.5, y: img.height };
       }
       resolve();
     };
@@ -3583,6 +3817,19 @@ function loadImages() {
       resolve();
     };
     img.src = beatriceFileName(id);
+  }));
+  const luciferLoads = [...new Set(Object.values(luciferFrames).flat())].map((id) => new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      luciferImages[id] = img;
+      luciferFrameBounds[id] = imageOpaqueBounds(img);
+      luciferFrameAnchors[id] = imageBottomFootAnchor(img);
+      if (id >= 354 && id <= 356) {
+        luciferFrameAnchors[id] = { x: img.width * 0.5, y: img.height * 0.5 };
+      }
+      resolve();
+    };
+    img.src = luciferFileName(id);
   }));
   const lambdaPortraitNames = [...new Set([...LAMBDA_GAME_OVER_DIALOGUE.map(({ portrait }) => portrait), "DarkLambda2"])];
   const portraitLoads = lambdaPortraitNames.map((portrait) => new Promise((resolve) => {
@@ -3684,7 +3931,7 @@ function loadImages() {
     };
     img.src = src;
   }));
-  return Promise.all([...spriteLoads, ...lambdaLoads, ...bernLoads, ...shannonLoads, ...kanonLoads, ...goatLoads, ...beatriceLoads, ...portraitLoads, ...tutorialPortraitLoads, ...effectLoads, ...backgroundLoads]).then(() => {
+  return Promise.all([...spriteLoads, ...lambdaLoads, ...bernLoads, ...shannonLoads, ...kanonLoads, ...goatLoads, ...beatriceLoads, ...luciferLoads, ...portraitLoads, ...tutorialPortraitLoads, ...effectLoads, ...backgroundLoads]).then(() => {
     alignGoatIdleFrames();
     prepareBernCatSheet();
   });
@@ -3927,6 +4174,455 @@ function hasBernLambdaDuo() {
     && bernCompanion.state !== "sacrifice";
 }
 
+function hasShannonKanonDuo() {
+  return player.resolve >= 100
+    && player.goldenBroochRightActive
+    && player.goldenBroochLeftActive
+    && shannonCompanion.active
+    && kanonCompanion.active
+    && shannonCompanion.summoned
+    && kanonCompanion.summoned
+    && !humanDuo.active
+    && !humanDuo.ending
+    && state === "playing";
+}
+
+function hasAnyDuoReady() {
+  return hasShannonKanonDuo() || hasBernLambdaDuo();
+}
+
+function resetHumanDuo() {
+  humanDuo.active = false;
+  humanDuo.ending = false;
+  humanDuo.comboStage = 0;
+  humanDuo.queuedStage = 0;
+  humanDuo.finaleTimer = 0;
+  humanDuo.finaleHitDone = false;
+  humanDuo.saveContext = null;
+  humanDuo.lastProjectileTarget = null;
+  humanDuoProjectiles.length = 0;
+  humanDuoMuzzleBursts.length = 0;
+  humanDuoFinaleSlashes.length = 0;
+}
+
+function startHumanDuo() {
+  if (!hasShannonKanonDuo()) return false;
+  player.resolve = Math.max(0, player.resolve - 100);
+  resolveSpendFlashTimer = Math.max(resolveSpendFlashTimer, 0.34);
+  runStats.duoAttacksUnleashed += 1;
+  humanDuo.active = true;
+  humanDuo.ending = false;
+  humanDuo.comboStage = 0;
+  humanDuo.queuedStage = 0;
+  humanDuo.finaleTimer = 0;
+  humanDuo.finaleHitDone = false;
+  humanDuo.saveContext = null;
+  humanDuo.lastProjectileTarget = null;
+  player.duoCharge = DUO_CHARGE_TIME;
+  player.comboTimer = 0;
+  player.comboQueuedKind = "";
+  setAction("duoBeamPose", HUMAN_DUO_POINT_LOCK);
+  message = "Shannon/Kanon Duo";
+  messageTimer = 1.1;
+  updateResolveDuoOutline();
+  return true;
+}
+
+function consumeHumanDuoCompanions() {
+  player.goldenBroochRightActive = false;
+  player.goldenBroochLeftActive = false;
+  removeCompanionItem("goldenBroochRight");
+  removeCompanionItem("goldenBroochLeft");
+  releaseCompanionSlot("shannon");
+  releaseCompanionSlot("kanon");
+  spawnGoldenButterflies(shannonCompanion.x || player.x, (shannonCompanion.y || player.y) - 86, 18);
+  spawnGoldenButterflies(kanonCompanion.x || player.x, (kanonCompanion.y || player.y) - 86, 18);
+  shannonCompanion.active = false;
+  shannonCompanion.summoned = false;
+  shannonCompanion.state = "idle";
+  shannonCompanion.anim = 0;
+  shannonCompanion.wallCharge = 0;
+  shannonCompanion.wallTimer = SHANNON_WALL_INTERVAL;
+  shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.wallCastMode = "";
+  shannonCompanion.wallCastOriginX = 0;
+  shannonCompanion.wallCastOriginY = FLOOR_Y;
+  resetShannonDuoState();
+  kanonCompanion.active = false;
+  kanonCompanion.summoned = false;
+  kanonCompanion.state = "idle";
+  kanonCompanion.anim = 0;
+  kanonCompanion.attackCharge = 0;
+  kanonCompanion.attackTimer = KANON_ATTACK_MAX_CHARGE;
+  resetKanonStageCombo();
+  kanonCompanion.savePending = null;
+  kanonCompanion.saveResolved = false;
+  player.duoCharge = 0;
+  player.currentAttack = "";
+  if (player.action === "duoBeamPose") setAction("idle");
+  resetHumanDuo();
+}
+
+function humanDuoNextStage() {
+  humanDuo.comboStage = (humanDuo.comboStage % 3) + 1;
+  return humanDuo.comboStage;
+}
+
+function humanDuoTarget() {
+  return humanDuo.lastProjectileTarget && !humanDuo.lastProjectileTarget.dead
+    ? humanDuo.lastProjectileTarget
+    : nearestKanonAttackTarget(player.x, player.y) || null;
+}
+
+function battlerPointingFingerTip(facing = player.facing || 1) {
+  return {
+    x: player.x + facing * 213,
+    y: player.y - 291
+  };
+}
+
+function requestHumanDuoKanonStage(stage, target = null, options = {}) {
+  if (!player.goldenBroochLeftActive || !kanonCompanion.active || !kanonCompanion.summoned) return false;
+  if (kanonCompanion.state === "summonSlash") return false;
+  target = target && !target.dead ? target : humanDuoTarget();
+  const stageOptions = { ...options, free: true, humanDuoFixed: true };
+  if (kanonIsAttacking()) {
+    kanonCompanion.pendingStageTrigger = true;
+    kanonCompanion.pendingStage = stage;
+    kanonCompanion.pendingStageTarget = target;
+    kanonCompanion.pendingStageFree = true;
+    kanonCompanion.pendingStageHumanDuoFixed = true;
+    kanonCompanion.pendingStageOptions = stageOptions;
+    return true;
+  }
+  return executeKanonStageAttack(stage, target, stageOptions);
+}
+
+function startHumanDuoShannonStage1(target = null) {
+  if (!humanDuo.active || humanDuo.ending) return false;
+  if (!player.goldenBroochRightActive || !shannonCompanion.active || !shannonCompanion.summoned) return false;
+  if (shannonCompanion.state === "summon" || shannonCompanion.state === "barrierCast" || shannonCompanion.state === "wallCast" || shannonCompanion.state === "duoStage1") return false;
+  const fallback = target && !target.dead ? target : nearestEnemyTo(player.x, player.y);
+  const facing = fallback
+    ? (fallback.x >= player.x ? 1 : -1)
+    : (player.facing || 1);
+  shannonCompanion.x = clamp(player.x + facing * 118, 80, STAGE_W - 80);
+  shannonCompanion.y = clampPlayY(player.y + 8);
+  shannonCompanion.facing = facing;
+  shannonCompanion.state = "duoStage1";
+  shannonCompanion.anim = 0;
+  shannonCompanion.moveSettle = 0;
+  shannonCompanion.duoAttackHitDone = false;
+  shannonCompanion.duoAttackTargetX = fallback?.x || (shannonCompanion.x + facing * HUMAN_DUO_SHANNON_STAGE1_RANGE);
+  shannonCompanion.duoAttackTargetY = fallback?.y || shannonCompanion.y;
+  shannonCompanion.duoAttackFacing = facing;
+  return true;
+}
+
+function applyHumanDuoShannonStage1Hit() {
+  if (shannonCompanion.duoAttackHitDone) return;
+  shannonCompanion.duoAttackHitDone = true;
+  const facing = shannonCompanion.duoAttackFacing || shannonCompanion.facing || 1;
+  const hitX = shannonCompanion.duoAttackTargetX
+    ? (shannonCompanion.x + facing * 72) * 0.55 + shannonCompanion.duoAttackTargetX * 0.45
+    : shannonCompanion.x + facing * 72;
+  const hitY = shannonCompanion.duoAttackTargetY
+    ? (shannonCompanion.y - 64) * 0.62 + (shannonCompanion.duoAttackTargetY - 56) * 0.38
+    : shannonCompanion.y - 64;
+  const rect = {
+    x: hitX - HUMAN_DUO_SHANNON_STAGE1_RANGE * 0.5,
+    y: hitY - HUMAN_DUO_SHANNON_STAGE1_DEPTH * 0.5,
+    w: HUMAN_DUO_SHANNON_STAGE1_RANGE,
+    h: HUMAN_DUO_SHANNON_STAGE1_DEPTH
+  };
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0) continue;
+    if ((enemy.x - shannonCompanion.x) * facing < -18) continue;
+    if (!rectsTouch(rect, enemyHurtbox(enemy))) continue;
+    damageEnemy(enemy, HUMAN_DUO_SHANNON_STAGE1_DAMAGE, { playerDamage: false, source: "shannon:duoStage1" });
+    enemy.hurt = Math.max(enemy.hurt || 0, 0.22);
+    enemy.x = clamp(enemy.x + facing * HUMAN_DUO_SHANNON_STAGE1_PUSH * 0.12, 60, STAGE_W - 60);
+    enemy.vx = Math.max(Math.abs(enemy.vx || 0), HUMAN_DUO_SHANNON_STAGE1_PUSH) * facing;
+    spawnShannonWallShatter(enemy.x, enemy.y - 86, facing);
+    burst(enemy.x, enemy.y - 72, "special");
+    if (enemy.hp <= 0) defeatEnemy(enemy);
+  }
+}
+
+function startHumanDuoShannonStage3(target = null, facing = player.facing || 1) {
+  if (!humanDuo.active || humanDuo.ending) return false;
+  if (!player.goldenBroochRightActive || !shannonCompanion.active || !shannonCompanion.summoned) return false;
+  if (shannonCompanion.state === "summon" || shannonCompanion.state === "barrierCast") return false;
+  const dir = facing || 1;
+  shannonCompanion.x = clamp(player.x + dir * 128, 80, STAGE_W - 80);
+  shannonCompanion.y = clampPlayY(player.y);
+  shannonCompanion.facing = dir;
+  shannonCompanion.state = "duoStage3";
+  shannonCompanion.anim = 0;
+  shannonCompanion.moveSettle = 0;
+  shannonCompanion.duoStage3KanonRequested = false;
+  shannonCompanion.duoStage3Recovering = false;
+  shannonCompanion.duoStage3Target = target && !target.dead ? target : null;
+  shannonCompanion.duoStage3LoopTimer = 0;
+  shannonCompanion.duoAttackFacing = dir;
+  return true;
+}
+
+function humanDuoShannonStage3VortexPoint() {
+  const facing = shannonCompanion.facing || 1;
+  return {
+    x: shannonCompanion.x + facing * HUMAN_DUO_STAGE3_VORTEX_FORWARD_OFFSET,
+    y: shannonCompanion.y - HUMAN_DUO_STAGE3_VORTEX_HEIGHT,
+    facing
+  };
+}
+
+function applyHumanDuoShannonStage3Pull(dt) {
+  const vortex = humanDuoShannonStage3VortexPoint();
+  const centerX = vortex.x;
+  const centerY = vortex.y;
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0 || isUninterruptibleBeatriceRushGoat(enemy)) continue;
+    const airborne = enemy.airborne || enemy.z > 8 || enemy.vz < -20;
+    const radius = airborne ? HUMAN_DUO_SHANNON_STAGE3_AIR_RADIUS : HUMAN_DUO_SHANNON_STAGE3_RADIUS;
+    const pull = airborne ? HUMAN_DUO_SHANNON_STAGE3_AIR_PULL : HUMAN_DUO_SHANNON_STAGE3_PULL;
+    const dx = centerX - enemy.x;
+    const dy = centerY - enemy.y;
+    const dist = Math.hypot(dx, dy * 1.35);
+    if (dist > radius || dist < 1) continue;
+    const strength = (1 - dist / radius) * pull * dt;
+    enemy.x = clamp(enemy.x + (dx / dist) * strength, 50, STAGE_W - 50);
+    enemy.y = clampPlayY(enemy.y + (dy / Math.max(1, dist)) * strength * 0.34);
+    if (airborne) {
+      enemy.airVx = (enemy.airVx || 0) * 0.84 + Math.sign(dx || shannonCompanion.facing || 1) * 24;
+      enemy.vz = Math.max(enemy.vz || 0, 36);
+      enemy.z = Math.max(enemy.z || 0, 24);
+    } else {
+      enemy.hurt = Math.max(enemy.hurt || 0, 0.05);
+    }
+  }
+}
+
+function requestHumanDuoKanonStage3FromShannon() {
+  if (shannonCompanion.duoStage3KanonRequested) return;
+  shannonCompanion.duoStage3KanonRequested = true;
+  const target = shannonCompanion.duoStage3Target && !shannonCompanion.duoStage3Target.dead
+    ? shannonCompanion.duoStage3Target
+    : nearestEnemyTo(shannonCompanion.x, shannonCompanion.y);
+  const vortex = humanDuoShannonStage3VortexPoint();
+  const facing = vortex.facing;
+  const vortexX = vortex.x;
+  const vortexY = vortex.y - HUMAN_DUO_STAGE3_KANON_VORTEX_Y_OFFSET;
+  const kanonStartX = clamp(vortexX + facing * HUMAN_DUO_STAGE3_KANON_VORTEX_OFFSET, 90, STAGE_W - 130);
+  const kanonDashTargetX = clamp(kanonStartX - facing * HUMAN_DUO_STAGE3_KANON_DASH_DISTANCE, 90, STAGE_W - 130);
+  requestHumanDuoKanonStage(3, target, {
+    fixedX: kanonStartX,
+    fixedY: clampPlayY(vortexY),
+    facing: -facing,
+    attackTargetX: kanonDashTargetX,
+    attackTargetY: clampPlayY(vortexY)
+  });
+}
+
+function applyHumanDuoMuzzleHit(facing) {
+  const hitX = player.x + facing * 112;
+  const hitY = player.y - 86;
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0) continue;
+    if ((enemy.x - player.x) * facing < -18) continue;
+    if (!circleTouchesRect(hitX, hitY, HUMAN_DUO_MUZZLE_MELEE_RADIUS, enemyHurtbox(enemy), 0.68)) continue;
+    damageEnemy(enemy, HUMAN_DUO_MUZZLE_MELEE_DAMAGE, { source: "humanDuo:muzzle" });
+    enemy.hurt = Math.max(enemy.hurt || 0, 0.18);
+    burst(enemy.x, enemy.y - 72, "special");
+    if (enemy.hp <= 0) defeatEnemy(enemy);
+  }
+}
+
+function spawnHumanDuoProjectile(stage, facing) {
+  const tip = battlerPointingFingerTip(facing);
+  humanDuoMuzzleBursts.push({
+    x: tip.x,
+    y: tip.y,
+    facing,
+    stage,
+    life: HUMAN_DUO_MUZZLE_LIFE,
+    max: HUMAN_DUO_MUZZLE_LIFE
+  });
+  applyHumanDuoMuzzleHit(facing);
+  humanDuoProjectiles.push({
+    x: tip.x,
+    y: tip.y,
+    vx: facing * HUMAN_DUO_PROJECTILE_SPEED,
+    facing,
+    stage,
+    life: HUMAN_DUO_PROJECTILE_LIFE,
+    max: HUMAN_DUO_PROJECTILE_LIFE,
+    touched: new Set()
+  });
+}
+
+function startHumanDuoCommand(kind) {
+  if (!humanDuo.active || humanDuo.ending || (kind !== "punch" && kind !== "kick")) return false;
+  if (player.attackLock > 0 && player.action === "duoBeamPose") return false;
+  beginTechniqueEvent();
+  const stage = humanDuoNextStage();
+  const target = humanDuoTarget();
+  const facing = target ? (target.x >= player.x ? 1 : -1) : (player.facing || 1);
+  player.facing = facing;
+  player.comboTimer = 0;
+  player.comboQueuedKind = "";
+  player.currentAttack = `humanDuo${stage}`;
+  player.attackConsumesResolve = false;
+  player.pendingResolveAttack = false;
+  player.attackLungeRemaining = 0;
+  player.stage3KickAir = false;
+  player.stage3KickTimer = 0;
+  player.stage3KickVz = 0;
+  if (player.runState === "dodging") player.z = 0;
+  player.runState = "none";
+  player.runLocked = false;
+  player.runTimer = 0;
+  player.runCharge = 0;
+  player.brakeDrift = 0;
+  player.brakeBurstTimer = 0;
+  setAction("duoBeamPose", HUMAN_DUO_POINT_LOCK);
+  humanDuo.lastProjectileTarget = null;
+  spawnHumanDuoProjectile(stage, facing);
+  if (stage === 3) {
+    startHumanDuoShannonStage3(target, facing);
+  } else {
+    requestHumanDuoKanonStage(stage, target);
+  }
+  return true;
+}
+
+function humanDuoFinaleBarrier() {
+  player.shannonBarrierMax = Math.max(1, playerMaxHp());
+  player.shannonBarrierHp = player.shannonBarrierMax;
+  player.shannonBarrierBlockedLastHit = true;
+  player.shannonBarrierGuardTimer = 0.32;
+  player.shannonBarrierSaveGraceTimer = HUMAN_DUO_FINALE_DURATION;
+  shannonBarrierBursts.push({
+    x: player.x,
+    y: player.y,
+    life: SHANNON_BARRIER_GROW_TIME + SHANNON_BARRIER_FADE_TIME,
+    max: SHANNON_BARRIER_GROW_TIME + SHANNON_BARRIER_FADE_TIME,
+    hit: new Set(),
+    summon: true
+  });
+}
+
+function startHumanDuoFinale(context = {}) {
+  if (!humanDuo.active || humanDuo.ending) return false;
+  humanDuo.ending = true;
+  humanDuo.finaleTimer = 0;
+  humanDuo.finaleHitDone = false;
+  humanDuo.saveContext = context || {};
+  humanDuoFinaleBarrier();
+  const facing = Math.sign((context.enemy?.x ?? beatriceBoss.x ?? player.x + player.facing) - player.x) || player.facing || 1;
+  kanonCompanion.x = clamp(player.x + facing * 148, 90, STAGE_W - 130);
+  kanonCompanion.y = clampPlayY(player.y + 8);
+  kanonCompanion.facing = facing;
+  kanonCompanion.state = "summonSlash";
+  kanonCompanion.anim = 0;
+  kanonCompanion.attackPhaseTimer = 0;
+  humanDuoFinaleSlashes.push({
+    x: player.x,
+    y: player.y,
+    facing,
+    life: HUMAN_DUO_FINALE_DURATION,
+    max: HUMAN_DUO_FINALE_DURATION
+  });
+  player.invuln = Math.max(player.invuln, HUMAN_DUO_FINALE_DURATION + 0.35);
+  player.shannonBarrierFreezeTimer = Math.max(player.shannonBarrierFreezeTimer || 0, 0.35);
+  enemyFreezeTimer = Math.max(enemyFreezeTimer, 0.42);
+  screenFlashTimer = Math.max(screenFlashTimer, 0.28);
+  screenShakeTimer = Math.max(screenShakeTimer, 0.34);
+  message = "Servants' Oath";
+  messageTimer = 1.1;
+  return true;
+}
+
+function applyHumanDuoFinaleHit() {
+  const facing = humanDuoFinaleSlashes[humanDuoFinaleSlashes.length - 1]?.facing || player.facing || 1;
+  for (const enemy of enemies) {
+    if (enemy.dead || enemy.spawnGrace > 0) continue;
+    damageEnemy(enemy, HUMAN_DUO_FINALE_DAMAGE, { playerDamage: false, source: "humanDuo:finale" });
+    launchEnemyUnprorated(enemy, Math.sign(enemy.x - player.x) || facing, "humanDuo:finale", HUMAN_DUO_FINALE_LIFT, HUMAN_DUO_FINALE_DRIFT);
+    burst(enemy.x, enemy.y - 88, "heavy");
+    if (enemy.hp <= 0) defeatEnemy(enemy);
+  }
+  if (beatriceCanBeDamaged()) {
+    const direction = Math.sign(beatriceBoss.x - player.x) || facing;
+    const dealt = damageBeatrice(HUMAN_DUO_FINALE_DAMAGE, direction, { source: "humanDuo:finale" });
+    if (dealt > 0) launchBeatriceByBattlerRules(direction, "humanDuo:finale", HUMAN_DUO_FINALE_LIFT, HUMAN_DUO_FINALE_DRIFT);
+  }
+}
+
+function finishHumanDuoFinale() {
+  const context = humanDuo.saveContext;
+  if (context?.type) {
+    kanonCompanion.savePending = context;
+    kanonCompanion.saveResolved = false;
+    resolveKanonSavedParry();
+  }
+  consumeHumanDuoCompanions();
+}
+
+function updateHumanDuo(dt) {
+  for (let i = humanDuoMuzzleBursts.length - 1; i >= 0; i--) {
+    const burstEffect = humanDuoMuzzleBursts[i];
+    burstEffect.life -= dt;
+    if (burstEffect.life <= 0) humanDuoMuzzleBursts.splice(i, 1);
+  }
+  for (let i = humanDuoProjectiles.length - 1; i >= 0; i--) {
+    const shot = humanDuoProjectiles[i];
+    shot.life -= dt;
+    shot.x += shot.vx * dt;
+    const radius = HUMAN_DUO_PROJECTILE_RADIUS + shot.stage * 5;
+    for (const enemy of enemies) {
+      if (enemy.dead || enemy.spawnGrace > 0 || shot.touched.has(enemy)) continue;
+      if (!circleTouchesRect(shot.x, shot.y, radius, enemyHurtbox(enemy), 0.78)) continue;
+      shot.touched.add(enemy);
+      humanDuo.lastProjectileTarget = enemy;
+      const direction = Math.sign(enemy.x - player.x) || shot.facing || 1;
+      const damage = shot.stage === 1 ? 10 : shot.stage === 2 ? 16 : 24;
+      const source = `humanDuo:projectile${shot.stage}`;
+      damageEnemy(enemy, damage, { source });
+      if (shot.stage === 2) {
+        launchEnemyUnprorated(enemy, direction, source, 330, 120);
+      } else if (shot.stage >= 3) {
+        if (enemy.airborne) {
+          groundBounceEnemy(enemy, direction, source, 380, 150);
+        } else {
+          launchEnemyUnprorated(enemy, direction, source, 360, 150);
+        }
+      } else if (!enemy.airborne) {
+        enemy.hurt = Math.max(enemy.hurt || 0, 0.18);
+      } else {
+        extendEnemyLaunch(enemy, direction, source, 220, 70);
+      }
+      burst(enemy.x, enemy.y - 72, shot.stage >= 3 ? "heavy" : "special");
+      if (enemy.hp <= 0) defeatEnemy(enemy);
+    }
+    if (shot.life <= 0) humanDuoProjectiles.splice(i, 1);
+  }
+  for (let i = humanDuoFinaleSlashes.length - 1; i >= 0; i--) {
+    const slash = humanDuoFinaleSlashes[i];
+    slash.life -= dt;
+    if (slash.life <= 0) humanDuoFinaleSlashes.splice(i, 1);
+  }
+  if (!humanDuo.ending) return;
+  humanDuo.finaleTimer += dt;
+  if (!humanDuo.finaleHitDone && humanDuo.finaleTimer >= HUMAN_DUO_FINALE_HIT_TIME) {
+    humanDuo.finaleHitDone = true;
+    applyHumanDuoFinaleHit();
+  }
+  if (humanDuo.finaleTimer >= HUMAN_DUO_FINALE_DURATION) {
+    finishHumanDuoFinale();
+  }
+}
+
 function companionIdForItem(type) {
   if (type === "konpeito") return "lambda";
   if (type === "plumTea") return "bern";
@@ -4032,6 +4728,7 @@ function ownedCompanionCount() {
 
 function canAcquireCompanionItem(type) {
   if (!COMPANION_ITEM_TYPES.has(type)) return true;
+  if (type === "plumTea" && player.plumTeaBurned) return false;
   return ownsCompanionItem(type) || ownedCompanionCount() < MAX_ACTIVE_COMPANIONS;
 }
 
@@ -4519,6 +5216,11 @@ function activatePickup(pickup, options = {}) {
     if (!options.skipTutorial) showItemTutorial("resolveFlame");
     return;
   }
+  if (pickup.type === "plumTea" && player.plumTeaBurned) {
+    message = "The tea has gone cold...";
+    messageTimer = 1.1;
+    return;
+  }
   if (!canAcquireCompanionItem(pickup.type)) {
     message = "Only two companions can answer at once";
     messageTimer = 1.25;
@@ -4542,11 +5244,6 @@ function activatePickup(pickup, options = {}) {
     }
     message = "Konpeito";
   } else if (pickup.type === "plumTea") {
-    if (player.plumTeaBurned) {
-      message = "The tea has gone cold...";
-      messageTimer = 1.1;
-      return;
-    }
     const firstSummon = !bernCompanion.summoned;
     player.plumTeaActive = true;
     setInitialWitchDuration("plumTea");
@@ -4745,15 +5442,25 @@ function beatriceCompanionTarget() {
   };
 }
 
+function luciferCompanionTarget() {
+  if (!luciferCanBeDamaged()) return null;
+  return {
+    isLucifer: true,
+    x: luciferBoss.x,
+    y: clampPlayY(luciferBoss.y),
+    hp: luciferBoss.hp
+  };
+}
+
 function nearestKanonAttackTarget(x, y) {
   let target = nearestEnemyTo(x, y);
   let targetDist = target ? Math.hypot(target.x - x, target.y - y) : Infinity;
-  const beatriceTarget = beatriceCompanionTarget();
-  if (beatriceTarget) {
-    const beatriceDist = Math.hypot(beatriceTarget.x - x, beatriceTarget.y - y);
-    if (!target || beatriceDist < targetDist) {
-      target = beatriceTarget;
-      targetDist = beatriceDist;
+  const bossTargets = [beatriceCompanionTarget(), luciferCompanionTarget()].filter(Boolean);
+  for (const bossTarget of bossTargets) {
+    const bossDist = Math.hypot(bossTarget.x - x, bossTarget.y - y);
+    if (!target || bossDist < targetDist) {
+      target = bossTarget;
+      targetDist = bossDist;
     }
   }
   return target;
@@ -4842,6 +5549,7 @@ function canTriggerKanonParrySave() {
 }
 
 function spendKanonCompanionAfterSave() {
+  resetHumanDuo();
   player.goldenBroochLeftActive = false;
   removeCompanionItem("goldenBroochLeft");
   spawnGoldenButterflies(kanonCompanion.x || player.x, (kanonCompanion.y || player.y) - 86, 18);
@@ -4941,6 +5649,10 @@ function resolveKanonSavedParry() {
 }
 
 function startKanonParrySave(context) {
+  if (humanDuo.active && !humanDuo.ending && player.goldenBroochRightActive && player.goldenBroochLeftActive) {
+    if (!canTriggerKanonParrySave()) return false;
+    return startHumanDuoFinale(context);
+  }
   if (!canTriggerKanonParrySave()) return false;
   const facing = player.facing || 1;
   kanonCompanion.attackCharge = Math.max(0, (kanonCompanion.attackCharge || 0) - 100);
@@ -4973,6 +5685,7 @@ function shannonBarrierBlockedHit() {
 }
 
 function spendShannonCompanionAfterBarrier() {
+  resetHumanDuo();
   player.goldenBroochRightActive = false;
   removeCompanionItem("goldenBroochRight");
   shannonCompanion.active = false;
@@ -4983,7 +5696,11 @@ function spendShannonCompanionAfterBarrier() {
   shannonCompanion.wallCharge = 0;
   shannonCompanion.wallTimer = SHANNON_WALL_INTERVAL;
   shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.wallCastMode = "";
+  shannonCompanion.wallCastOriginX = 0;
+  shannonCompanion.wallCastOriginY = FLOOR_Y;
   shannonCompanion.barrierBestowed = false;
+  resetShannonDuoState();
   spawnGoldenButterflies(shannonCompanion.x || player.x, (shannonCompanion.y || player.y) - 86, 18);
 }
 
@@ -5025,6 +5742,10 @@ function canTriggerShannonBarrierGuard() {
 
 function tryTriggerShannonBarrierGuard(options = {}) {
   if (!options.launching) return false;
+  if (humanDuo.active && !humanDuo.ending && player.goldenBroochRightActive && player.goldenBroochLeftActive) {
+    if (!canTriggerShannonBarrierGuard()) return false;
+    return startHumanDuoFinale({ type: "shannonBarrier" });
+  }
   if (!canTriggerShannonBarrierGuard()) return false;
   shannonCompanion.wallCharge = 0;
   shannonCompanion.wallTimer = SHANNON_WALL_INTERVAL;
@@ -5034,7 +5755,11 @@ function tryTriggerShannonBarrierGuard(options = {}) {
   shannonCompanion.facing = player.x >= shannonCompanion.x ? 1 : -1;
   shannonCompanion.wallCastFacing = shannonCompanion.facing;
   shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.wallCastMode = "";
+  shannonCompanion.wallCastOriginX = 0;
+  shannonCompanion.wallCastOriginY = FLOOR_Y;
   shannonCompanion.barrierBestowed = true;
+  resetShannonDuoState();
   triggerShannonBarrierBurst();
   player.shannonBarrierFreezeTimer = Math.max(player.shannonBarrierFreezeTimer || 0, SHANNON_BARRIER_CAST_FREEZE);
   enemyFreezeTimer = Math.max(enemyFreezeTimer, SHANNON_BARRIER_CAST_FREEZE);
@@ -5122,6 +5847,9 @@ function resetKanonStageCombo() {
   kanonCompanion.pendingStageTrigger = false;
   kanonCompanion.pendingStage = 0;
   kanonCompanion.pendingStageTarget = null;
+  kanonCompanion.pendingStageFree = false;
+  kanonCompanion.pendingStageHumanDuoFixed = false;
+  kanonCompanion.pendingStageOptions = null;
   kanonCompanion.lastTriggerEventId = -1;
 }
 
@@ -5145,20 +5873,37 @@ function prepareKanonAttack(stage, target) {
   kanonCompanion.moveSettle = 0;
 }
 
-function executeKanonStageAttack(stage, target = null) {
+function executeKanonStageAttack(stage, target = null, options = {}) {
   if (!player.goldenBroochLeftActive || !kanonCompanion.summoned || !kanonCompanion.active) return false;
-  if ((kanonCompanion.attackCharge || 0) < 100) return false;
+  const free = Boolean(options.free);
+  const humanDuoFixed = Boolean(options.humanDuoFixed);
+  if (!free && (kanonCompanion.attackCharge || 0) < 100) return false;
   if (target?.dead) target = null;
-  target = target || nearestKanonAttackTarget(player.x, player.y);
+  target = target || (humanDuoFixed ? humanDuoTarget() : nearestKanonAttackTarget(player.x, player.y));
   if (!target) return false;
-  kanonCompanion.attackCharge = Math.max(0, (kanonCompanion.attackCharge || 0) - 100);
-  kanonCompanion.attackTimer = kanonChargeCooldown();
+  if (!free) {
+    kanonCompanion.attackCharge = Math.max(0, (kanonCompanion.attackCharge || 0) - 100);
+    kanonCompanion.attackTimer = kanonChargeCooldown();
+  }
   kanonCompanion.comboStage = stage;
   kanonCompanion.comboWindowTimer = KANON_STAGE_COMBO_WINDOW;
   kanonCompanion.pendingStageTrigger = false;
+  kanonCompanion.pendingStageFree = false;
+  kanonCompanion.pendingStageHumanDuoFixed = false;
+  kanonCompanion.pendingStageOptions = null;
   prepareKanonAttack(stage, target);
-  const targetFacing = target.x >= kanonCompanion.x ? 1 : -1;
+  const targetFacing = Number.isFinite(options.facing)
+    ? Math.sign(options.facing) || 1
+    : humanDuoFixed
+    ? (target.x >= player.x ? 1 : -1)
+    : (target.x >= kanonCompanion.x ? 1 : -1);
   kanonCompanion.facing = targetFacing || player.facing || 1;
+  const fixedX = Number.isFinite(options.fixedX)
+    ? clamp(options.fixedX, 90, STAGE_W - 130)
+    : clamp(player.x + kanonCompanion.facing * HUMAN_DUO_KANON_STAGE_DISTANCE, 90, STAGE_W - 130);
+  const fixedY = Number.isFinite(options.fixedY)
+    ? clampPlayY(options.fixedY)
+    : clampPlayY(player.y + clamp((target.y || player.y) - player.y, -HUMAN_DUO_KANON_STAGE_Y_LEASH, HUMAN_DUO_KANON_STAGE_Y_LEASH));
   if (stage === 1) {
     kanonCompanion.summonAttackSlideTargetX = clamp(player.x + kanonCompanion.facing * KANON_SUMMON_ATTACK_END_OFFSET, 90, STAGE_W - 130);
     kanonCompanion.summonAttackSlideTargetY = clampPlayY(player.y);
@@ -5166,14 +5911,18 @@ function executeKanonStageAttack(stage, target = null) {
     kanonCompanion.y = kanonCompanion.summonAttackSlideTargetY;
     kanonCompanion.state = "attackFinisher";
   } else if (stage === 2) {
-    kanonCompanion.x = clamp(target.x - kanonCompanion.facing * 72, 90, STAGE_W - 130);
-    kanonCompanion.y = clampPlayY(target.y);
+    kanonCompanion.x = humanDuoFixed ? fixedX : clamp(target.x - kanonCompanion.facing * 72, 90, STAGE_W - 130);
+    kanonCompanion.y = humanDuoFixed ? fixedY : clampPlayY(target.y);
     kanonCompanion.state = "attackUppercutStartup";
   } else {
-    kanonCompanion.x = clamp(target.x - kanonCompanion.facing * 130, 90, STAGE_W - 130);
-    kanonCompanion.y = clampPlayY(target.y);
-    kanonCompanion.attackTargetX = clamp(kanonCompanion.x + kanonCompanion.facing * KANON_FINISHER_TRAVEL_OVERSHOOT, 90, STAGE_W - 130);
-    kanonCompanion.attackTargetY = kanonCompanion.y;
+    kanonCompanion.x = humanDuoFixed ? fixedX : clamp(target.x - kanonCompanion.facing * 130, 90, STAGE_W - 130);
+    kanonCompanion.y = humanDuoFixed ? fixedY : clampPlayY(target.y);
+    kanonCompanion.attackTargetX = Number.isFinite(options.attackTargetX)
+      ? clamp(options.attackTargetX, 90, STAGE_W - 130)
+      : clamp(kanonCompanion.x + kanonCompanion.facing * KANON_FINISHER_TRAVEL_OVERSHOOT, 90, STAGE_W - 130);
+    kanonCompanion.attackTargetY = Number.isFinite(options.attackTargetY)
+      ? clampPlayY(options.attackTargetY)
+      : kanonCompanion.y;
     kanonCompanion.finisherDash = true;
     kanonCompanion.state = "attackStartup";
   }
@@ -5189,10 +5938,16 @@ function startQueuedKanonStageOrRecover() {
   if (kanonCompanion.pendingStageTrigger) {
     const stage = kanonCompanion.pendingStage || nextKanonStage();
     const target = kanonCompanion.pendingStageTarget;
+    const free = Boolean(kanonCompanion.pendingStageFree);
+    const humanDuoFixed = Boolean(kanonCompanion.pendingStageHumanDuoFixed);
+    const pendingOptions = kanonCompanion.pendingStageOptions || {};
     kanonCompanion.pendingStageTrigger = false;
     kanonCompanion.pendingStage = 0;
     kanonCompanion.pendingStageTarget = null;
-    if (executeKanonStageAttack(stage, target)) return true;
+    kanonCompanion.pendingStageFree = false;
+    kanonCompanion.pendingStageHumanDuoFixed = false;
+    kanonCompanion.pendingStageOptions = null;
+    if (executeKanonStageAttack(stage, target, { ...pendingOptions, free, humanDuoFixed })) return true;
   }
   enterKanonAttackRecovery();
   return false;
@@ -5207,6 +5962,9 @@ function triggerKanonFromBattlerLaunchOrBounce(target = null) {
     kanonCompanion.pendingStageTrigger = true;
     kanonCompanion.pendingStage = nextKanonStage();
     kanonCompanion.pendingStageTarget = target;
+    kanonCompanion.pendingStageFree = false;
+    kanonCompanion.pendingStageHumanDuoFixed = false;
+    kanonCompanion.pendingStageOptions = null;
     return false;
   }
   return executeKanonStageAttack(nextKanonStage(), target);
@@ -5294,6 +6052,9 @@ function applyKanonUppercutHit() {
     KANON_UPPERCUT_LAUNCH_LIFT,
     KANON_UPPERCUT_LAUNCH_DRIFT
   );
+  if (humanDuo.active && !humanDuo.ending && kanonCompanion.comboStage === 2) {
+    triggerHumanDuoShannonStage2(originX, originY, facing);
+  }
   screenShakeTimer = Math.max(screenShakeTimer, 0.14);
 }
 
@@ -5389,7 +6150,11 @@ function summonShannon() {
   shannonCompanion.wallTimer = 0;
   shannonCompanion.wallCastFacing = player.facing;
   shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.wallCastMode = "";
+  shannonCompanion.wallCastOriginX = 0;
+  shannonCompanion.wallCastOriginY = FLOOR_Y;
   shannonCompanion.barrierBestowed = false;
+  resetShannonDuoState();
   spawnGoldenButterflies(shannonCompanion.x, shannonCompanion.y - 86, 20);
 }
 
@@ -5773,8 +6538,12 @@ function finishDuoAttack() {
 }
 
 function updateDuoCharge(dt) {
-  if (duoAttack.active) return;
-  if (!inputDuoHeld() || !hasBernLambdaDuo()) {
+  if (duoAttack.active || humanDuo.ending) return;
+  if (humanDuo.active) {
+    player.duoCharge = DUO_CHARGE_TIME;
+    return;
+  }
+  if (!inputDuoHeld() || !hasAnyDuoReady()) {
     player.duoCharge = Math.max(0, player.duoCharge - dt * 2.8);
     if (player.action === "duoCharge") setAction("idle");
     return;
@@ -5790,11 +6559,17 @@ function updateDuoCharge(dt) {
     player.anim = Math.min(frames.duoCharge.length - 0.01, player.anim + dt * 8);
   }
   player.duoCharge = Math.min(DUO_CHARGE_TIME, player.duoCharge + dt);
-  if (player.duoCharge >= DUO_CHARGE_TIME) startDuoAttack();
+  if (player.duoCharge >= DUO_CHARGE_TIME) {
+    if (hasShannonKanonDuo()) {
+      startHumanDuo();
+    } else {
+      startDuoAttack();
+    }
+  }
 }
 
 function updateResolveDuoOutline() {
-  const fill = duoAttack.active ? 1 : clamp(player.duoCharge / DUO_CHARGE_TIME, 0, 1);
+  const fill = (duoAttack.active || humanDuo.active) ? 1 : clamp(player.duoCharge / DUO_CHARGE_TIME, 0, 1);
   if (fill <= 0) {
     resolveMeter.style.boxShadow = "";
     resolveMeter.style.borderColor = "";
@@ -6782,17 +7557,20 @@ function launchEnemyFromKonpeito(enemy, centerX, source = "lambda:konpeito") {
 
 function launchPlayerFromKonpeito(centerX) {
   if (player.airborne || player.knockedDown || state !== "playing") return;
-  runStats.launchedByLambdadelta += 1;
   const direction = Math.sign(player.x - centerX || 1);
+  if (prepareShannonBarrierForLaunchingHit()) {
+    burst(player.x, player.y - 104, "special");
+    return;
+  }
+  runStats.launchedByLambdadelta += 1;
   player.vx = 0;
   player.vy = 0;
   player.attackLock = 0;
   player.attackHasHit = false;
   player.crestAttackHasHit = false;
   player.currentAttack = "";
+  if (!launchActor(player, direction, 360, 135)) return;
   player.action = "down";
-  prepareShannonBarrierForLaunchingHit();
-  launchActor(player, direction, 360, 135);
   player.x = clamp(player.x + direction * 18, 70, STAGE_W - 90);
   player.konpeitoGlowPending = true;
   player.konpeitoGlowTimer = 0;
@@ -7107,6 +7885,9 @@ function triggerShannonWallFollowup() {
   shannonCompanion.facing = player.facing;
   shannonCompanion.wallCastFacing = player.facing || 1;
   shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.wallCastMode = "";
+  shannonCompanion.wallCastOriginX = 0;
+  shannonCompanion.wallCastOriginY = FLOOR_Y;
   return true;
 }
 
@@ -7118,19 +7899,48 @@ function triggerShannonWallFromKanonFinisher(facing = kanonCompanion.facing || p
   return triggered;
 }
 
+function triggerHumanDuoShannonStage2(originX, originY, facing = kanonCompanion.facing || player.facing || 1) {
+  if (!humanDuo.active || humanDuo.ending) return false;
+  if (!player.goldenBroochRightActive || !shannonCompanion.summoned || !shannonCompanion.active) return false;
+  if (shannonCompanion.state === "summon" || shannonCompanion.state === "wallCast" || shannonCompanion.state === "barrierCast") return false;
+  const dir = facing || 1;
+  shannonCompanion.x = clamp(player.x - dir * 92, 80, STAGE_W - 80);
+  shannonCompanion.y = clampPlayY(player.y + 12);
+  shannonCompanion.facing = dir;
+  shannonCompanion.state = "wallCast";
+  shannonCompanion.anim = 0;
+  shannonCompanion.moveSettle = 0;
+  shannonCompanion.wallCastFacing = dir;
+  shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.wallCastMode = "humanDuoStage2";
+  shannonCompanion.wallCastOriginX = originX;
+  shannonCompanion.wallCastOriginY = originY;
+  return true;
+}
+
 function spawnShannonWallFromCast() {
   const facing = shannonCompanion.wallCastFacing || player.facing || 1;
-  const startX = clamp(player.x + facing * SHANNON_WALL_DISTANCE, 80, STAGE_W - 80);
+  const duoStage2 = shannonCompanion.wallCastMode === "humanDuoStage2";
+  const originX = duoStage2 ? shannonCompanion.wallCastOriginX : player.x;
+  const originY = duoStage2 ? shannonCompanion.wallCastOriginY : player.y;
+  const startDistance = duoStage2 ? SHANNON_WALL_DISTANCE * 0.72 : SHANNON_WALL_DISTANCE;
+  const startX = clamp(originX + facing * startDistance, 80, STAGE_W - 80);
   shannonWalls.push({
     x: startX,
-    y: player.y,
+    y: clampPlayY(originY),
     direction: -facing,
     life: 1.85,
     max: 1.85,
-    hitsRemaining: SHANNON_WALL_MAX_HITS,
+    hitsRemaining: duoStage2 ? 8 : SHANNON_WALL_MAX_HITS,
     hitCooldowns: new Map(),
+    hitOnce: duoStage2,
+    touched: new Set(),
+    source: duoStage2 ? "shannon:duoStage2Wall" : "shannon:purpleWall",
     pulse: Math.random() * Math.PI * 2
   });
+  shannonCompanion.wallCastMode = "";
+  shannonCompanion.wallCastOriginX = 0;
+  shannonCompanion.wallCastOriginY = FLOOR_Y;
 }
 
 function extendEnemyLaunch(enemy, direction, source, lift = 260, drift = 90) {
@@ -7600,8 +8410,17 @@ function scheduledBossNumberForWave() {
   return Math.floor(wave / BOSS_WAVE_INTERVAL);
 }
 
+function debugStartsBossWave() {
+  return (debugFlag("startBeatriceBossWave") || debugFlag("startLuciferBossWave"))
+    && wave === 1
+    && runStats.bossesDefeated === 0;
+}
+
 function debugBossesDefeatedBeforeSchedule() {
-  return debugFlag("startBeatriceBossWave") && (wave > 1 || runStats.bossesDefeated > 0) ? 1 : 0;
+  return (debugFlag("startBeatriceBossWave") || debugFlag("startLuciferBossWave"))
+    && (wave > 1 || runStats.bossesDefeated > 0)
+    ? 1
+    : 0;
 }
 
 function scheduledBossesDefeated() {
@@ -7610,11 +8429,17 @@ function scheduledBossesDefeated() {
 
 function currentBossWaveNumber() {
   if (debugFlag("startBeatriceBossWave") && wave === 1 && runStats.bossesDefeated === 0) return 1;
+  if (debugFlag("startLuciferBossWave") && wave === 1 && runStats.bossesDefeated === 0) return 2;
   return Math.max(1, scheduledBossNumberForWave());
 }
 
+function currentBossType() {
+  if (debugFlag("startLuciferBossWave") && wave === 1 && runStats.bossesDefeated === 0) return "lucifer";
+  return "beatrice";
+}
+
 function currentWaveMode() {
-  if (debugFlag("startBeatriceBossWave") && wave === 1 && runStats.bossesDefeated === 0) return "boss";
+  if (debugStartsBossWave()) return "boss";
   const scheduledBoss = scheduledBossNumberForWave();
   return scheduledBoss > 0 && scheduledBossesDefeated() < scheduledBoss ? "boss" : "normal";
 }
@@ -8216,7 +9041,7 @@ function chooseBossBlessing(index = bossBlessingChoice.selected || 0) {
   bossBlessingChoice.context = "boss";
   state = "playing";
   if (context === "boss") {
-    activateBeatriceBoss();
+    activateCurrentBoss();
   } else if (context === "witch") {
     maybeStartScoreBlessingChoice();
   } else {
@@ -8231,7 +9056,7 @@ function beginBossWave() {
   if (options.length > 0) {
     startBossBlessingChoice(options);
   } else {
-    activateBeatriceBoss();
+    activateCurrentBoss();
   }
 }
 
@@ -8245,8 +9070,27 @@ function beatriceBossMaxHealthForEncounter(bossNumber) {
   return Math.round(goatHp * BEATRICE_BOSS_HP_MULTIPLIER * Math.pow(1 + BEATRICE_BOSS_HEALTH_GROWTH, bossNumber - 1));
 }
 
+function luciferBossMaxHealthForEncounter(bossNumber) {
+  const firstBossWave = debugFlag("startLuciferBossWave") && wave === 1 && runStats.bossesDefeated === 0
+    ? BOSS_WAVE_INTERVAL * 2
+    : Math.max(BOSS_WAVE_INTERVAL, wave);
+  const fiveWaveSteps = Math.floor(Math.max(0, firstBossWave - 1) / 5);
+  const baseEnemyHp = 42 + firstBossWave * 10 + fiveWaveSteps * ENEMY_HEALTH_FIVE_WAVE_BONUS;
+  const goatHp = Math.round(baseEnemyHp * 1.25);
+  return Math.round(goatHp * LUCIFER_BOSS_HP_MULTIPLIER * Math.pow(1 + LUCIFER_BOSS_HEALTH_GROWTH, Math.max(0, bossNumber - 2)));
+}
+
+function activateCurrentBoss() {
+  if (currentBossType() === "lucifer") {
+    activateLuciferBoss();
+  } else {
+    activateBeatriceBoss();
+  }
+}
+
 function activateBeatriceBoss() {
   const bossNumber = currentBossWaveNumber();
+  luciferBoss.active = false;
   beatriceBoss.active = true;
   beatriceBoss.x = clamp(cameraX + W * 0.72, 90, STAGE_W - 90);
   beatriceBoss.y = clamp(player.y - 44, FLOOR_Y - 124, FLOOR_Y - 8);
@@ -9335,6 +10179,7 @@ function spawnWave() {
   }
   restoreOwnedCompanionsForNormalWave();
   beatriceBoss.active = false;
+  luciferBoss.active = false;
   const count = Math.min(3 + wave, 8);
   const spawnOrder = shuffledIndices(count);
   for (let i = 0; i < count; i++) {
@@ -9350,6 +10195,7 @@ function spawnWave() {
 function startGame() {
   hideRunDetails();
   resetAttackHolds();
+  resetHumanDuo();
   resetShadowPortalTimers();
   clearWaveEffects();
   clearBeatriceResolvePickups();
@@ -9374,6 +10220,7 @@ function startGame() {
   player.superChargeAttackActive = false;
   player.pendingSuperChargeAttack = false;
   player.superChargeTravel = null;
+  player.lastBattlerAttackTarget = null;
   player.currentAttack = "";
   player.attackConsumesResolve = false;
   player.pendingResolveAttack = false;
@@ -9576,6 +10423,7 @@ function startGame() {
   beatriceDefeatTrails.length = 0;
   beatriceStakeParryLine.life = 0;
   beatriceStakeParryPendingHit.active = false;
+  resetLuciferBossState();
   asmodeusAttacks.length = 0;
   beelzebubAttacks.length = 0;
   leviathanAttacks.length = 0;
@@ -9621,7 +10469,11 @@ function startGame() {
   shannonCompanion.wallTimer = 0;
   shannonCompanion.wallCastFacing = 1;
   shannonCompanion.wallCastSpawned = false;
+  shannonCompanion.wallCastMode = "";
+  shannonCompanion.wallCastOriginX = 0;
+  shannonCompanion.wallCastOriginY = FLOOR_Y;
   shannonCompanion.barrierBestowed = false;
+  resetShannonDuoState();
   kanonCompanion.active = false;
   kanonCompanion.summoned = false;
   kanonCompanion.anim = 0;
@@ -9865,7 +10717,7 @@ function superChargeShockwaveDistance(x, y, centerX, centerY) {
   return Math.hypot(x - centerX, (y - centerY) * 1.35);
 }
 
-function triggerSuperChargeShockwave(kind, data, skippedEnemies = new Set(), skipBeatrice = false) {
+function triggerSuperChargeShockwave(kind, data, skippedEnemies = new Set(), skipBeatrice = false, skipLucifer = false) {
   if (!isSuperChargedAttack(kind, data) || player.superChargeShockwaveDone) return { hit: false, defeated: false };
   player.superChargeShockwaveDone = true;
   const x = player.x + player.facing * 54;
@@ -9919,6 +10771,14 @@ function triggerSuperChargeShockwave(kind, data, skippedEnemies = new Set(), ski
       const barrierHit = damageBeatriceBarrierWithSpecialRecoil(barrierDamage, direction);
       spawnGoldenButterflies(beatriceBoss.x, beatriceBoss.y - beatriceBoss.hoverOffset - 92, 16);
       hit = barrierHit || hit;
+    }
+  }
+  if (!skipLucifer && luciferCanBeDamaged() && superChargeShockwaveDistance(luciferBoss.x, luciferBoss.y, x, y) <= SUPER_CHARGE_SHOCKWAVE_RADIUS) {
+    const direction = Math.sign(luciferBoss.x - player.x) || player.facing;
+    const dealt = damageLucifer(damage, direction, { source });
+    if (dealt > 0) {
+      hit = true;
+      if (luciferBoss.hp <= 0) defeated = true;
     }
   }
 
@@ -9994,6 +10854,24 @@ function applyDodgeAttackHit(data) {
       }
     }
   }
+  if (!player.dodgeAttackHitLucifer && luciferCanBeDamaged()) {
+    const box = luciferHurtbox();
+    const luciferCenterX = box.x + box.w * 0.5;
+    const luciferCenterY = box.y + box.h * 0.5;
+    const forward = (luciferCenterX - player.x) * player.facing;
+    const dx = luciferCenterX - centerX;
+    const dy = (luciferCenterY - centerY) * 0.72;
+    const nx = dx / Math.max(1, radius + 36);
+    const ny = dy / Math.max(1, depth + 64);
+    if (forward >= -36 && nx * nx + ny * ny <= 1) {
+      player.dodgeAttackHitLucifer = true;
+      const dealt = damageLucifer(data.damage, player.facing, { source });
+      if (dealt > 0) {
+        player.combo += 1;
+        hit = true;
+      }
+    }
+  }
   if (hit && data.gain && canGainResolve) {
     gainResolve(data.gain * RESOLVE_GAIN_MULTIPLIER);
   }
@@ -10008,6 +10886,7 @@ function applyAttackHit(kind, data) {
   const attackDamage = superCharged ? Math.round(data.damage * SUPER_CHARGE_DAMAGE_MULTIPLIER) : data.damage;
   const directEnemyHits = new Set();
   let beatriceDirectHit = false;
+  let luciferDirectHit = false;
   const hitbox = {
     x: player.x + (player.facing === 1 ? 34 : -data.range - 34),
     y: player.y - data.depth,
@@ -10104,8 +10983,20 @@ function applyAttackHit(kind, data) {
       }
     }
   }
+  if (luciferCanBeDamaged() && rectsTouch(hitbox, luciferHurtbox())) {
+    const source = `battler:${kind}`;
+    luciferDirectHit = true;
+    const dealt = damageLucifer(attackDamage, player.facing, { source });
+    if (dealt > 0) {
+      player.combo += 1;
+      hit = true;
+      if (luciferBoss.hp <= 0) {
+        defeatedTarget = true;
+      }
+    }
+  }
   if (superCharged) {
-    const shockwaveResult = triggerSuperChargeShockwave(kind, data, directEnemyHits, beatriceDirectHit);
+    const shockwaveResult = triggerSuperChargeShockwave(kind, data, directEnemyHits, beatriceDirectHit, luciferDirectHit);
     hit = hit || shockwaveResult.hit;
     defeatedTarget = defeatedTarget || shockwaveResult.defeated;
   }
@@ -10868,9 +11759,11 @@ function attack(kind) {
   if (state !== "playing") return false;
   if (player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0 || player.action === "getUp") return false;
   if ((kind === "punch" || kind === "kick") && tryGoatPoundParry(kind)) return true;
+  if ((kind === "punch" || kind === "kick") && humanDuo.ending) return false;
+  if ((kind === "punch" || kind === "kick") && humanDuo.active && !humanDuo.ending) return startHumanDuoCommand(kind);
   if ((kind === "punch" || kind === "kick") && startNeutralDodgeAttack()) return true;
   if (kind === "special") {
-    if (player.resolve < 100 || player.airborne || player.knockedDown || player.action === "hurt" || player.action === "runTrip" || player.action === "getUp" || player.action === "special" || player.action === "specialBeam" || player.action === "duoCharge" || duoAttack.active) {
+    if (player.resolve < 100 || player.airborne || player.knockedDown || player.action === "hurt" || player.action === "runTrip" || player.action === "getUp" || player.action === "special" || player.action === "specialBeam" || player.action === "duoCharge" || duoAttack.active || humanDuo.active) {
       return false;
     }
     beginTechniqueEvent();
@@ -10992,23 +11885,66 @@ function chargedAttackResolveCost() {
   return CHARGED_ATTACK_RESOLVE_COST;
 }
 
+function beatriceIsValidSuperChargeTarget() {
+  return beatriceBoss.active
+    && beatriceBoss.hp > 0
+    && (beatriceCanBeDamaged() || beatriceBarrierCanBeDamagedBySpecial());
+}
+
+function luciferIsValidSuperChargeTarget() {
+  return luciferCanBeDamaged();
+}
+
+function superChargeTargetFromActor(target) {
+  if (!target) return null;
+  if (target === beatriceBoss) {
+    return beatriceIsValidSuperChargeTarget()
+      ? {
+        x: beatriceBoss.x,
+        y: beatriceCanBeDamaged() ? clampPlayY(beatriceBoss.y) : beatriceBoss.y,
+        dist: Math.hypot(beatriceBoss.x - player.x, beatriceBoss.y - player.y),
+        isBeatrice: true,
+        beatriceBarrier: beatriceBarrierCanBeDamagedBySpecial()
+      }
+      : null;
+  }
+  if (target === luciferBoss) {
+    return luciferIsValidSuperChargeTarget()
+      ? {
+        x: luciferBoss.x,
+        y: clampPlayY(luciferBoss.y),
+        dist: Math.hypot(luciferBoss.x - player.x, luciferBoss.y - player.y),
+        isLucifer: true
+      }
+      : null;
+  }
+  if (target.dead || target.spawnGrace > 0) return null;
+  return {
+    x: target.x,
+    y: target.y,
+    dist: Math.hypot(target.x - player.x, target.y - player.y),
+    enemy: target
+  };
+}
+
 function nearestChargeTarget() {
-  const beatriceChargeTarget = beatriceBoss.active && beatriceBoss.hp > 0 && (beatriceCanBeDamaged() || beatriceBarrierCanBeDamagedBySpecial())
-    ? {
-      x: beatriceBoss.x,
-      y: beatriceCanBeDamaged() ? clampPlayY(beatriceBoss.y) : beatriceBoss.y,
-      dist: Math.hypot(beatriceBoss.x - player.x, beatriceBoss.y - player.y),
-      isBeatrice: true,
-      beatriceBarrier: beatriceBarrierCanBeDamagedBySpecial()
-    }
-    : null;
-  if (beatriceBoss.active && beatriceBoss.hp > 0 && (beatriceCanBeDamaged() || beatriceBarrierCanBeDamagedBySpecial())) {
-    if (waveMode === "boss") return beatriceChargeTarget;
+  const beatriceChargeTarget = superChargeTargetFromActor(beatriceBoss);
+  const luciferChargeTarget = superChargeTargetFromActor(luciferBoss);
+  if (waveMode === "boss") {
+    if (luciferChargeTarget && currentBossType() === "lucifer") return luciferChargeTarget;
+    if (beatriceChargeTarget) return beatriceChargeTarget;
+    if (luciferChargeTarget) return luciferChargeTarget;
+  }
+  if (waveMode !== "boss") {
+    const lastTarget = superChargeTargetFromActor(player.lastBattlerAttackTarget);
+    if (lastTarget) return lastTarget;
+    player.lastBattlerAttackTarget = null;
   }
   const candidates = enemies
     .filter((enemy) => !enemy.dead && enemy.spawnGrace <= 0)
     .map((enemy) => ({ x: enemy.x, y: enemy.y, dist: Math.hypot(enemy.x - player.x, enemy.y - player.y) }));
   if (beatriceChargeTarget) candidates.push(beatriceChargeTarget);
+  if (luciferChargeTarget) candidates.push(luciferChargeTarget);
   if (!candidates.length) return null;
   candidates.sort((a, b) => a.dist - b.dist);
   return candidates[0];
@@ -11087,6 +12023,87 @@ function refundSuperChargeTravel(travel) {
   }
 }
 
+function resetLuciferBossState() {
+  luciferBoss.active = false;
+  luciferBoss.x = 0;
+  luciferBoss.y = FLOOR_Y - 12;
+  luciferBoss.facing = -1;
+  luciferBoss.anim = 0;
+  luciferBoss.hp = 1;
+  luciferBoss.maxHp = 1;
+  luciferBoss.flavor = "idle";
+  luciferBoss.vulnerable = false;
+  luciferBoss.recovery = false;
+  luciferBoss.blockTimer = 0;
+  luciferBoss.hurtFlash = 0;
+  luciferBoss.defeatTimer = 0;
+  luciferBoss.defeatPhase = "";
+  luciferBoss.defeated = false;
+  luciferBoss.lastDamageSource = "";
+  luciferBoss.z = 0;
+  luciferBoss.vz = 0;
+  luciferBoss.airVx = 0;
+  luciferBoss.launchSource = "";
+  luciferBoss.juggleCount = 0;
+  luciferBoss.battlerLaunchSpent = false;
+  luciferBoss.battlerGroundBounceSpent = false;
+  luciferBoss.battlerExtraLaunchExtensionsUsed = 0;
+  luciferBoss.targetChainHits = 0;
+  luciferBoss.targetChainBonuses = new Set();
+  luciferBoss.groundBouncePending = false;
+  luciferBoss.groundBounceTimer = 0;
+  luciferBoss.groundBounceDirection = 0;
+  luciferBoss.groundBounceSource = "";
+  luciferBoss.groundBounceLift = 0;
+  luciferBoss.groundBounceDrift = 0;
+  luciferBoss.downTime = 0;
+  luciferBoss.recoveryTimer = 0;
+  luciferBoss.attackQueue = [];
+  luciferBoss.attackCooldown = 0;
+  luciferBoss.chainDelay = 0;
+  luciferBoss.attackHitDone = false;
+  luciferBoss.stakeVx = 0;
+  luciferBoss.stakeVy = 0;
+  luciferBoss.stakeTimer = 0;
+  luciferBoss.stakeBounces = 0;
+  luciferBoss.stakeLaunched = false;
+  luciferBoss.groundX = luciferBoss.x;
+  luciferBoss.groundY = luciferBoss.y;
+  luciferBoss.groundX = luciferBoss.x;
+  luciferBoss.groundY = luciferBoss.y;
+}
+
+function activateLuciferBoss() {
+  const bossNumber = currentBossWaveNumber();
+  beatriceBoss.active = false;
+  resetLuciferBossState();
+  luciferBoss.active = true;
+  luciferBoss.x = clamp(cameraX + W * 0.68, 100, STAGE_W - 100);
+  luciferBoss.y = clamp(player.y - 8, FLOOR_Y - 92, FLOOR_Y + 42);
+  luciferBoss.facing = player.x >= luciferBoss.x ? 1 : -1;
+  luciferBoss.maxHp = luciferBossMaxHealthForEncounter(bossNumber);
+  luciferBoss.hp = luciferBoss.maxHp;
+  luciferBoss.flavor = "idle";
+  luciferBoss.vulnerable = false;
+  luciferBoss.recovery = false;
+  luciferBoss.blockTimer = 0;
+  luciferBoss.defeatTimer = 0;
+  luciferBoss.defeated = false;
+  luciferBoss.attackCooldown = LUCIFER_SLASH_INITIAL_DELAY;
+  luciferBoss.chainDelay = 0;
+  luciferBoss.attackQueue = [];
+  luciferBoss.attackHitDone = false;
+  luciferBoss.stakeVx = 0;
+  luciferBoss.stakeVy = 0;
+  luciferBoss.stakeTimer = 0;
+  luciferBoss.stakeBounces = 0;
+  luciferBoss.stakeLaunched = false;
+  luciferBoss.groundX = luciferBoss.x;
+  luciferBoss.groundY = luciferBoss.y;
+  message = "Lucifer";
+  messageTimer = 1.35;
+}
+
 function updateSuperChargeTravel(dt) {
   const travel = player.superChargeTravel;
   if (!travel) return false;
@@ -11155,6 +12172,7 @@ function updateSuperChargeKonpeitoRings(dt) {
 
 function startChargedAttack(kind) {
   if (kind !== "punch" && kind !== "kick") return false;
+  if (humanDuo.active) return false;
   const cost = chargedAttackResolveCost();
   if (player.resolve < cost || !canStartChargedAttack()) return false;
   const usesSuperCharge = Boolean(player.blessings.superCharge);
@@ -11196,6 +12214,10 @@ function startChargedAttack(kind) {
 
 function updateAttackHolds(dt) {
   if (state !== "playing") return;
+  if (humanDuo.active) {
+    resetAttackHolds();
+    return;
+  }
   for (const [kind, hold] of Object.entries(attackHolds)) {
     if (!hold.down || hold.triggered) continue;
     hold.timer += dt;
@@ -11207,6 +12229,7 @@ function updateAttackHolds(dt) {
 
 function attackChargeProgress() {
   if (state !== "playing") return 0;
+  if (humanDuo.active) return 0;
   if (player.resolve < chargedAttackResolveCost()) return 0;
   let progress = 0;
   for (const hold of Object.values(attackHolds)) {
@@ -12010,6 +13033,322 @@ function finishBeatriceBossDefeat() {
   spawnWave();
 }
 
+function defeatLuciferBoss() {
+  if (!luciferBoss.active || luciferBoss.flavor === "defeated") return;
+  const specialFinish = isBattlerSpecialSource(luciferBoss.lastDamageSource || "");
+  luciferBoss.hp = 0;
+  luciferBoss.flavor = "defeated";
+  luciferBoss.defeated = true;
+  luciferBoss.vulnerable = false;
+  luciferBoss.recovery = false;
+  luciferBoss.defeatTimer = LUCIFER_DEFEAT_DISSIPATE_TIME;
+  luciferBoss.defeatPhase = "fade";
+  luciferBoss.anim = 0;
+  luciferBoss.attackQueue = [];
+  luciferBoss.chainDelay = 0;
+  luciferBoss.attackCooldown = 0;
+  luciferBoss.attackHitDone = false;
+  luciferBoss.stakeVx = 0;
+  luciferBoss.stakeVy = 0;
+  luciferBoss.stakeTimer = 0;
+  luciferBoss.stakeBounces = 0;
+  luciferBoss.stakeLaunched = false;
+  runStats.bossesDefeated += 1;
+  if (specialFinish) awardTechniqueBonus("specialFinish");
+  spawnAsmodeusGoldenWisps(luciferBoss.x, luciferBoss.y - 92, 34);
+  screenShakeTimer = Math.max(screenShakeTimer, 0.2);
+  screenFlashTimer = Math.max(screenFlashTimer, 0.08);
+  message = "Lucifer withdraws";
+  messageTimer = 1.45;
+}
+
+function finishLuciferBossDefeat() {
+  bankScoreCombo({ waveEnd: true });
+  resetLuciferBossState();
+  waveMode = currentWaveMode();
+  spawnWave();
+}
+
+function luciferCanStartQueuedAttack() {
+  return luciferBoss.active
+    && luciferBoss.hp > 0
+    && luciferBoss.flavor === "idle"
+    && luciferBoss.chainDelay <= 0;
+}
+
+function queueLuciferAttack(kind = "slash") {
+  if (!luciferBoss.active || luciferBoss.hp <= 0 || luciferBoss.flavor === "defeated") return;
+  luciferBoss.attackQueue.push(kind);
+}
+
+function queueLuciferSlashChain(count = LUCIFER_SLASH_CHAIN_SIZE) {
+  for (let i = 0; i < count; i += 1) queueLuciferAttack("slash");
+  startNextLuciferQueuedAttack();
+}
+
+function queueLuciferDefaultChain() {
+  queueLuciferAttack("slash");
+  queueLuciferAttack("slash");
+  queueLuciferAttack("stakeFlip");
+  startNextLuciferQueuedAttack();
+}
+
+function startLuciferSlash() {
+  luciferBoss.flavor = "slash";
+  luciferBoss.anim = 0;
+  luciferBoss.attackHitDone = false;
+  luciferBoss.vulnerable = false;
+  luciferBoss.recovery = false;
+  luciferBoss.facing = player.x >= luciferBoss.x ? 1 : -1;
+}
+
+function startLuciferStakeFlip() {
+  luciferBoss.flavor = "stakeFlip";
+  luciferBoss.anim = 0;
+  luciferBoss.attackHitDone = false;
+  luciferBoss.vulnerable = true;
+  luciferBoss.recovery = false;
+  luciferBoss.stakeTimer = 0;
+  luciferBoss.stakeBounces = 0;
+  luciferBoss.stakeLaunched = false;
+  luciferBoss.stakeVx = 0;
+  luciferBoss.stakeVy = 0;
+  luciferBoss.facing = player.x >= luciferBoss.x ? 1 : -1;
+  luciferBoss.groundX = luciferBoss.x;
+  luciferBoss.groundY = luciferBoss.y;
+}
+
+function startNextLuciferQueuedAttack() {
+  if (!luciferCanStartQueuedAttack() || !luciferBoss.attackQueue.length) return false;
+  const next = luciferBoss.attackQueue.shift();
+  if (next === "slash") {
+    startLuciferSlash();
+    return true;
+  }
+  if (next === "stakeFlip") {
+    startLuciferStakeFlip();
+    return true;
+  }
+  return false;
+}
+
+function pointInLuciferSlash(x, y) {
+  const originX = luciferBoss.x + luciferBoss.facing * 32;
+  const forward = (x - originX) * luciferBoss.facing;
+  if (forward < -22 || forward > LUCIFER_SLASH_RANGE) return false;
+  const scaledY = (y - luciferBoss.y) / 0.72;
+  return Math.abs(scaledY) <= LUCIFER_SLASH_DEPTH;
+}
+
+function applyLuciferSlashHit() {
+  if (luciferBoss.attackHitDone || state !== "playing") return false;
+  if (!pointInLuciferSlash(player.x, player.y)) return false;
+  luciferBoss.attackHitDone = true;
+  if (isPlayerInvulnerable()) {
+    tryTriggerWitchTime("lucifer:slash");
+    return true;
+  }
+  prepareShannonBarrierForLaunchingHit();
+  const dealt = damagePlayer(nightfallEnemyDamage(LUCIFER_SLASH_DAMAGE));
+  if (shannonBarrierBlockedHit()) {
+    burst(player.x, player.y - 96, "special");
+    return true;
+  }
+  if (dealt > 0) {
+    player.invuln = 0.28;
+    player.attackLock = 0;
+    player.attackLungeRemaining = 0;
+    player.attackHasHit = false;
+    player.currentAttack = "";
+    player.runState = "none";
+    player.runTimer = 0;
+    player.runCharge = 0;
+    player.brakeDrift = 0;
+    player.brakeBurstTimer = 0;
+    resetPlayerCombo();
+    launchActor(player, luciferBoss.facing, LUCIFER_SLASH_LIFT, LUCIFER_SLASH_DRIFT);
+    burst(player.x, player.y - 104, "enemy");
+    screenShakeTimer = Math.max(screenShakeTimer, 0.22);
+    if (player.hp <= 0) defeatPlayer();
+  }
+  return true;
+}
+
+function launchLuciferStakeForm() {
+  if (luciferBoss.stakeLaunched) return;
+  luciferBoss.stakeLaunched = true;
+  luciferBoss.vulnerable = false;
+  luciferBoss.recovery = false;
+  luciferBoss.y = clamp(luciferBoss.y, LUCIFER_STAKE_ARENA_TOP, FLOOR_Y - LUCIFER_STAKE_ARENA_BOTTOM_OFFSET);
+  const dx = player.x - luciferBoss.x;
+  const dy = (player.y - LUCIFER_STAKE_CHEST_OFFSET) - luciferBoss.y;
+  const angle = Math.atan2(dy, dx || luciferBoss.facing);
+  luciferBoss.stakeVx = Math.cos(angle) * LUCIFER_STAKE_SPEED;
+  luciferBoss.stakeVy = Math.sin(angle) * LUCIFER_STAKE_SPEED;
+  luciferBoss.facing = luciferBoss.stakeVx >= 0 ? 1 : -1;
+  luciferBoss.stakeTimer = LUCIFER_STAKE_MAX_TIME;
+  spawnAsmodeusGoldenWisps(luciferBoss.x, luciferBoss.y - 70, 8);
+}
+
+function updateLuciferStakeFlipWindupPosition() {
+  const t = clamp(luciferBoss.anim / Math.max(1, LUCIFER_STAKE_ACTIVE_START_INDEX), 0, 1);
+  const back = Math.sin(t * Math.PI * 0.5) * LUCIFER_STAKE_FLIP_BACK_DISTANCE;
+  const rise = Math.sin(t * Math.PI) * LUCIFER_STAKE_FLIP_RISE + t * LUCIFER_STAKE_AIR_LAUNCH_OFFSET;
+  luciferBoss.x = clamp(luciferBoss.groundX - luciferBoss.facing * back, 90, STAGE_W - 90);
+  luciferBoss.y = clamp(luciferBoss.groundY - rise, LUCIFER_STAKE_ARENA_TOP, FLOOR_Y + 42);
+}
+
+function finishLuciferStakeFlip() {
+  luciferBoss.flavor = "idle";
+  luciferBoss.anim = 0;
+  luciferBoss.attackHitDone = false;
+  luciferBoss.vulnerable = false;
+  luciferBoss.recovery = false;
+  luciferBoss.stakeVx = 0;
+  luciferBoss.stakeVy = 0;
+  luciferBoss.stakeTimer = 0;
+  luciferBoss.stakeBounces = 0;
+  luciferBoss.stakeLaunched = false;
+  luciferBoss.y = clamp(player.y - 8, FLOOR_Y - 92, FLOOR_Y + 42);
+  luciferBoss.groundX = luciferBoss.x;
+  luciferBoss.groundY = luciferBoss.y;
+  luciferBoss.chainDelay = luciferBoss.attackQueue.length ? LUCIFER_SLASH_CHAIN_GAP : 0;
+  luciferBoss.attackCooldown = luciferBoss.attackQueue.length ? 0 : LUCIFER_SLASH_COOLDOWN;
+}
+
+function updateLuciferStakeMovement(dt) {
+  if (!luciferBoss.stakeLaunched) return;
+  luciferBoss.stakeTimer = Math.max(0, luciferBoss.stakeTimer - dt);
+  luciferBoss.x += luciferBoss.stakeVx * dt;
+  luciferBoss.y += luciferBoss.stakeVy * dt;
+  const minX = cameraX + 24;
+  const maxX = cameraX + W - 24;
+  const minY = 36;
+  const maxY = FLOOR_Y - LUCIFER_STAKE_ARENA_BOTTOM_OFFSET;
+  let bounced = false;
+  if (luciferBoss.x < minX || luciferBoss.x > maxX) {
+    luciferBoss.x = clamp(luciferBoss.x, minX, maxX);
+    luciferBoss.stakeVx *= -1;
+    bounced = true;
+  }
+  if (luciferBoss.y < minY || luciferBoss.y > maxY) {
+    luciferBoss.y = clamp(luciferBoss.y, minY, maxY);
+    luciferBoss.stakeVy *= -1;
+    bounced = true;
+  }
+  if (bounced) {
+    luciferBoss.stakeBounces += 1;
+    const speed = Math.hypot(luciferBoss.stakeVx, luciferBoss.stakeVy) || LUCIFER_STAKE_SPEED;
+    const angle = Math.atan2(luciferBoss.stakeVy, luciferBoss.stakeVx) + (Math.random() - 0.5) * 0.46;
+    luciferBoss.stakeVx = Math.cos(angle) * speed;
+    luciferBoss.stakeVy = Math.sin(angle) * speed;
+    const current = Math.hypot(luciferBoss.stakeVx, luciferBoss.stakeVy) || 1;
+    luciferBoss.stakeVx = (luciferBoss.stakeVx / current) * LUCIFER_STAKE_SPEED;
+    luciferBoss.stakeVy = (luciferBoss.stakeVy / current) * LUCIFER_STAKE_SPEED;
+    luciferBoss.facing = luciferBoss.stakeVx >= 0 ? 1 : -1;
+    spawnAsmodeusGoldenWisps(luciferBoss.x, luciferBoss.y, 4);
+  }
+  if (!luciferBoss.attackHitDone && Math.hypot(player.x - luciferBoss.x, (player.y - LUCIFER_STAKE_CHEST_OFFSET) - luciferBoss.y) <= LUCIFER_STAKE_HIT_RADIUS + 38) {
+    luciferBoss.attackHitDone = true;
+    if (isPlayerInvulnerable()) {
+      tryTriggerWitchTime("lucifer:stake");
+    } else {
+      prepareShannonBarrierForLaunchingHit();
+      const dealt = damagePlayer(nightfallEnemyDamage(LUCIFER_STAKE_DAMAGE));
+      if (shannonBarrierBlockedHit()) {
+        burst(player.x, player.y - 96, "special");
+      } else if (dealt > 0) {
+        player.invuln = 0.32;
+        player.attackLock = 0;
+        player.attackLungeRemaining = 0;
+        player.attackHasHit = false;
+        player.currentAttack = "";
+        player.runState = "none";
+        resetPlayerCombo();
+        launchActor(player, Math.sign(luciferBoss.stakeVx) || luciferBoss.facing, LUCIFER_STAKE_LIFT, LUCIFER_STAKE_DRIFT);
+        burst(player.x, player.y - 94, "enemy");
+        screenShakeTimer = Math.max(screenShakeTimer, 0.24);
+        if (player.hp <= 0) defeatPlayer();
+      }
+    }
+    finishLuciferStakeFlip();
+    return;
+  }
+  if (luciferBoss.stakeTimer <= 0 || luciferBoss.stakeBounces >= LUCIFER_STAKE_MAX_BOUNCES) finishLuciferStakeFlip();
+}
+
+function updateLucifer(dt) {
+  if (!luciferBoss.active) return;
+  luciferBoss.hurtFlash = Math.max(0, luciferBoss.hurtFlash - dt);
+  if (luciferBoss.flavor !== "slash" && luciferBoss.flavor !== "stakeFlip") luciferBoss.facing = player.x >= luciferBoss.x ? 1 : -1;
+  if (luciferBoss.flavor === "defeated") {
+    luciferBoss.anim += dt * 8;
+    luciferBoss.defeatTimer = Math.max(0, luciferBoss.defeatTimer - dt);
+    if (luciferBoss.defeatTimer <= 0) finishLuciferBossDefeat();
+    return;
+  }
+  if (luciferBoss.flavor === "slash") {
+    luciferBoss.anim += dt * LUCIFER_SLASH_ANIM_RATE;
+    const frameIndex = Math.floor(luciferBoss.anim);
+    luciferBoss.recovery = frameIndex >= LUCIFER_SLASH_RECOVERY_START_INDEX;
+    luciferBoss.vulnerable = luciferBoss.recovery;
+    if (frameIndex >= LUCIFER_SLASH_ACTIVE_START_INDEX && frameIndex <= LUCIFER_SLASH_ACTIVE_END_INDEX) {
+      applyLuciferSlashHit();
+    }
+    if (luciferBoss.anim >= luciferFrames.slash.length) {
+      luciferBoss.flavor = "idle";
+      luciferBoss.anim = 0;
+      luciferBoss.attackHitDone = false;
+      luciferBoss.vulnerable = false;
+      luciferBoss.recovery = false;
+      luciferBoss.chainDelay = luciferBoss.attackQueue.length ? LUCIFER_SLASH_CHAIN_GAP : 0;
+      luciferBoss.attackCooldown = luciferBoss.attackQueue.length ? 0 : LUCIFER_SLASH_COOLDOWN;
+    }
+    luciferBoss.y = clamp(luciferBoss.y, FLOOR_Y - 92, FLOOR_Y + 42);
+    return;
+  }
+  if (luciferBoss.flavor === "stakeFlip") {
+    if (!luciferBoss.stakeLaunched) {
+      luciferBoss.anim += dt * LUCIFER_STAKE_ANIM_RATE;
+      const frameIndex = Math.floor(luciferBoss.anim);
+      luciferBoss.vulnerable = frameIndex <= LUCIFER_STAKE_WINDUP_END_INDEX;
+      luciferBoss.recovery = false;
+      updateLuciferStakeFlipWindupPosition();
+      if (frameIndex >= LUCIFER_STAKE_ACTIVE_START_INDEX) {
+        luciferBoss.anim = luciferFrames.stakeFlip.length - 0.01;
+        launchLuciferStakeForm();
+      }
+    } else {
+      luciferBoss.anim += dt * LUCIFER_STAKE_ACTIVE_ANIM_RATE;
+      if (luciferBoss.anim >= luciferFrames.stakeFlip.length) luciferBoss.anim = luciferFrames.stakeFlip.length - 1;
+      updateLuciferStakeMovement(dt);
+    }
+    return;
+  }
+  if (luciferBoss.flavor === "block") {
+    luciferBoss.blockTimer = Math.max(0, luciferBoss.blockTimer - dt);
+    luciferBoss.anim += dt * 10;
+    if (luciferBoss.blockTimer <= 0) {
+      luciferBoss.flavor = "idle";
+      luciferBoss.anim = 0;
+    }
+  } else {
+    luciferBoss.anim += dt * 8;
+  }
+  if (luciferBoss.flavor === "idle") {
+    if (luciferBoss.chainDelay > 0) {
+      luciferBoss.chainDelay = Math.max(0, luciferBoss.chainDelay - dt);
+      if (luciferBoss.chainDelay <= 0) startNextLuciferQueuedAttack();
+    } else if (luciferBoss.attackQueue.length) {
+      startNextLuciferQueuedAttack();
+    } else {
+      luciferBoss.attackCooldown = Math.max(0, luciferBoss.attackCooldown - dt);
+      if (luciferBoss.attackCooldown <= 0) queueLuciferDefaultChain();
+    }
+  }
+  luciferBoss.y = clamp(luciferBoss.y, FLOOR_Y - 92, FLOOR_Y + 42);
+}
+
 function handleBeatriceReturnedStakeHit(stake) {
   if (!beatriceBoss.active) return false;
   const canBreak = beatriceBoss.flavor === "idle";
@@ -12154,6 +13493,15 @@ function applySpecialBeam(dt) {
       damageBeatriceBarrierWithSpecial(SPECIAL_BEAM_DAMAGE * dt, player.facing, { x: contactX, y: contactY });
     }
   }
+  if (luciferCanBeDamaged()) {
+    const box = luciferHurtbox();
+    if (rectsTouch(beam, box)) {
+      const contactX = (Math.max(beam.x, box.x) + Math.min(beam.x + beam.w, box.x + box.w)) * 0.5;
+      const contactY = (Math.max(beam.y, box.y) + Math.min(beam.y + beam.h, box.y + box.h)) * 0.5;
+      spawnBeamContactSparks(contactX, contactY, dt);
+      damageLucifer(SPECIAL_BEAM_DAMAGE * dt, player.facing, { source: "battler:specialBeam" });
+    }
+  }
 }
 
 function damageLambdaSpecialArea(x, y, radius, damage, source, options = {}) {
@@ -12201,6 +13549,15 @@ function damageLambdaSpecialArea(x, y, radius, damage, source, options = {}) {
   } else if (circleTouchesBeatriceBarrier(x, y - 82, radius)) {
     const direction = Math.sign(beatriceBoss.x - x) || player.facing || 1;
     damageBeatriceBarrierWithSpecial(damage, direction);
+  }
+  if (luciferCanBeDamaged()) {
+    const box = luciferHurtbox();
+    const closestX = clamp(x, box.x, box.x + box.w);
+    const closestY = clamp(y - 82, box.y, box.y + box.h);
+    if (Math.hypot(closestX - x, closestY - (y - 82)) <= radius) {
+      const direction = Math.sign(luciferBoss.x - x) || player.facing || 1;
+      damageLucifer(damage, direction, { source });
+    }
   }
 }
 
@@ -13760,6 +15117,7 @@ function updateShannonWalls(dt) {
   for (let i = shannonWalls.length - 1; i >= 0; i--) {
     const wall = shannonWalls[i];
     if (!wall.hitCooldowns) wall.hitCooldowns = new Map();
+    if (!wall.touched) wall.touched = new Set();
     for (const [target, cooldown] of wall.hitCooldowns) {
       const next = cooldown - dt;
       if (next <= 0) wall.hitCooldowns.delete(target);
@@ -13794,24 +15152,40 @@ function updateShannonWalls(dt) {
     for (const enemy of enemies) {
       if (wall.hitsRemaining <= 0) break;
       if (enemy.dead || enemy.spawnGrace > 0) continue;
+      if (wall.hitOnce && wall.touched.has(enemy)) continue;
       if (wall.hitCooldowns.get(enemy) > 0) continue;
       if (!rectsTouch(hitbox, enemyHurtbox(enemy))) continue;
       const direction = Math.sign(player.x - enemy.x) || -wall.direction || player.facing;
-      damageEnemy(enemy, SHANNON_WALL_DAMAGE, { playerDamage: false });
-      launchEnemyUnprorated(enemy, direction, "shannon:purpleWall", SHANNON_WALL_LAUNCH_LIFT, SHANNON_WALL_LAUNCH_DRIFT);
+      const source = wall.source || "shannon:purpleWall";
+      damageEnemy(enemy, SHANNON_WALL_DAMAGE, { playerDamage: false, source });
+      launchEnemyUnprorated(enemy, direction, source, SHANNON_WALL_LAUNCH_LIFT, SHANNON_WALL_LAUNCH_DRIFT);
       if (enemy.hp <= 0) defeatEnemy(enemy);
       spawnShannonWallShatter(wall.x, enemy.y - 88, wall.direction);
+      if (wall.hitOnce) wall.touched.add(enemy);
       wall.hitCooldowns.set(enemy, SHANNON_WALL_HIT_COOLDOWN);
       wall.hitsRemaining -= 1;
     }
-    if (wall.hitsRemaining > 0 && beatriceCanBeDamaged() && !(wall.hitCooldowns.get("beatrice") > 0) && rectsTouch(hitbox, beatriceHurtbox())) {
+    if (wall.hitsRemaining > 0 && beatriceCanBeDamaged() && !(wall.hitOnce && wall.touched.has("beatrice")) && !(wall.hitCooldowns.get("beatrice") > 0) && rectsTouch(hitbox, beatriceHurtbox())) {
       const direction = Math.sign(player.x - beatriceBoss.x) || -wall.direction || player.facing;
-      const dealt = damageBeatrice(SHANNON_WALL_DAMAGE, direction);
+      const source = wall.source || "shannon:purpleWall";
+      const dealt = damageBeatrice(SHANNON_WALL_DAMAGE, direction, { source });
       if (dealt > 0) {
-        launchBeatrice(direction, BEATRICE_LAUNCH_LIFT, BEATRICE_LAUNCH_DRIFT, "shannon:purpleWall");
+        launchBeatrice(direction, BEATRICE_LAUNCH_LIFT, BEATRICE_LAUNCH_DRIFT, source);
         if (beatriceBoss.hp <= 0) defeatBeatriceBoss();
         spawnShannonWallShatter(wall.x, beatriceBoss.y - 118, wall.direction);
+        if (wall.hitOnce) wall.touched.add("beatrice");
         wall.hitCooldowns.set("beatrice", SHANNON_WALL_HIT_COOLDOWN);
+        wall.hitsRemaining -= 1;
+      }
+    }
+    if (wall.hitsRemaining > 0 && luciferCanBeDamaged() && !(wall.hitOnce && wall.touched.has("lucifer")) && !(wall.hitCooldowns.get("lucifer") > 0) && rectsTouch(hitbox, luciferHurtbox())) {
+      const direction = Math.sign(player.x - luciferBoss.x) || -wall.direction || player.facing;
+      const source = wall.source || "shannon:purpleWall";
+      const dealt = damageLucifer(SHANNON_WALL_DAMAGE, direction, { source });
+      if (dealt > 0) {
+        spawnShannonWallShatter(wall.x, luciferBoss.y - 118, wall.direction);
+        if (wall.hitOnce) wall.touched.add("lucifer");
+        wall.hitCooldowns.set("lucifer", SHANNON_WALL_HIT_COOLDOWN);
         wall.hitsRemaining -= 1;
       }
     }
@@ -15005,6 +16379,51 @@ function updateShannon(dt) {
     }
     return;
   }
+  if (shannonCompanion.state === "duoStage1") {
+    const previousFrame = Math.floor(shannonCompanion.anim);
+    shannonCompanion.anim += dt * HUMAN_DUO_SHANNON_STAGE1_RATE;
+    const currentFrame = Math.floor(shannonCompanion.anim);
+    const activeStart = shannonFrames.duoStage1.indexOf(258);
+    if (!shannonCompanion.duoAttackHitDone && previousFrame < activeStart && currentFrame >= activeStart) {
+      applyHumanDuoShannonStage1Hit();
+    }
+    if (shannonCompanion.anim >= shannonFrames.duoStage1.length) {
+      shannonCompanion.state = "idle";
+      shannonCompanion.anim = 0;
+      shannonCompanion.duoAttackHitDone = false;
+    }
+    return;
+  }
+  if (shannonCompanion.state === "duoStage3") {
+    const activeStart = shannonFrames.duoStage3.indexOf(493);
+    const recoveryFrame = shannonFrames.duoStage3.length - 1;
+    if (!shannonCompanion.duoStage3Recovering) {
+      if (shannonCompanion.anim < activeStart) {
+        shannonCompanion.anim = Math.min(activeStart, shannonCompanion.anim + dt * HUMAN_DUO_SHANNON_STAGE3_RATE);
+      } else {
+        shannonCompanion.duoStage3LoopTimer += dt * HUMAN_DUO_SHANNON_STAGE3_RATE;
+        shannonCompanion.anim = activeStart + (Math.floor(shannonCompanion.duoStage3LoopTimer) % 3);
+      }
+      if (shannonCompanion.anim >= activeStart) {
+        applyHumanDuoShannonStage3Pull(dt);
+        requestHumanDuoKanonStage3FromShannon();
+      }
+      if (shannonCompanion.duoStage3KanonRequested && !kanonIsAttacking() && !kanonCompanion.pendingStageTrigger) {
+        shannonCompanion.duoStage3Recovering = true;
+        shannonCompanion.anim = recoveryFrame;
+      }
+    } else {
+      shannonCompanion.anim += dt * HUMAN_DUO_SHANNON_STAGE3_RATE;
+      if (shannonCompanion.anim >= shannonFrames.duoStage3.length) {
+        shannonCompanion.state = "idle";
+        shannonCompanion.anim = 0;
+        shannonCompanion.duoStage3KanonRequested = false;
+        shannonCompanion.duoStage3Recovering = false;
+        shannonCompanion.duoStage3Target = null;
+      }
+    }
+    return;
+  }
   const follow = companionFollowTarget("shannon");
   const followX = follow.x;
   const followY = follow.y;
@@ -15280,6 +16699,10 @@ function updateKanon(dt) {
         relaunchAirborneOnly: true
       });
       spawnKanonSlashArc(originX + facing * 12, originY, facing, { wide: true, groundedHitstun: true });
+      const projectileTarget = humanDuo.lastProjectileTarget && !humanDuo.lastProjectileTarget.dead
+        ? humanDuo.lastProjectileTarget
+        : null;
+      startHumanDuoShannonStage1(projectileTarget);
     }
     if (kanonCompanion.anim >= kanonFrames.attackFinisher.length) {
       startQueuedKanonStageOrRecover();
@@ -15620,6 +17043,8 @@ function update(dt) {
     drawKanonSlashArcs();
     drawKanonUppercutArcs();
     drawKanonFinisherArcs();
+    drawHumanDuoProjectiles();
+    drawHumanDuoFinaleSlashes();
     drawBeatriceStakeShockwaves();
     drawKonpeitoShots();
     drawSuperChargeKonpeitoRings();
@@ -15707,6 +17132,7 @@ function update(dt) {
   updateGoatPoundQuakes(hostileDt);
   updateKonpeito(dt);
   updateSuperChargeKonpeitoRings(dt);
+  updateHumanDuo(dt);
   updateLambdaSpecialKonpeitos(dt);
   updateLambdaSpecialFinalBursts(dt);
   updateLambdaSpecialShrapnel(dt);
@@ -15716,6 +17142,7 @@ function update(dt) {
   updateKanonFinisherArcs(dt);
   updateShannonBarrierBursts(dt);
   updateBeatrice(hostileDt);
+  updateLucifer(hostileDt);
   updateBeatriceBossResolvePickups();
   if (startBeatriceBarrierTutorial()) {
     healthBar.style.width = `${playerHealthPercent()}%`;
@@ -17231,6 +18658,57 @@ function drawShannon() {
   ctx.scale(-shannonCompanion.facing, 1);
   ctx.drawImage(img, -anchor.x * scale, -anchor.y * scale, img.width * scale, img.height * scale);
   ctx.restore();
+  drawHumanDuoShannonVortex();
+}
+
+function drawHumanDuoShannonVortex() {
+  if (shannonCompanion.state !== "duoStage3" || shannonCompanion.duoStage3Recovering) return;
+  const activeStart = shannonFrames.duoStage3.indexOf(493);
+  if (shannonCompanion.anim < activeStart) return;
+  const vortex = humanDuoShannonStage3VortexPoint();
+  const facing = vortex.facing;
+  const pulse = pulseValue(18);
+  const spin = performance.now() / 210;
+  const x = vortex.x - cameraX;
+  const y = vortex.y;
+  const radius = HUMAN_DUO_SHANNON_VORTEX_RADIUS * (0.86 + pulse * 0.08);
+  ctx.save();
+  ctx.globalCompositeOperation = "lighter";
+  ctx.translate(x, y);
+  ctx.scale(facing, 1);
+  const grad = ctx.createRadialGradient(0, 0, 8, 0, 0, radius);
+  grad.addColorStop(0, "rgba(255, 235, 255, 0.62)");
+  grad.addColorStop(0.24, "rgba(197, 86, 255, 0.38)");
+  grad.addColorStop(0.62, "rgba(92, 22, 164, 0.22)");
+  grad.addColorStop(1, "rgba(35, 0, 72, 0)");
+  ctx.fillStyle = grad;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radius * 0.82, radius * 0.46, -0.16, 0, Math.PI * 2);
+  ctx.fill();
+  for (let i = 0; i < 4; i++) {
+    const turn = spin + i * Math.PI * 0.5;
+    ctx.strokeStyle = i % 2
+      ? "rgba(235, 172, 255, 0.72)"
+      : "rgba(122, 42, 236, 0.82)";
+    ctx.lineWidth = i % 2 ? 3 : 5;
+    ctx.globalAlpha = 0.72 - i * 0.08;
+    ctx.beginPath();
+    for (let a = 0; a <= Math.PI * 1.65; a += 0.14) {
+      const r = 18 + a * (radius * 0.34);
+      const px = Math.cos(a + turn) * r;
+      const py = Math.sin(a + turn) * r * 0.48;
+      if (a === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 0.82;
+  ctx.strokeStyle = "rgba(244, 220, 255, 0.78)";
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, radius * 0.72, radius * 0.38, -0.16, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function drawKanon(alpha = 1) {
@@ -17514,6 +18992,70 @@ function drawBeatrice() {
   drawBeatriceMeleeKickParryRings(x, y);
 }
 
+function drawLuciferFrame(frame, x, y, facing, alpha = 1, highlight = false, scaleOverride = null) {
+  const img = luciferImages[frame];
+  if (!img) return false;
+  const bounds = luciferFrameBounds[frame] || [0, 0, img.width, img.height];
+  const anchor = luciferFrameAnchors[frame] || { x: img.width * 0.5, y: img.height };
+  const sourceW = bounds[2] - bounds[0];
+  const sourceH = bounds[3] - bounds[1];
+  const scale = scaleOverride || LUCIFER_SPRITE_SCALE;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  if (highlight) {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.filter = "saturate(2.5) brightness(1.55)";
+    ctx.shadowColor = "rgba(183, 92, 255, 0.86)";
+    ctx.shadowBlur = 18;
+  }
+  ctx.translate(x, y);
+  ctx.scale(-facing, 1);
+  ctx.drawImage(
+    img,
+    bounds[0],
+    bounds[1],
+    sourceW,
+    sourceH,
+    -(anchor.x - bounds[0]) * scale,
+    -(anchor.y - bounds[1]) * scale,
+    sourceW * scale,
+    sourceH * scale
+  );
+  ctx.restore();
+  return true;
+}
+
+function drawLucifer() {
+  if (!luciferBoss.active) return;
+  const list = luciferFrames[luciferBoss.flavor] || luciferFrames.idle;
+  const frameIndex = Math.floor(luciferBoss.anim);
+  const frame = list[Math.min(list.length - 1, frameIndex % list.length)];
+  const x = Math.round(luciferBoss.x - cameraX);
+  const stakeForm = luciferBoss.flavor === "stakeFlip" && frameIndex >= LUCIFER_STAKE_ACTIVE_START_INDEX;
+  const hover = stakeForm ? 0 : Math.sin(performance.now() / 470) * 3;
+  const stakeLift = 0;
+  const y = Math.round(luciferBoss.y - hover - stakeLift - (luciferBoss.z || 0));
+  const stakeShrinkT = stakeForm
+    ? clamp((luciferBoss.anim - LUCIFER_STAKE_ACTIVE_START_INDEX) / 2, 0, 1)
+    : 0;
+  const drawScale = stakeForm
+    ? LUCIFER_STAKE_DRAW_SCALE + (0.96 - LUCIFER_STAKE_DRAW_SCALE) * (1 - stakeShrinkT)
+    : null;
+  const defeatedAlpha = luciferBoss.flavor === "defeated"
+    ? clamp(luciferBoss.defeatTimer / LUCIFER_DEFEAT_DISSIPATE_TIME, 0, 1)
+    : 1;
+  if (luciferBoss.flavor === "stakeFlip" && !luciferBoss.stakeLaunched) {
+    drawActorShadow({ ...luciferBoss, x: luciferBoss.groundX || luciferBoss.x, y: luciferBoss.groundY || luciferBoss.y }, 34);
+  } else if (!stakeForm) {
+    drawActorShadow(luciferBoss, 34);
+  }
+  drawLuciferFrame(frame, x, y, luciferBoss.facing, defeatedAlpha, false, drawScale);
+  if (luciferBoss.hurtFlash > 0 || luciferBoss.flavor === "defeated") {
+    const alpha = luciferBoss.flavor === "defeated" ? Math.sin((1 - defeatedAlpha) * Math.PI) * 0.72 : clamp(luciferBoss.hurtFlash / LUCIFER_HURT_FLASH_TIME, 0, 1) * 0.55;
+    if (alpha > 0) drawLuciferFrame(frame, x, y, luciferBoss.facing, alpha, true, drawScale);
+  }
+}
+
 function drawBernBarrageArcCrystals() {
   if (bernCompanion.crystalHasFired) return;
   const layout = bernBarrageShardLayout();
@@ -17573,6 +19115,7 @@ function drawActors(options = {}) {
     ...satanAttacks.map((attack) => ({ type: "satan", y: attack.y + 0.58, attack })),
     ...belphegorAttacks.map((attack) => ({ type: "belphegor", y: attack.y + 0.59, attack })),
     ...(beatriceBoss.active ? [{ type: "beatrice", y: beatriceBoss.y }] : []),
+    ...(luciferBoss.active ? [{ type: "lucifer", y: luciferBoss.y }] : []),
     ...(lambdaCompanion.active ? [{ type: "lambda", y: companionDrawSortY("lambda", lambdaCompanion.y) }] : []),
     ...(bernCompanion.active ? [{ type: "bern", y: companionDrawSortY("bern", bernCompanion.y) }] : []),
     ...(shannonCompanion.active ? [{ type: "shannon", y: companionDrawSortY("shannon", shannonCompanion.y) }] : []),
@@ -17603,6 +19146,8 @@ function drawActors(options = {}) {
     } else if (actor.type === "beatrice") {
       if (skipBeatrice) continue;
       drawBeatrice();
+    } else if (actor.type === "lucifer") {
+      drawLucifer();
     } else if (actor.type === "asmo") {
       drawAsmodeusUppercut(actor.attack);
     } else if (actor.type === "beelzebub") {
@@ -17984,6 +19529,104 @@ function drawDuoAttackEffects() {
   ctx.beginPath();
   ctx.arc(x, y, core, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
+}
+
+function drawHumanDuoProjectiles() {
+  for (const burstEffect of humanDuoMuzzleBursts) {
+    const age = burstEffect.max - burstEffect.life;
+    const t = clamp(age / Math.max(0.001, burstEffect.max), 0, 1);
+    const alpha = (1 - t) * (0.62 + 0.16 * Math.sin(performance.now() / 34));
+    const x = burstEffect.x - cameraX;
+    const y = burstEffect.y;
+    const radius = 12 + t * (54 + burstEffect.stage * 8);
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = burstEffect.stage >= 3 ? "rgba(255, 98, 132, 0.86)" : "rgba(83, 231, 255, 0.88)";
+    ctx.lineWidth = 8 - t * 5;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radius * 1.12, radius * 0.82, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.globalAlpha = alpha * 0.72;
+    ctx.strokeStyle = "rgba(235, 255, 255, 0.72)";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(x, y, radius * 0.62, radius * 0.46, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+  for (const shot of humanDuoProjectiles) {
+    const t = clamp(shot.life / Math.max(0.001, shot.max), 0, 1);
+    const x = shot.x - cameraX;
+    const y = shot.y;
+    const length = 42 + shot.stage * 14;
+    const radius = HUMAN_DUO_PROJECTILE_RADIUS + shot.stage * 5;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.35 + t * 0.45;
+    const grad = ctx.createLinearGradient(x - shot.facing * length, y, x + shot.facing * length * 0.4, y);
+    grad.addColorStop(0, "rgba(64, 226, 255, 0)");
+    grad.addColorStop(0.42, shot.stage >= 3 ? "rgba(255, 74, 92, 0.8)" : "rgba(76, 234, 255, 0.8)");
+    grad.addColorStop(1, "rgba(255, 255, 255, 0.95)");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(x, y, length, radius * 0.34, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = shot.stage >= 3 ? "rgba(255, 206, 220, 0.78)" : "rgba(218, 252, 255, 0.78)";
+    ctx.lineWidth = 2 + shot.stage;
+    ctx.beginPath();
+    ctx.moveTo(x - shot.facing * length * 0.9, y);
+    ctx.lineTo(x + shot.facing * length * 0.55, y);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawHumanDuoFinaleSlashes() {
+  for (const slash of humanDuoFinaleSlashes) {
+    const age = slash.max - slash.life;
+    const t = clamp(age / Math.max(0.001, slash.max), 0, 1);
+    const alpha = Math.sin(Math.PI * clamp(t * 1.08, 0, 1));
+    const x = slash.x - cameraX;
+    const y = slash.y - 96;
+    const width = W * (0.72 + t * 0.42);
+    const height = 132 + t * 80;
+    ctx.save();
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha = 0.68 * alpha;
+    ctx.translate(x, y);
+    ctx.scale(slash.facing || 1, 1);
+    ctx.strokeStyle = "rgba(255, 34, 62, 0.92)";
+    ctx.lineWidth = 16 - t * 7;
+    ctx.beginPath();
+    ctx.moveTo(-width * 0.48, height * 0.34);
+    ctx.quadraticCurveTo(width * 0.08, -height * 0.52, width * 0.5, -height * 0.16);
+    ctx.stroke();
+    ctx.strokeStyle = "rgba(255, 230, 238, 0.86)";
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(-width * 0.4, height * 0.24);
+    ctx.quadraticCurveTo(width * 0.05, -height * 0.44, width * 0.42, -height * 0.12);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawHumanDuoStatus() {
+  if (!humanDuo.active) return;
+  const x = 24;
+  const y = 156;
+  ctx.save();
+  ctx.fillStyle = "rgba(10, 8, 18, 0.72)";
+  ctx.strokeStyle = humanDuo.ending ? "rgba(255, 92, 132, 0.88)" : "rgba(120, 230, 255, 0.84)";
+  ctx.lineWidth = 2;
+  ctx.fillRect(x, y, 126, 28);
+  ctx.strokeRect(x + 0.5, y + 0.5, 125, 27);
+  ctx.font = "900 13px Segoe UI, Arial";
+  ctx.textAlign = "center";
+  ctx.fillStyle = humanDuo.ending ? "#ffd5df" : "#d7fbff";
+  ctx.fillText(humanDuo.ending ? "SERVANTS' OATH" : "DUO MODE", x + 63, y + 19);
   ctx.restore();
 }
 
@@ -19953,6 +21596,39 @@ function drawBeatriceBossHud() {
   ctx.restore();
 }
 
+function drawLuciferBossHud() {
+  if (!luciferBoss.active || waveMode !== "boss") return;
+  const barW = 430;
+  const barH = 18;
+  const x = W / 2 - barW / 2;
+  const y = 34;
+  const hpT = clamp(luciferBoss.hp / Math.max(1, luciferBoss.maxHp), 0, 1);
+  ctx.save();
+  ctx.fillStyle = "rgba(6, 7, 12, 0.72)";
+  ctx.strokeStyle = "rgba(215, 188, 255, 0.36)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.roundRect(x - 12, y - 18, barW + 24, 44, 8);
+  ctx.fill();
+  ctx.stroke();
+  ctx.textAlign = "center";
+  ctx.font = "700 14px Segoe UI, Arial";
+  ctx.fillStyle = "#e9d8ff";
+  ctx.fillText("Lucifer", W / 2, y - 5);
+  ctx.fillStyle = "rgba(14, 8, 18, 0.9)";
+  ctx.fillRect(x, y + 4, barW, barH);
+  const hpGrad = ctx.createLinearGradient(x, y, x + barW, y);
+  hpGrad.addColorStop(0, "#78112c");
+  hpGrad.addColorStop(0.58, "#c82548");
+  hpGrad.addColorStop(1, "#ff5f7f");
+  ctx.fillStyle = hpGrad;
+  ctx.fillRect(x, y + 4, barW * hpT, barH);
+  ctx.strokeStyle = "rgba(242, 221, 255, 0.62)";
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(x, y + 4, barW, barH);
+  ctx.restore();
+}
+
 function drawItemHud() {
   const itemDrawers = itemHudDrawers();
   let hoverType = "";
@@ -20847,12 +22523,14 @@ function drawOverlay() {
   blessingsButton.visible = false;
   if (state === "playing" || state === "paused" || state === "lost" || state === "itemTutorial" || state === "bossBlessing" || state === "beatriceTutorial" || state === "beatriceStakeTutorial") {
     drawBeatriceBossHud();
+    drawLuciferBossHud();
     drawCanvasMobileHud();
     drawItemHud();
     drawScoreComboHud();
     drawTechniqueBonuses();
     if (state === "playing" || state === "paused") drawDashCooldownHud();
     drawWaveEffectBadges();
+    drawHumanDuoStatus();
   }
   drawBernHazardWarning();
   drawPerfectFlourishes();
@@ -21381,6 +23059,8 @@ function draw() {
     drawKanonSlashArcs();
     drawKanonUppercutArcs();
     drawKanonFinisherArcs();
+    drawHumanDuoProjectiles();
+    drawHumanDuoFinaleSlashes();
     drawShannonBarrier("front");
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
@@ -21438,6 +23118,8 @@ function draw() {
     drawKanonSlashArcs();
     drawKanonUppercutArcs();
     drawKanonFinisherArcs();
+    drawHumanDuoProjectiles();
+    drawHumanDuoFinaleSlashes();
     drawShannonBarrier("front");
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();
@@ -21494,6 +23176,8 @@ function draw() {
     drawKanonSlashArcs();
     drawKanonUppercutArcs();
     drawKanonFinisherArcs();
+    drawHumanDuoProjectiles();
+    drawHumanDuoFinaleSlashes();
     drawShannonBarrier("front");
     drawBeatriceStakeShockwaves();
     drawBeatriceStakeParryLine();

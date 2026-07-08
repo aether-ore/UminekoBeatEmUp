@@ -97,6 +97,114 @@
           <button id="touchToggle" class="controls__touch-toggle" type="button">Touch: Auto</button>
         </div>
       </section>
+
+      <section class="mechanics-guide" aria-label="Game mechanics tutorials">
+        <header class="mechanics-guide__header">
+          <span class="label">Tutorials</span>
+          <h2>Mechanics Guide</h2>
+        </header>
+        <div class="mechanics-guide__grid">
+          <details open>
+            <summary>Core Controls</summary>
+            <ul>
+              <li><kbd>WASD</kbd> or <kbd>Arrows</kbd> move Battler around the stage.</li>
+              <li><kbd>J</kbd> punches and <kbd>K</kbd> kicks. Press again during recovery to continue combos.</li>
+              <li>Hold <kbd>J/K</kbd> to charge a Stage 3 attack if you have enough Resolve.</li>
+              <li><kbd>L</kbd> uses Special, <kbd>Q</kbd> holds Duo, and Punch/Kick can parry during parry windows.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Dodge / Run</summary>
+            <ul>
+              <li>Tap <kbd>Shift</kbd> to dodge with invulnerability. Hold <kbd>Shift</kbd> to start running.</li>
+              <li>Tap dodge with no direction to back-hop; tap with a direction to dodge that way.</li>
+              <li>Attack during a dodge hop to spend Resolve on a dodge attack that launches or ground bounces enemies.</li>
+              <li>Running builds dash attack timing, but getting hit while running can trip and dizzy Battler.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Advanced Movement</summary>
+            <ul>
+              <li>Dash attacks require timing: attack during the flash for the powered dash strike.</li>
+              <li>Dash Cancel lets Battler cancel an attack into a short forward burst by spending a dash gauge.</li>
+              <li>The dash gauge refills over time, but pauses during running, dodge invulnerability, and some stun states.</li>
+              <li>Goats block movement like pillars, so dodge around them instead of trying to walk through.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Combo Mechanics</summary>
+            <ul>
+              <li>Launches send enemies upward; ground bounces slam airborne enemies back down for extended combos.</li>
+              <li>Companion launches can set up <strong>Assist Combo +500</strong> when Battler continues the juggle.</li>
+              <li>Technique bonuses such as <strong>Launch</strong>, <strong>Ground Bounce</strong>, and combo milestones add to the combo bank.</li>
+              <li>Your score is paid out when the combo ends, multiplied by defeated enemies and boosted by Perfect waves.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Score / Blessings</summary>
+            <ul>
+              <li>Hits and technique bonuses build your combo bank first; score is awarded when the combo ends.</li>
+              <li>Defeating enemies during a combo multiplies the bank, so juggling into knockouts is worth much more.</li>
+              <li>Perfect waves add a large bonus, then banked score fills the golden blessing meter under Score.</li>
+              <li>When the meter reaches the next threshold, choose Certainty, Miracles, or an item reward after the wave.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Technique Bonuses</summary>
+            <ul>
+              <li><strong>Launch</strong>, <strong>Ground Bounce</strong>, <strong>Dash Cancel</strong>, <strong>Parry</strong>, and <strong>Witch Time</strong> add bonus score to the current bank.</li>
+              <li><strong>4 Hit Combo</strong> and <strong>10 Hit Combo</strong> reward chaining hits on one enemy before they recover.</li>
+              <li><strong>Assist Combo</strong> rewards Battler for continuing a juggle started by a companion.</li>
+              <li><strong>Special Finish</strong> rewards defeating the final enemy or boss with Special damage.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Defensive Mechanics</summary>
+            <ul>
+              <li>Parry inside the correct timing window to stop attacks and gain <strong>Parry +2000</strong>.</li>
+              <li>Dodge through an active hitbox during invulnerability to trigger <strong>Witch Time +1000</strong>.</li>
+              <li>Witch Time slows enemies briefly, restores Resolve, and helps turn defense into offense.</li>
+              <li>Shannon can save Battler from dangerous launching attacks and grant a protective barrier.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Resolve / Specials</summary>
+            <ul>
+              <li>Blue Resolve Flames restore Resolve: small flames grant 10%, large flames grant 25%.</li>
+              <li>Resolve powers Specials and charged attacks that can destroy the witch's magical barrier.</li>
+              <li>Super Charge uses Resolve and dash stock to rush a target, then releases a stronger charged attack.</li>
+              <li>Candy Cataclysm summons konpeito for pulses, shrapnel, juggling, and a final burst.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Companions</summary>
+            <ul>
+              <li>Witch companions have limited wave duration. Duration appears on Plum Tea and Konpeito.</li>
+              <li>Human companions like Shannon and Kanon stay through boss waves and do not expire by duration.</li>
+              <li>Kanon follows Battler's launches and ground bounces with staged slash assists if his gauge is ready.</li>
+              <li>Shannon's walls and Kanon's Stage 3 can link together for longer assist chains.</li>
+            </ul>
+          </details>
+
+          <details>
+            <summary>Boss Basics</summary>
+            <ul>
+              <li>Beatrice's golden barrier blocks normal damage. Use Resolve Specials, stake parries, and key blessings to break it.</li>
+              <li>Stand where Beatrice's stake will land, then parry at the right time to send it back and shatter her barrier.</li>
+              <li>Leviathan during the tower attack can also be parried to end the pattern and break the barrier.</li>
+              <li>Purgatorio summons Beatrice during normal waves; parrying her attacks makes her disappear for the wave.</li>
+            </ul>
+          </details>
+        </div>
+      </section>
     </main>
 
     <script src="game.js?v=20260623"></script>
