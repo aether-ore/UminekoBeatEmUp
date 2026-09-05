@@ -1122,12 +1122,7 @@ const beatriceFrames = {
   victoryIntro: [844, 845],
   victoryLoop: [851, 852, 853, 854]
 };
-const luciferFrames = {
-  idle: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  block: [109, 110, 110, 109],
-  slash: [219, 220, 221, 222, 223, 224, 225, 226, 227, 228],
-  stakeFlip: [347, 348, 349, 350, 351, 352, 353, 354, 355, 356]
-};
+const luciferFrames = LUCIFER_CLIPS;
 const beelzebubFrames = [503, 504, 505, 506, 507, 508, 509, 510, 511, 512];
 const leviathanFrames = [513, 514, 515, 516, 517, 518, 519, 520, 521, 522];
 const satanFrames = [483, 484, 485, 486, 487, 488, 489, 490, 491, 492];
@@ -2629,20 +2624,16 @@ function luciferCanBeDamaged() {
 }
 
 function luciferTakesFullDamage() {
-  const slashRecovery = luciferBoss.flavor === "slash"
-    && Math.floor(luciferBoss.anim) >= LUCIFER_SLASH_RECOVERY_START_INDEX;
-  const stakeWindup = luciferBoss.flavor === "stakeFlip"
-    && Math.floor(luciferBoss.anim) <= LUCIFER_STAKE_WINDUP_END_INDEX;
-  return luciferBoss.vulnerable || luciferBoss.recovery || slashRecovery || stakeWindup || luciferBoss.flavor === "recovery";
+  const c = luciferBoss.combat;
+  return !!(luciferBoss.vulnerable || luciferBoss.recovery || c &&
+    (["recovery", "parry", "transition"].includes(c.stage) || c.moveId === "stakeFlip" && c.stage === "startup"));
 }
 
 function luciferHurtbox() {
-  return {
-    x: luciferBoss.x - 58,
-    y: luciferBoss.y - (luciferBoss.z || 0) - 154,
-    w: 116,
-    h: 154
-  };
+  const c = luciferBoss.combat;
+  const transformed = c?.stage === "active" && ["drill", "ricochet"].includes(LUCIFER_MOVES[c.moveId]?.kind);
+  if (transformed) return { x: luciferBoss.x - 38, y: luciferBoss.y - (luciferBoss.z || 0) - 140, w: 76, h: 56 };
+  return { x: luciferBoss.x - 58, y: luciferBoss.y - (luciferBoss.z || 0) - 154, w: 116, h: 154 };
 }
 
 function damageLucifer(amount, direction = 0, options = {}) {
@@ -2651,17 +2642,21 @@ function damageLucifer(amount, direction = 0, options = {}) {
   const fullDamage = luciferTakesFullDamage();
   const scaledAmount = fullDamage
     ? incomingAmount
-    : Math.max(LUCIFER_IDLE_CHIP_MIN, incomingAmount * LUCIFER_IDLE_CHIP_FRACTION);
+    : (options.continuous || options.source === "battler:specialBeam" ? incomingAmount * LUCIFER_IDLE_CHIP_FRACTION : Math.max(LUCIFER_IDLE_CHIP_MIN, incomingAmount * LUCIFER_IDLE_CHIP_FRACTION));
   const dealt = Math.max(0, Math.min(luciferBoss.hp, scaledAmount));
   luciferBoss.hp -= dealt;
   luciferBoss.lastDamageSource = options.source || "";
   luciferBoss.hurtFlash = LUCIFER_HURT_FLASH_TIME;
-  if (!fullDamage && (luciferBoss.flavor === "idle" || luciferBoss.flavor === "block")) {
+  if (!fullDamage) luciferNoteGuardedHit(options);
+  if (!fullDamage && luciferBoss.combat?.stage === "neutral" && (luciferBoss.flavor === "idle" || luciferBoss.flavor === "block")) {
     luciferBoss.flavor = "block";
     luciferBoss.blockTimer = LUCIFER_BLOCK_DURATION;
     luciferBoss.anim = 0;
   }
-  if (direction) luciferBoss.x = clamp(luciferBoss.x + Math.sign(direction) * (fullDamage ? 16 : 5), 90, STAGE_W - 90);
+  if (direction && !options.continuous && options.source !== "battler:specialBeam" && !["startup", "active"].includes(luciferBoss.combat?.stage)) {
+    luciferBoss.x += Math.sign(direction) * (fullDamage ? 16 : 5);
+    luciferConfine();
+  }
   runStats.damageDealt += dealt;
   addScoreComboDamage(dealt);
   if (dealt > 0) {
@@ -3818,7 +3813,7 @@ function loadImages() {
     };
     img.src = beatriceFileName(id);
   }));
-  const luciferLoads = [...new Set(Object.values(luciferFrames).flat())].map((id) => new Promise((resolve) => {
+  const luciferLoads = [...new Set(Object.values(luciferFrames).flat())].map((id) => new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
       luciferImages[id] = img;
@@ -3829,6 +3824,7 @@ function loadImages() {
       }
       resolve();
     };
+    img.onerror = () => reject(new Error(`Lucifer sprite failed: ${luciferFileName(id)}`));
     img.src = luciferFileName(id);
   }));
   const lambdaPortraitNames = [...new Set([...LAMBDA_GAME_OVER_DIALOGUE.map(({ portrait }) => portrait), "DarkLambda2"])];
@@ -5585,7 +5581,9 @@ function resolveKanonSavedParry() {
   if (!context || kanonCompanion.saveResolved) return;
   kanonCompanion.saveResolved = true;
   player.invuln = Math.max(player.invuln, KANON_SAVE_INVULN);
-  if (context.type === "stake") {
+  if (context.type === "lucifer") {
+    resolveLuciferParry(context.attackId, context.kind || "punch");
+  } else if (context.type === "stake") {
     launchReturnedStakeFromBattler(context.stake, { freezeWorld: true, impactBurst: false, shake: 0.36 });
   } else if (context.type === "leviathan") {
     const ring = context.ring;
@@ -7085,7 +7083,8 @@ function goatPunchParryIndicatorActive(enemy) {
 }
 
 function hasParryIndicatorActive() {
-  return bernHazardParryIndicatorActive()
+  return luciferParryIndicatorActive()
+    || bernHazardParryIndicatorActive()
     || beatriceStakeParryIndicatorActive()
     || leviathanTowerParryIndicatorActive()
     || beatriceMeleeKickParryIndicatorActive()
@@ -7093,7 +7092,8 @@ function hasParryIndicatorActive() {
 }
 
 function hasParryTimingReady() {
-  return bernHazardParryReady()
+  return luciferParryTimingReady()
+    || bernHazardParryReady()
     || beatriceStakes.some((stake) => {
       if (!beatriceStakeParryReady(stake)) return false;
       if (beatriceStakeTutorial.active && beatriceStakeTutorial.stage === "parryNow") {
@@ -10659,6 +10659,7 @@ function triggerBernRevive() {
 function defeatPlayer() {
   if (state === "lost") return;
   if (triggerBernRevive()) return;
+  cancelLuciferCombat();
   clearWaveEffects();
   bankScoreCombo({ allowRewards: false });
   runStats.wavesCompleted = Math.max(runStats.wavesCompleted, wave - 1);
@@ -12071,6 +12072,7 @@ function resetLuciferBossState() {
   luciferBoss.groundY = luciferBoss.y;
   luciferBoss.groundX = luciferBoss.x;
   luciferBoss.groundY = luciferBoss.y;
+  resetLuciferCombat();
 }
 
 function activateLuciferBoss() {
@@ -13036,6 +13038,7 @@ function finishBeatriceBossDefeat() {
 function defeatLuciferBoss() {
   if (!luciferBoss.active || luciferBoss.flavor === "defeated") return;
   const specialFinish = isBattlerSpecialSource(luciferBoss.lastDamageSource || "");
+  cancelLuciferCombat();
   luciferBoss.hp = 0;
   luciferBoss.flavor = "defeated";
   luciferBoss.defeated = true;
@@ -13067,286 +13070,6 @@ function finishLuciferBossDefeat() {
   resetLuciferBossState();
   waveMode = currentWaveMode();
   spawnWave();
-}
-
-function luciferCanStartQueuedAttack() {
-  return luciferBoss.active
-    && luciferBoss.hp > 0
-    && luciferBoss.flavor === "idle"
-    && luciferBoss.chainDelay <= 0;
-}
-
-function queueLuciferAttack(kind = "slash") {
-  if (!luciferBoss.active || luciferBoss.hp <= 0 || luciferBoss.flavor === "defeated") return;
-  luciferBoss.attackQueue.push(kind);
-}
-
-function queueLuciferSlashChain(count = LUCIFER_SLASH_CHAIN_SIZE) {
-  for (let i = 0; i < count; i += 1) queueLuciferAttack("slash");
-  startNextLuciferQueuedAttack();
-}
-
-function queueLuciferDefaultChain() {
-  queueLuciferAttack("slash");
-  queueLuciferAttack("slash");
-  queueLuciferAttack("stakeFlip");
-  startNextLuciferQueuedAttack();
-}
-
-function startLuciferSlash() {
-  luciferBoss.flavor = "slash";
-  luciferBoss.anim = 0;
-  luciferBoss.attackHitDone = false;
-  luciferBoss.vulnerable = false;
-  luciferBoss.recovery = false;
-  luciferBoss.facing = player.x >= luciferBoss.x ? 1 : -1;
-}
-
-function startLuciferStakeFlip() {
-  luciferBoss.flavor = "stakeFlip";
-  luciferBoss.anim = 0;
-  luciferBoss.attackHitDone = false;
-  luciferBoss.vulnerable = true;
-  luciferBoss.recovery = false;
-  luciferBoss.stakeTimer = 0;
-  luciferBoss.stakeBounces = 0;
-  luciferBoss.stakeLaunched = false;
-  luciferBoss.stakeVx = 0;
-  luciferBoss.stakeVy = 0;
-  luciferBoss.facing = player.x >= luciferBoss.x ? 1 : -1;
-  luciferBoss.groundX = luciferBoss.x;
-  luciferBoss.groundY = luciferBoss.y;
-}
-
-function startNextLuciferQueuedAttack() {
-  if (!luciferCanStartQueuedAttack() || !luciferBoss.attackQueue.length) return false;
-  const next = luciferBoss.attackQueue.shift();
-  if (next === "slash") {
-    startLuciferSlash();
-    return true;
-  }
-  if (next === "stakeFlip") {
-    startLuciferStakeFlip();
-    return true;
-  }
-  return false;
-}
-
-function pointInLuciferSlash(x, y) {
-  const originX = luciferBoss.x + luciferBoss.facing * 32;
-  const forward = (x - originX) * luciferBoss.facing;
-  if (forward < -22 || forward > LUCIFER_SLASH_RANGE) return false;
-  const scaledY = (y - luciferBoss.y) / 0.72;
-  return Math.abs(scaledY) <= LUCIFER_SLASH_DEPTH;
-}
-
-function applyLuciferSlashHit() {
-  if (luciferBoss.attackHitDone || state !== "playing") return false;
-  if (!pointInLuciferSlash(player.x, player.y)) return false;
-  luciferBoss.attackHitDone = true;
-  if (isPlayerInvulnerable()) {
-    tryTriggerWitchTime("lucifer:slash");
-    return true;
-  }
-  prepareShannonBarrierForLaunchingHit();
-  const dealt = damagePlayer(nightfallEnemyDamage(LUCIFER_SLASH_DAMAGE));
-  if (shannonBarrierBlockedHit()) {
-    burst(player.x, player.y - 96, "special");
-    return true;
-  }
-  if (dealt > 0) {
-    player.invuln = 0.28;
-    player.attackLock = 0;
-    player.attackLungeRemaining = 0;
-    player.attackHasHit = false;
-    player.currentAttack = "";
-    player.runState = "none";
-    player.runTimer = 0;
-    player.runCharge = 0;
-    player.brakeDrift = 0;
-    player.brakeBurstTimer = 0;
-    resetPlayerCombo();
-    launchActor(player, luciferBoss.facing, LUCIFER_SLASH_LIFT, LUCIFER_SLASH_DRIFT);
-    burst(player.x, player.y - 104, "enemy");
-    screenShakeTimer = Math.max(screenShakeTimer, 0.22);
-    if (player.hp <= 0) defeatPlayer();
-  }
-  return true;
-}
-
-function launchLuciferStakeForm() {
-  if (luciferBoss.stakeLaunched) return;
-  luciferBoss.stakeLaunched = true;
-  luciferBoss.vulnerable = false;
-  luciferBoss.recovery = false;
-  luciferBoss.y = clamp(luciferBoss.y, LUCIFER_STAKE_ARENA_TOP, FLOOR_Y - LUCIFER_STAKE_ARENA_BOTTOM_OFFSET);
-  const dx = player.x - luciferBoss.x;
-  const dy = (player.y - LUCIFER_STAKE_CHEST_OFFSET) - luciferBoss.y;
-  const angle = Math.atan2(dy, dx || luciferBoss.facing);
-  luciferBoss.stakeVx = Math.cos(angle) * LUCIFER_STAKE_SPEED;
-  luciferBoss.stakeVy = Math.sin(angle) * LUCIFER_STAKE_SPEED;
-  luciferBoss.facing = luciferBoss.stakeVx >= 0 ? 1 : -1;
-  luciferBoss.stakeTimer = LUCIFER_STAKE_MAX_TIME;
-  spawnAsmodeusGoldenWisps(luciferBoss.x, luciferBoss.y - 70, 8);
-}
-
-function updateLuciferStakeFlipWindupPosition() {
-  const t = clamp(luciferBoss.anim / Math.max(1, LUCIFER_STAKE_ACTIVE_START_INDEX), 0, 1);
-  const back = Math.sin(t * Math.PI * 0.5) * LUCIFER_STAKE_FLIP_BACK_DISTANCE;
-  const rise = Math.sin(t * Math.PI) * LUCIFER_STAKE_FLIP_RISE + t * LUCIFER_STAKE_AIR_LAUNCH_OFFSET;
-  luciferBoss.x = clamp(luciferBoss.groundX - luciferBoss.facing * back, 90, STAGE_W - 90);
-  luciferBoss.y = clamp(luciferBoss.groundY - rise, LUCIFER_STAKE_ARENA_TOP, FLOOR_Y + 42);
-}
-
-function finishLuciferStakeFlip() {
-  luciferBoss.flavor = "idle";
-  luciferBoss.anim = 0;
-  luciferBoss.attackHitDone = false;
-  luciferBoss.vulnerable = false;
-  luciferBoss.recovery = false;
-  luciferBoss.stakeVx = 0;
-  luciferBoss.stakeVy = 0;
-  luciferBoss.stakeTimer = 0;
-  luciferBoss.stakeBounces = 0;
-  luciferBoss.stakeLaunched = false;
-  luciferBoss.y = clamp(player.y - 8, FLOOR_Y - 92, FLOOR_Y + 42);
-  luciferBoss.groundX = luciferBoss.x;
-  luciferBoss.groundY = luciferBoss.y;
-  luciferBoss.chainDelay = luciferBoss.attackQueue.length ? LUCIFER_SLASH_CHAIN_GAP : 0;
-  luciferBoss.attackCooldown = luciferBoss.attackQueue.length ? 0 : LUCIFER_SLASH_COOLDOWN;
-}
-
-function updateLuciferStakeMovement(dt) {
-  if (!luciferBoss.stakeLaunched) return;
-  luciferBoss.stakeTimer = Math.max(0, luciferBoss.stakeTimer - dt);
-  luciferBoss.x += luciferBoss.stakeVx * dt;
-  luciferBoss.y += luciferBoss.stakeVy * dt;
-  const minX = cameraX + 24;
-  const maxX = cameraX + W - 24;
-  const minY = 36;
-  const maxY = FLOOR_Y - LUCIFER_STAKE_ARENA_BOTTOM_OFFSET;
-  let bounced = false;
-  if (luciferBoss.x < minX || luciferBoss.x > maxX) {
-    luciferBoss.x = clamp(luciferBoss.x, minX, maxX);
-    luciferBoss.stakeVx *= -1;
-    bounced = true;
-  }
-  if (luciferBoss.y < minY || luciferBoss.y > maxY) {
-    luciferBoss.y = clamp(luciferBoss.y, minY, maxY);
-    luciferBoss.stakeVy *= -1;
-    bounced = true;
-  }
-  if (bounced) {
-    luciferBoss.stakeBounces += 1;
-    const speed = Math.hypot(luciferBoss.stakeVx, luciferBoss.stakeVy) || LUCIFER_STAKE_SPEED;
-    const angle = Math.atan2(luciferBoss.stakeVy, luciferBoss.stakeVx) + (Math.random() - 0.5) * 0.46;
-    luciferBoss.stakeVx = Math.cos(angle) * speed;
-    luciferBoss.stakeVy = Math.sin(angle) * speed;
-    const current = Math.hypot(luciferBoss.stakeVx, luciferBoss.stakeVy) || 1;
-    luciferBoss.stakeVx = (luciferBoss.stakeVx / current) * LUCIFER_STAKE_SPEED;
-    luciferBoss.stakeVy = (luciferBoss.stakeVy / current) * LUCIFER_STAKE_SPEED;
-    luciferBoss.facing = luciferBoss.stakeVx >= 0 ? 1 : -1;
-    spawnAsmodeusGoldenWisps(luciferBoss.x, luciferBoss.y, 4);
-  }
-  if (!luciferBoss.attackHitDone && Math.hypot(player.x - luciferBoss.x, (player.y - LUCIFER_STAKE_CHEST_OFFSET) - luciferBoss.y) <= LUCIFER_STAKE_HIT_RADIUS + 38) {
-    luciferBoss.attackHitDone = true;
-    if (isPlayerInvulnerable()) {
-      tryTriggerWitchTime("lucifer:stake");
-    } else {
-      prepareShannonBarrierForLaunchingHit();
-      const dealt = damagePlayer(nightfallEnemyDamage(LUCIFER_STAKE_DAMAGE));
-      if (shannonBarrierBlockedHit()) {
-        burst(player.x, player.y - 96, "special");
-      } else if (dealt > 0) {
-        player.invuln = 0.32;
-        player.attackLock = 0;
-        player.attackLungeRemaining = 0;
-        player.attackHasHit = false;
-        player.currentAttack = "";
-        player.runState = "none";
-        resetPlayerCombo();
-        launchActor(player, Math.sign(luciferBoss.stakeVx) || luciferBoss.facing, LUCIFER_STAKE_LIFT, LUCIFER_STAKE_DRIFT);
-        burst(player.x, player.y - 94, "enemy");
-        screenShakeTimer = Math.max(screenShakeTimer, 0.24);
-        if (player.hp <= 0) defeatPlayer();
-      }
-    }
-    finishLuciferStakeFlip();
-    return;
-  }
-  if (luciferBoss.stakeTimer <= 0 || luciferBoss.stakeBounces >= LUCIFER_STAKE_MAX_BOUNCES) finishLuciferStakeFlip();
-}
-
-function updateLucifer(dt) {
-  if (!luciferBoss.active) return;
-  luciferBoss.hurtFlash = Math.max(0, luciferBoss.hurtFlash - dt);
-  if (luciferBoss.flavor !== "slash" && luciferBoss.flavor !== "stakeFlip") luciferBoss.facing = player.x >= luciferBoss.x ? 1 : -1;
-  if (luciferBoss.flavor === "defeated") {
-    luciferBoss.anim += dt * 8;
-    luciferBoss.defeatTimer = Math.max(0, luciferBoss.defeatTimer - dt);
-    if (luciferBoss.defeatTimer <= 0) finishLuciferBossDefeat();
-    return;
-  }
-  if (luciferBoss.flavor === "slash") {
-    luciferBoss.anim += dt * LUCIFER_SLASH_ANIM_RATE;
-    const frameIndex = Math.floor(luciferBoss.anim);
-    luciferBoss.recovery = frameIndex >= LUCIFER_SLASH_RECOVERY_START_INDEX;
-    luciferBoss.vulnerable = luciferBoss.recovery;
-    if (frameIndex >= LUCIFER_SLASH_ACTIVE_START_INDEX && frameIndex <= LUCIFER_SLASH_ACTIVE_END_INDEX) {
-      applyLuciferSlashHit();
-    }
-    if (luciferBoss.anim >= luciferFrames.slash.length) {
-      luciferBoss.flavor = "idle";
-      luciferBoss.anim = 0;
-      luciferBoss.attackHitDone = false;
-      luciferBoss.vulnerable = false;
-      luciferBoss.recovery = false;
-      luciferBoss.chainDelay = luciferBoss.attackQueue.length ? LUCIFER_SLASH_CHAIN_GAP : 0;
-      luciferBoss.attackCooldown = luciferBoss.attackQueue.length ? 0 : LUCIFER_SLASH_COOLDOWN;
-    }
-    luciferBoss.y = clamp(luciferBoss.y, FLOOR_Y - 92, FLOOR_Y + 42);
-    return;
-  }
-  if (luciferBoss.flavor === "stakeFlip") {
-    if (!luciferBoss.stakeLaunched) {
-      luciferBoss.anim += dt * LUCIFER_STAKE_ANIM_RATE;
-      const frameIndex = Math.floor(luciferBoss.anim);
-      luciferBoss.vulnerable = frameIndex <= LUCIFER_STAKE_WINDUP_END_INDEX;
-      luciferBoss.recovery = false;
-      updateLuciferStakeFlipWindupPosition();
-      if (frameIndex >= LUCIFER_STAKE_ACTIVE_START_INDEX) {
-        luciferBoss.anim = luciferFrames.stakeFlip.length - 0.01;
-        launchLuciferStakeForm();
-      }
-    } else {
-      luciferBoss.anim += dt * LUCIFER_STAKE_ACTIVE_ANIM_RATE;
-      if (luciferBoss.anim >= luciferFrames.stakeFlip.length) luciferBoss.anim = luciferFrames.stakeFlip.length - 1;
-      updateLuciferStakeMovement(dt);
-    }
-    return;
-  }
-  if (luciferBoss.flavor === "block") {
-    luciferBoss.blockTimer = Math.max(0, luciferBoss.blockTimer - dt);
-    luciferBoss.anim += dt * 10;
-    if (luciferBoss.blockTimer <= 0) {
-      luciferBoss.flavor = "idle";
-      luciferBoss.anim = 0;
-    }
-  } else {
-    luciferBoss.anim += dt * 8;
-  }
-  if (luciferBoss.flavor === "idle") {
-    if (luciferBoss.chainDelay > 0) {
-      luciferBoss.chainDelay = Math.max(0, luciferBoss.chainDelay - dt);
-      if (luciferBoss.chainDelay <= 0) startNextLuciferQueuedAttack();
-    } else if (luciferBoss.attackQueue.length) {
-      startNextLuciferQueuedAttack();
-    } else {
-      luciferBoss.attackCooldown = Math.max(0, luciferBoss.attackCooldown - dt);
-      if (luciferBoss.attackCooldown <= 0) queueLuciferDefaultChain();
-    }
-  }
-  luciferBoss.y = clamp(luciferBoss.y, FLOOR_Y - 92, FLOOR_Y + 42);
 }
 
 function handleBeatriceReturnedStakeHit(stake) {
@@ -13467,7 +13190,7 @@ function applySpecialBeam(dt) {
     const contactX = (Math.max(beam.x, hurtbox.x) + Math.min(beam.x + beam.w, hurtbox.x + hurtbox.w)) * 0.5;
     const contactY = (Math.max(beam.y, hurtbox.y) + Math.min(beam.y + beam.h, hurtbox.y + hurtbox.h)) * 0.5;
     spawnBeamContactSparks(contactX, contactY, dt);
-    damageEnemy(enemy, SPECIAL_BEAM_DAMAGE * dt, { source: "battler:specialBeam" });
+    damageEnemy(enemy, SPECIAL_BEAM_DAMAGE * dt, { source: "battler:specialBeam", continuous: true });
     if (isUninterruptibleBeatriceRushGoat(enemy)) {
       enemy.goatArmorFlash = Math.max(enemy.goatArmorFlash || 0, 0.08);
     } else {
@@ -13499,7 +13222,7 @@ function applySpecialBeam(dt) {
       const contactX = (Math.max(beam.x, box.x) + Math.min(beam.x + beam.w, box.x + box.w)) * 0.5;
       const contactY = (Math.max(beam.y, box.y) + Math.min(beam.y + beam.h, box.y + box.h)) * 0.5;
       spawnBeamContactSparks(contactX, contactY, dt);
-      damageLucifer(SPECIAL_BEAM_DAMAGE * dt, player.facing, { source: "battler:specialBeam" });
+      damageLucifer(SPECIAL_BEAM_DAMAGE * dt, player.facing, { source: "battler:specialBeam", continuous: true });
     }
   }
 }
@@ -18996,7 +18719,7 @@ function drawLuciferFrame(frame, x, y, facing, alpha = 1, highlight = false, sca
   const img = luciferImages[frame];
   if (!img) return false;
   const bounds = luciferFrameBounds[frame] || [0, 0, img.width, img.height];
-  const anchor = luciferFrameAnchors[frame] || { x: img.width * 0.5, y: img.height };
+  const anchor = luciferAnchorForFrame(frame, img);
   const sourceW = bounds[2] - bounds[0];
   const sourceH = bounds[3] - bounds[1];
   const scale = scaleOverride || LUCIFER_SPRITE_SCALE;
@@ -19027,26 +18750,28 @@ function drawLuciferFrame(frame, x, y, facing, alpha = 1, highlight = false, sca
 
 function drawLucifer() {
   if (!luciferBoss.active) return;
+  updateLuciferDebugPanel();
+  drawLuciferTelegraphs();
+  const combat = luciferBoss.combat;
   const list = luciferFrames[luciferBoss.flavor] || luciferFrames.idle;
   const frameIndex = Math.floor(luciferBoss.anim);
-  const frame = list[Math.min(list.length - 1, frameIndex % list.length)];
+  const frame = Number.isFinite(combat?.frame) && luciferBoss.flavor !== "defeated"
+    ? combat.frame : list[Math.min(list.length - 1, frameIndex % list.length)];
   const x = Math.round(luciferBoss.x - cameraX);
-  const stakeForm = luciferBoss.flavor === "stakeFlip" && frameIndex >= LUCIFER_STAKE_ACTIVE_START_INDEX;
-  const hover = stakeForm ? 0 : Math.sin(performance.now() / 470) * 3;
+  const stakeForm = (frame >= 354 && frame <= 356) || (frame >= 532 && frame <= 534);
+  const hover = stakeForm || combat ? 0 : Math.sin(performance.now() / 470) * 3;
   const stakeLift = 0;
-  const y = Math.round(luciferBoss.y - hover - stakeLift - (luciferBoss.z || 0));
-  const stakeShrinkT = stakeForm
-    ? clamp((luciferBoss.anim - LUCIFER_STAKE_ACTIVE_START_INDEX) / 2, 0, 1)
-    : 0;
+  const y = Math.round(luciferBoss.y - hover - stakeLift - (luciferBoss.z || 0) - (combat && stakeForm ? 112 : 0));
+  const stakeShrinkT = frame >= 532 ? 1 : stakeForm ? clamp((frame - 354) / 2, 0, 1) : 0;
   const drawScale = stakeForm
     ? LUCIFER_STAKE_DRAW_SCALE + (0.96 - LUCIFER_STAKE_DRAW_SCALE) * (1 - stakeShrinkT)
     : null;
   const defeatedAlpha = luciferBoss.flavor === "defeated"
     ? clamp(luciferBoss.defeatTimer / LUCIFER_DEFEAT_DISSIPATE_TIME, 0, 1)
     : 1;
-  if (luciferBoss.flavor === "stakeFlip" && !luciferBoss.stakeLaunched) {
+  if (!combat && luciferBoss.flavor === "stakeFlip" && !luciferBoss.stakeLaunched) {
     drawActorShadow({ ...luciferBoss, x: luciferBoss.groundX || luciferBoss.x, y: luciferBoss.groundY || luciferBoss.y }, 34);
-  } else if (!stakeForm) {
+  } else {
     drawActorShadow(luciferBoss, 34);
   }
   drawLuciferFrame(frame, x, y, luciferBoss.facing, defeatedAlpha, false, drawScale);
@@ -19054,6 +18779,7 @@ function drawLucifer() {
     const alpha = luciferBoss.flavor === "defeated" ? Math.sin((1 - defeatedAlpha) * Math.PI) * 0.72 : clamp(luciferBoss.hurtFlash / LUCIFER_HURT_FLASH_TIME, 0, 1) * 0.55;
     if (alpha > 0) drawLuciferFrame(frame, x, y, luciferBoss.facing, alpha, true, drawScale);
   }
+  drawLuciferParryRings();
 }
 
 function drawBernBarrageArcCrystals() {
@@ -19116,6 +18842,7 @@ function drawActors(options = {}) {
     ...belphegorAttacks.map((attack) => ({ type: "belphegor", y: attack.y + 0.59, attack })),
     ...(beatriceBoss.active ? [{ type: "beatrice", y: beatriceBoss.y }] : []),
     ...(luciferBoss.active ? [{ type: "lucifer", y: luciferBoss.y }] : []),
+    ...(luciferBoss.active && luciferBoss.combat?.sister ? [{ type: "luciferSister", y: luciferBoss.combat.sister.y }] : []),
     ...(lambdaCompanion.active ? [{ type: "lambda", y: companionDrawSortY("lambda", lambdaCompanion.y) }] : []),
     ...(bernCompanion.active ? [{ type: "bern", y: companionDrawSortY("bern", bernCompanion.y) }] : []),
     ...(shannonCompanion.active ? [{ type: "shannon", y: companionDrawSortY("shannon", shannonCompanion.y) }] : []),
@@ -19148,6 +18875,8 @@ function drawActors(options = {}) {
       drawBeatrice();
     } else if (actor.type === "lucifer") {
       drawLucifer();
+    } else if (actor.type === "luciferSister") {
+      drawLuciferSister();
     } else if (actor.type === "asmo") {
       drawAsmodeusUppercut(actor.attack);
     } else if (actor.type === "beelzebub") {
@@ -21614,7 +21343,9 @@ function drawLuciferBossHud() {
   ctx.textAlign = "center";
   ctx.font = "700 14px Segoe UI, Arial";
   ctx.fillStyle = "#e9d8ff";
-  ctx.fillText("Lucifer", W / 2, y - 5);
+  const phase = luciferBoss.combat?.phase || 1;
+  const open = luciferTakesFullDamage();
+  ctx.fillText(`Lucifer · Phase ${phase}${open ? " · OPEN" : ""}`, W / 2, y - 5);
   ctx.fillStyle = "rgba(14, 8, 18, 0.9)";
   ctx.fillRect(x, y + 4, barW, barH);
   const hpGrad = ctx.createLinearGradient(x, y, x + barW, y);
@@ -21626,6 +21357,15 @@ function drawLuciferBossHud() {
   ctx.strokeStyle = "rgba(242, 221, 255, 0.62)";
   ctx.lineWidth = 1.5;
   ctx.strokeRect(x, y + 4, barW, barH);
+  ctx.strokeStyle = "rgba(255, 244, 212, 0.9)";
+  ctx.lineWidth = 2;
+  for (const threshold of [0.65, 0.3]) {
+    const markerX = x + barW * threshold;
+    ctx.beginPath();
+    ctx.moveTo(markerX, y + 4);
+    ctx.lineTo(markerX, y + 4 + barH);
+    ctx.stroke();
+  }
   ctx.restore();
 }
 
@@ -23224,6 +22964,7 @@ function beginAttackHold(kind) {
   const hold = attackHolds[kind];
   if (!hold || hold.down) return;
   if (player.runStumbleTimer > 0 || player.runStumbleTripTimer > 0 || player.runStumbleProneTimer > 0 || player.action === "getUp") return;
+  if (tryLuciferParry(kind)) return;
   if (tryBeatriceStakeParry()) return;
   if (tryLeviathanTowerParry()) return;
   if (tryBeatriceMeleeKickParry()) return;
@@ -23999,4 +23740,12 @@ loadImages().then(() => {
   healthBar.style.width = "100%";
   updateResolveHud();
   requestAnimationFrame(loop);
+}).catch((error) => {
+  state = "loadError";
+  console.error(error);
+  const failure = document.createElement("p");
+  failure.setAttribute("role", "alert");
+  failure.style.cssText = "padding:20px;color:#fff;background:#6b1234;font:16px sans-serif";
+  failure.textContent = `Unable to load the game: ${error.message}`;
+  canvas.parentElement.appendChild(failure);
 });
